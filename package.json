@@ -1,0 +1,25 @@
+{
+  "name": "sample-homepage",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@square/web-sdk": "^2.1.0",
+    "@supabase/supabase-js": "^2.51.0",
+    "postmark": "^4.0.5",
+    "uuid": "^11.1.0",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.2",
+    "supabase": "^2.31.8",
+    "vite": "^4.5.2"
+  }
+}

@@ -1,0 +1,415 @@
+// Square SDK関連の型定義
+let payments = null
+
+// Square SDKを読み込む関数
+async function loadSquareSDK() {
+  if (window.Square) {
+    return
+  }
+  
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://sandbox.web.squarecdn.com/v1/square.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Square SDK'))
+    document.head.appendChild(script)
+  })
+}
+
+// Square決済システムを初期化
+export async function initializeSquare() {
+  try {
+    if (!payments) {
+      await loadSquareSDK()
+      
+      // 環境変数をチェック
+      let applicationId = import.meta.env.VITE_SQUARE_APPLICATION_ID
+      
+      // Application IDが設定されていない場合やフォーマットが正しくない場合は、テスト用のIDを使用
+      if (!applicationId || !applicationId.startsWith('sandbox-sq0idb-')) {
+        console.warn('正しいSquare Application IDが設定されていません。テスト用IDを使用します。')
+        applicationId = 'sandbox-sq0idb-uF6_Dtbww6cjmxmDlprGNQ' // 郵便番号バリデーション問題に対応したテスト用ID
+      }
+      
+      console.log('使用するApplication ID:', applicationId)
+      payments = await window.Square.payments(applicationId)
+    }
+    return payments
+  } catch (error) {
+    console.error('Square SDKの初期化に失敗しました:', error)
+    throw error
+  }
+}
+
+// カード決済フォームを作成
+export async function createCardPaymentForm(payments, zipCode = '') {
+  try {
+    const card = await payments.card({
+      style: {
+        input: {
+          color: '#333',
+          fontSize: '16px',
+          fontFamily: 'Arial, sans-serif'
+        },
+        'input::placeholder': {
+          color: '#999'
+        },
+        '.message-text': {
+          color: '#dc3545'
+        }
+      }
+      // postalCodeオプションを削除（無効な設定のため）
+    })
+    
+    // カードフォームを #card-container にアタッチ
+    await card.attach('#card-container')
+    
+    // フォームアタッチ後、郵便番号フィールドを完全に無効化する
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+    }, 100)
+    
+    // 少し遅らせてもう一度確認・無効化
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+      logFormInputs() // デバッグ用
+    }, 500)
+    
+    // さらに遅らせて最終確認
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+    }, 1000)
+    
+    // MutationObserverで動的に追加される要素を監視
+    if (zipCode) {
+      setupDynamicPostalCodeHandler(zipCode)
+    }
+    
+    // フォームアタッチ後、郵便番号フィールドを完全に無効化する
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+    }, 100)
+    
+    // 少し遅らせてもう一度確認・無効化
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+      logFormInputs() // デバッグ用
+    }, 500)
+    
+    // さらに遅らせて最終確認
+    setTimeout(() => {
+      disablePostalCodeFields(zipCode)
+    }, 1000)
+    
+    return card
+  } catch (error) {
+    console.error('カード支払いフォームの作成に失敗しました:', error)
+    throw error
+  }
+}
+
+// 郵便番号フィールドを無効化する専用関数
+function disablePostalCodeFields(zipCode = '') {
+  console.log('🔍 郵便番号フィールドの無効化を開始... 郵便番号:', zipCode)
+  
+  // より包括的な郵便番号フィールドの検索セレクタ
+  const postalCodeSelectors = [
+    // プレースホルダーベース
+    '[placeholder*="postal" i]',
+    '[placeholder*="zip" i]',
+    '[placeholder*="郵便" i]',
+    
+    // name属性ベース
+    'input[name*="postal" i]',
+    'input[name*="zip" i]',
+    'input[name*="郵便" i]',
+    
+    // id属性ベース
+    'input[id*="postal" i]',
+    'input[id*="zip" i]',
+    'input[id*="郵便" i]',
+    
+    // class属性ベース
+    '.sq-postal-code input',
+    '.postal-code input',
+    '.zip-code input',
+    
+    // data属性ベース
+    '[data-testid="postal-code"] input',
+    '[data-testid="zip-code"] input',
+    
+    // Square固有のセレクタ
+    '.sq-form .sq-input-postal',
+    '.sq-form input[type="text"]:last-child', // 最後のテキストフィールド（多くの場合郵便番号）
+    
+    // より一般的なセレクタ（Square特有のパターン）
+    '#card-container input[type="text"]',
+    '#card-container .sq-input'
+  ]
+  
+  let foundFields = 0
+  let allTextInputs = []
+  
+  // まず全てのテキスト入力フィールドを取得
+  const cardContainer = document.getElementById('card-container')
+  if (cardContainer) {
+    allTextInputs = Array.from(cardContainer.querySelectorAll('input[type="text"]'))
+    console.log(`📋 カードコンテナ内のテキスト入力フィールド: ${allTextInputs.length}個`)
+    
+    allTextInputs.forEach((input, index) => {
+      console.log(`  Input ${index}:`, {
+        placeholder: input.placeholder,
+        name: input.name,
+        id: input.id,
+        value: input.value,
+        className: input.className
+      })
+    })
+  }
+  
+  // 特定のセレクタで郵便番号フィールドを検索
+  postalCodeSelectors.forEach(selector => {
+    try {
+      const inputs = document.querySelectorAll(selector)
+      inputs.forEach(input => {
+        if (input && input.type !== 'hidden' && !input.disabled) {
+          foundFields++
+          console.log(`✅ 郵便番号フィールドを発見 (${selector}):`, input)
+          
+          // 郵便番号を設定してから無効化
+          if (zipCode) {
+            console.log(`📝 郵便番号を設定: ${zipCode}`)
+            input.value = zipCode
+          }
+          
+          // 完全無効化の処理
+          input.disabled = true
+          input.readOnly = true
+          
+          // フォーム送信から除外
+          input.removeAttribute('name')
+          input.removeAttribute('required')
+          
+          // 完全に非表示にする
+          input.style.display = 'none !important'
+          input.style.visibility = 'hidden !important'
+          input.style.height = '0px !important'
+          input.style.width = '0px !important'
+          input.style.position = 'absolute !important'
+          input.style.left = '-9999px !important'
+          input.style.top = '-9999px !important'
+          input.style.overflow = 'hidden !important'
+          
+          // 親要素も非表示にする
+          if (input.parentElement) {
+            const parent = input.parentElement
+            
+            // 親要素に他の入力フィールドがない場合のみ非表示
+            const otherInputs = parent.querySelectorAll('input:not([disabled])')
+            if (otherInputs.length <= 1) {
+              parent.style.display = 'none !important'
+              console.log('✅ 親要素も非表示にしました:', parent)
+            }
+          }
+        }
+      })
+    } catch (e) {
+      console.log(`⚠️ セレクタエラー (${selector}):`, e.message)
+    }
+  })
+  
+  // フォールバック戦略：最後のテキスト入力フィールドを郵便番号として処理
+  if (foundFields === 0 && allTextInputs.length > 0) {
+    console.log('⚠️ 特定の郵便番号フィールドが見つかりませんでした。最後のフィールドを処理します。')
+    
+    const lastInput = allTextInputs[allTextInputs.length - 1]
+    if (lastInput) {
+      console.log('🎯 最後のフィールドを郵便番号と仮定して処理:', lastInput)
+      
+      // 郵便番号を設定
+      if (zipCode) {
+        console.log(`📝 最後のフィールドに郵便番号を設定: ${zipCode}`)
+        lastInput.value = zipCode
+        
+        // 値が正しく設定されたか確認
+        setTimeout(() => {
+          console.log(`✅ 設定後の値確認: ${lastInput.value}`)
+        }, 100)
+      }
+      
+      lastInput.disabled = true
+      lastInput.style.display = 'none !important'
+      foundFields++
+    }
+  }
+  
+  // さらなるフォールバック：全てのテキストフィールドの最後の2つを確認
+  if (foundFields === 0 && allTextInputs.length >= 2) {
+    console.log('� 追加のフォールバック：最後の2つのフィールドを確認')
+    
+    // 最後から2番目と最後のフィールドを確認
+    const candidates = allTextInputs.slice(-2)
+    candidates.forEach((input, index) => {
+      console.log(`🧐 候補フィールド ${index}:`, {
+        placeholder: input.placeholder,
+        maxLength: input.maxLength,
+        pattern: input.pattern,
+        value: input.value
+      })
+      
+      // maxLengthが5-10の範囲、またはpatternが郵便番号っぽい場合
+      if ((input.maxLength >= 5 && input.maxLength <= 10) || 
+          (input.pattern && input.pattern.includes('zip')) ||
+          (input.placeholder && input.placeholder.toLowerCase().includes('zip'))) {
+        console.log(`🎯 候補フィールドを郵便番号として処理: ${index}`)
+        
+        if (zipCode) {
+          input.value = zipCode
+          console.log(`📝 候補フィールドに郵便番号を設定: ${zipCode}`)
+        }
+        
+        input.disabled = true
+        input.style.display = 'none !important'
+        foundFields++
+      }
+    })
+  }
+  
+  console.log(`✅ 郵便番号フィールド処理完了: ${foundFields}個のフィールドを処理`)
+  return foundFields
+}
+
+// デバッグ用：フォーム内の全入力フィールドをログ出力
+function logFormInputs() {
+  console.log('🔍 フォーム内の全入力フィールド:')
+  const allInputs = document.querySelectorAll('#card-container input')
+  allInputs.forEach((input, index) => {
+    console.log(`  Input ${index}:`, {
+      type: input.type,
+      placeholder: input.placeholder,
+      name: input.name,
+      id: input.id,
+      disabled: input.disabled,
+      value: input.value,
+      style: input.style.display
+    })
+  })
+}
+
+// 動的に追加される郵便番号フィールドを監視・処理する
+function setupDynamicPostalCodeHandler(zipCode) {
+  console.log('🔄 動的郵便番号フィールド監視を開始:', zipCode)
+  
+  const cardContainer = document.getElementById('card-container')
+  if (!cardContainer) return
+  
+  // MutationObserverで新しい要素の追加を監視
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // 新しい入力フィールドが追加された場合
+            const newInputs = node.querySelectorAll ? node.querySelectorAll('input[type="text"]') : 
+                             (node.tagName === 'INPUT' && node.type === 'text') ? [node] : []
+            
+            newInputs.forEach((input) => {
+              console.log('🆕 新しい入力フィールドを検出:', input)
+              
+              // 遅延して郵便番号処理を実行
+              setTimeout(() => {
+                // 全てのテキストフィールドの中で最後のものを確認
+                const allTextInputs = Array.from(cardContainer.querySelectorAll('input[type="text"]'))
+                const lastInput = allTextInputs[allTextInputs.length - 1]
+                
+                if (input === lastInput) {
+                  console.log('🎯 最後に追加されたフィールドに郵便番号を設定:', zipCode)
+                  input.value = zipCode
+                  input.disabled = true
+                  input.style.display = 'none'
+                }
+              }, 50)
+            })
+          }
+        })
+      }
+    })
+  })
+  
+  // カードコンテナの変更を監視開始
+  observer.observe(cardContainer, {
+    childList: true,
+    subtree: true
+  })
+  
+  // 5秒後に監視を停止（リソース節約）
+  setTimeout(() => {
+    observer.disconnect()
+    console.log('✅ 動的監視を終了しました')
+  }, 5000)
+}
+
+// 決済を処理（郵便番号バリデーション回避版）
+export async function processPayment(card, amount, zipCode = '') {
+  try {
+    console.log('=== カードトークン化開始 ===')
+    console.log('郵便番号情報:', zipCode)
+    
+    // トークン化前に郵便番号フィールドを再度確認・処理
+    console.log('🔄 トークン化前の郵便番号フィールド最終確認...')
+    const processedFields = disablePostalCodeFields(zipCode)
+    
+    if (processedFields === 0) {
+      console.log('⚠️ 郵便番号フィールドが見つからないため、手動で最後のフィールドを処理します')
+      
+      // 最後の手段：すべてのテキストフィールドの最後を強制的に処理
+      const allInputs = document.querySelectorAll('#card-container input[type="text"]')
+      if (allInputs.length > 0) {
+        const lastInput = allInputs[allInputs.length - 1]
+        if (zipCode && lastInput) {
+          console.log('🎯 最後のフィールドに強制的に郵便番号を設定:', zipCode)
+          lastInput.value = zipCode
+          lastInput.disabled = true
+          lastInput.style.display = 'none'
+        }
+      }
+    }
+    
+    // 少し待機してからトークン化を実行
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    const tokenResult = await card.tokenize()
+    console.log('カードトークン化完了:', tokenResult)
+    
+    if (tokenResult.status === 'OK') {
+      console.log('✅ テスト環境：カードトークン化成功', tokenResult.token)
+      
+      // テスト用の決済処理（常に成功）
+      // 実際のサーバーAPIを呼び出す代わりに、成功レスポンスをシミュレート
+      await new Promise(resolve => setTimeout(resolve, 1500)) // 1.5秒待機
+      
+      return {
+        status: 'success',
+        paymentId: 'test_payment_' + Date.now(),
+        transactionId: 'txn_' + Math.random().toString(36).substring(2, 15),
+        message: 'テスト決済が完了しました',
+        cardLast4: tokenResult.details?.card?.last4 || '****',
+        cardBrand: tokenResult.details?.card?.brand || 'TEST'
+      }
+    } else {
+      console.log('❌ トークン化失敗:', tokenResult.errors)
+      const errorMessage = tokenResult.errors?.[0]?.message || 'カードトークン化に失敗しました'
+      
+      // 郵便番号関連のエラーを特別処理
+      if (errorMessage.includes('Postal code') || errorMessage.includes('postal')) {
+        throw new Error('カード情報を確認してください。（郵便番号は前画面で入力済みです）')
+      }
+      
+      throw new Error(errorMessage)
+    }
+  } catch (error) {
+    console.error('決済処理中にエラーが発生しました:', error)
+    throw error
+  }
+}
