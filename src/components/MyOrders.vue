@@ -117,7 +117,7 @@ import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
-import { sendPaymentConfirmationEmail } from '../lib/postmark.js'
+// import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を一時的にオフ
 
 const router = useRouter()
 const orders = ref([])
@@ -183,9 +183,10 @@ const confirmPayment = async (order) => {
 
     if (updateError) throw updateError
 
-    console.log('入金確認メール送信を開始します...')
+    console.log('入金確認が完了しました。')
     
-    // 入金確認メールを送信
+    // 入金確認メールを送信（一時的にオフ）
+    /*
     try {
       await sendPaymentConfirmationEmail(order)
       console.log('入金確認メールの送信が完了しました')
@@ -194,6 +195,7 @@ const confirmPayment = async (order) => {
       // メール送信に失敗してもエラーにしない
       console.warn('入金確認メール送信に失敗しましたが、入金確認は正常に完了しました')
     }
+    */
 
     await fetchOrders() // 注文リストを再取得して表示を更新
   } catch (e) {

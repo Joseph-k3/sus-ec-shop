@@ -308,7 +308,7 @@ import BankTransferInfo from './BankTransferInfo.vue'
 import { useAddressLookup } from '../composables/useAddressLookup'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
-import { sendBankTransferEmail } from '../lib/postmark.js'
+// import { sendBankTransferEmail } from '../lib/postmark.js' // メール送信機能を一時的にオフ
 // definePropsはコンパイラマクロのため、importする必要はありません
 
 const router = useRouter()
@@ -689,9 +689,10 @@ const saveOrder = async (paymentMethod) => {
     }
 
     // 注文保存完了
-    console.log('注文保存が完了しました。メール送信を開始します...')
+    console.log('注文保存が完了しました。')
     
-    // 銀行振込注文の場合、メール送信
+    // 銀行振込注文の場合、メール送信（一時的にオフ）
+    /*
     try {
       await sendBankTransferEmail(savedOrder)
       console.log('注文確認メールの送信が完了しました')
@@ -700,6 +701,7 @@ const saveOrder = async (paymentMethod) => {
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
       console.warn('メール送信に失敗しましたが、注文は正常に完了しました')
     }
+    */
     
     return savedOrder
 
