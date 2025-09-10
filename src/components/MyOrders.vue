@@ -182,18 +182,14 @@ const confirmPayment = async (order) => {
       .eq('id', order.id)
 
     if (updateError) throw updateError
-
-    console.log('入金確認が完了しました。')
     
     // 入金確認メールを送信（一時的にオフ）
     /*
     try {
       await sendPaymentConfirmationEmail(order)
-      console.log('入金確認メールの送信が完了しました')
     } catch (emailError) {
       console.error('入金確認メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない
-      console.warn('入金確認メール送信に失敗しましたが、入金確認は正常に完了しました')
     }
     */
 

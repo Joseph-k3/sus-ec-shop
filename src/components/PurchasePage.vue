@@ -581,8 +581,6 @@ const saveOrder = async (paymentMethod) => {
       throw new Error('在庫の更新に失敗しました')
     }
 
-    console.log(`商品ID ${product.value.id} の在庫を ${stockData.quantity} から ${stockData.quantity - 1} に更新しました`)
-
     // 2. 注文データの準備
     const now = new Date().toISOString()
     
@@ -628,11 +626,10 @@ const saveOrder = async (paymentMethod) => {
         orderDetails.address = formData.value.address.trim()
       }
     } catch (e) {
-      console.log('zip_code カラムが存在しないため、addressに統合します')
+      // zip_codeカラムが存在しない場合は統合形式を使用
     }
 
     // 3. 注文データを保存（在庫は減らさない）
-    console.log('保存する注文データ:', orderDetails) // デバッグ用
     
     const { data: savedOrder, error: orderError } = await supabase
       .from('orders')
@@ -654,7 +651,6 @@ const saveOrder = async (paymentMethod) => {
             quantity: stockData.quantity 
           })
           .eq('id', product.value.id)
-        console.log(`在庫を ${stockData.quantity} に復元しました`)
       } catch (rollbackError) {
         console.error('在庫復元エラー:', rollbackError)
       }
@@ -689,17 +685,14 @@ const saveOrder = async (paymentMethod) => {
     }
 
     // 注文保存完了
-    console.log('注文保存が完了しました。')
     
     // 銀行振込注文の場合、メール送信（一時的にオフ）
     /*
     try {
       await sendBankTransferEmail(savedOrder)
-      console.log('注文確認メールの送信が完了しました')
     } catch (emailError) {
       console.error('メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
-      console.warn('メール送信に失敗しましたが、注文は正常に完了しました')
     }
     */
     
@@ -716,7 +709,6 @@ const saveOrder = async (paymentMethod) => {
           quantity: stockData.quantity 
         })
         .eq('id', product.value.id)
-      console.log(`エラー時に在庫を ${stockData.quantity} に復元しました`)
     } catch (rollbackError) {
       console.error('在庫復元エラー:', rollbackError)
     }
@@ -815,8 +807,6 @@ const proceedToPurchase = async () => {
         console.error('在庫更新エラー:', stockUpdateError)
         throw new Error('在庫の更新に失敗しました')
       }
-
-      console.log(`クレジットカード決済: 商品ID ${product.value.id} の在庫を ${stockData.quantity} から ${stockData.quantity - 1} に更新しました`)
       
       // 郵便番号をフォーマット（ハイフンが無い場合は自動追加）
       let formattedZipCode = formData.value.zipCode.trim()
@@ -838,8 +828,6 @@ const proceedToPurchase = async () => {
         address: formData.value.address.trim(),
         payment_method: 'square'
       }
-      
-      console.log('クレジットカード決済用の注文データを準備しました:', orderData.value)
       
       // 購入確認画面を非表示にして決済画面に移行
       showPurchaseConfirmation.value = false
@@ -873,23 +861,9 @@ const proceedToPurchase = async () => {
   }
 }
 
-// 商品一覧に戻る処理（ダイアログ付き）
+// 商品一覧に戻る処理（確認なしで直接遷移）
 const handleBackToProductList = async () => {
-  const confirmed = window.confirm(
-    '商品一覧画面に戻りますか？\n\n' +
-    '※ ご入力いただいた注文情報は保存されており、\n' +
-    '「ご注文履歴」から確認・決済の続行が可能です。\n\n' +
-    '注文ステータス：お支払い待ち'
-  )
-  
-  if (confirmed) {
-    // 少し待機してから注文履歴へのナビゲーションメッセージを表示
-    setTimeout(() => {
-      alert('ご注文情報が保存されました。\n\n「ご注文履歴」ボタンから注文状況をご確認いただけます。\n決済のお手続きもそちらから可能です。')
-    }, 500)
-    
-    await router.push('/')
-  }
+  await router.push('/')
 }
 
 // クレジットカード決済完了時の処理

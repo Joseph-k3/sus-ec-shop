@@ -110,6 +110,7 @@ export async function createCardPaymentForm(payments, zipCode = '') {
 
 // 郵便番号フィールドを無効化する専用関数
 function disablePostalCodeFields(zipCode = '') {
+  console.log('🔍 郵便番号フィールドの無効化を開始... 郵便番号:', zipCode)
   
   // より包括的な郵便番号フィールドの検索セレクタ
   const postalCodeSelectors = [
