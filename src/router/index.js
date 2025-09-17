@@ -7,6 +7,37 @@ import AdminProductEdit from '../components/AdminProductEdit.vue'
 import OrderManagement from '../components/admin/OrderManagement.vue'
 import BankTransferForm from '../components/BankTransferForm.vue'
 import SquarePaymentForm from '../components/SquarePaymentForm.vue'
+import SimpleLogin from '../components/SimpleLogin.vue'
+import { useAuth } from '../composables/useAuth'
+
+// サイト認証ガード
+const siteAuthGuard = (to, from, next) => {
+  console.log('siteAuthGuard called for route:', to.path, 'from:', from.path)
+  
+  // 認証状態を直接チェック
+  const authFlag = localStorage.getItem('site-authenticated')
+  const authTime = localStorage.getItem('site-auth-time')
+  const splashFlag = sessionStorage.getItem('show-splash-after-login')
+  
+  console.log('Auth check:', { authFlag, authTime, splashFlag })
+  
+  let isAuth = false
+  if (authFlag === 'true' && authTime) {
+    const loginTime = parseInt(authTime)
+    const now = Date.now()
+    const hoursPassed = (now - loginTime) / (1000 * 60 * 60)
+    isAuth = hoursPassed < 24 // 24時間以内
+    console.log('Hours passed:', hoursPassed, 'Is authenticated:', isAuth)
+  }
+  
+  if (isAuth) {
+    console.log('User is authenticated, proceeding to:', to.path)
+    next()
+  } else {
+    console.log('User not authenticated, redirecting to login')
+    next('/login')
+  }
+}
 
 // 管理者認証ガード
 const adminAuthGuard = async (to, from, next) => {
@@ -22,27 +53,36 @@ const adminAuthGuard = async (to, from, next) => {
 
 const routes = [
   {
+    path: '/login',
+    name: 'login',
+    component: SimpleLogin
+  },
+  {
     path: '/',
     name: 'home',
-    component: ProductList
+    component: ProductList,
+    beforeEnter: siteAuthGuard
   },
   {
     path: '/purchase/:id',
     name: 'purchase',
     component: PurchasePage,
-    props: true // URLパラメータをpropsとして渡す
+    props: true, // URLパラメータをpropsとして渡す
+    beforeEnter: siteAuthGuard
   },
   {
     path: '/bank-transfer',
     name: 'BankTransferForm',
     component: BankTransferForm,
-    props: true
+    props: true,
+    beforeEnter: siteAuthGuard
   },
   {
     path: '/square-payment',
     name: 'SquarePaymentForm',
     component: SquarePaymentForm,
-    props: true
+    props: true,
+    beforeEnter: siteAuthGuard
   },
   {
     path: '/admin',
@@ -68,13 +108,26 @@ const routes = [
   {
     path: '/my-orders',
     name: 'my-orders',
-    component: MyOrders
+    component: MyOrders,
+    beforeEnter: siteAuthGuard
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+// グローバルナビゲーションガード
+router.beforeEach((to, from, next) => {
+  // ログインページへのアクセスは常に許可
+  if (to.path === '/login') {
+    next()
+    return
+  }
+  
+  // その他のルートは個別のガードで処理
+  next()
 })
 
 export default router

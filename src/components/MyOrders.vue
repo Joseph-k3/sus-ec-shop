@@ -68,6 +68,7 @@
         <div v-if="shouldShowPaymentButton(order)" class="payment-actions">
           <button 
             @click="confirmPayment(order)"
+            @touchstart.passive="() => {}"
             class="confirm-button"
             :disabled="isConfirming || isCancelling"
           >
@@ -167,7 +168,9 @@ const fetchOrders = async () => {
 
 // お振込完了報告
 const confirmPayment = async (order) => {
-  if (!confirm('お振込の完了を報告しますか？')) return
+  // スマホ対応: より確実な確認方法
+  const userConfirmed = window.confirm('お振込の完了を報告しますか？\n\n※この操作は取り消しできません。')
+  if (!userConfirmed) return
 
   isConfirming.value = true
 
@@ -196,7 +199,9 @@ const confirmPayment = async (order) => {
     await fetchOrders() // 注文リストを再取得して表示を更新
   } catch (e) {
     console.error('お振込完了報告に失敗:', e)
-    alert('お振込完了報告に失敗しました。')
+    // スマホ対応: より詳細なエラーメッセージ
+    const errorMessage = e?.message || 'お振込完了報告に失敗しました。'
+    alert(`エラーが発生しました:\n${errorMessage}\n\nネットワーク接続を確認して、もう一度お試しください。`)
   } finally {
     isConfirming.value = false
   }
@@ -511,14 +516,19 @@ onMounted(fetchOrders)
 
 .confirm-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 1rem;
   background: #4CAF50;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-weight: bold;
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
+  /* スマホ対応 */
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0,0,0,0.1);
 }
 
 .confirm-button:hover {

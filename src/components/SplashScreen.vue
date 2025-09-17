@@ -1,9 +1,5 @@
 <template>
-  <div 
-    class="splash-screen"
-    :class="{ 'fade-out': isAnimating }"
-    v-if="!isFinished"
-  >
+  <div class="splash-screen">
     <div 
       class="splash-image"
       :class="{ 'zoom-out': isAnimating }"
@@ -14,20 +10,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+
+const props = defineProps({
+  duration: {
+    type: Number,
+    default: 3000  // 3秒間表示（元の設定）
+  },
+  animationDelay: {
+    type: Number,
+    default: 1200  // 1.2秒後にアニメーション開始（元の設定）
+  }
+})
+
+const emit = defineEmits(['finished'])
 
 const isAnimating = ref(false)
-const isFinished = ref(false)
 
-// アニメーションの開始
-setTimeout(() => {
-  isAnimating.value = true
-}, 1200)
+onMounted(() => {
+  console.log('SplashScreen mounted - duration:', props.duration, 'animation delay:', props.animationDelay)
+  
+  // アニメーションの開始
+  setTimeout(() => {
+    console.log('Starting fade out animation')
+    isAnimating.value = true
+  }, props.animationDelay)
 
-// アニメーション完了後にコンポーネントを削除
-setTimeout(() => {
-  isFinished.value = true
-}, 3000)  // 合計時間も1秒延長
+  // アニメーション完了後にイベントを発行
+  setTimeout(() => {
+    console.log('SplashScreen finished')
+    emit('finished')
+  }, props.duration)
+})
 </script>
 
 <style scoped>
@@ -39,11 +53,12 @@ setTimeout(() => {
   height: 100vh;
   background-color: white;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 2000;
   opacity: 1;
-  transition: opacity 2s ease-in-out;
+  transition: opacity 1.8s ease-in-out;
 }
 
 .splash-screen.fade-out {
@@ -51,14 +66,16 @@ setTimeout(() => {
 }
 
 .splash-image {
-  width: 300px;
-  height: 300px;
+  width: 400px;
+  height: 400px;
   transform: scale(1);
-  transition: transform 1.5s ease-in-out;
+  opacity: 1;
+  transition: all 1.5s ease-in-out;
 }
 
 .splash-image.zoom-out {
-  transform: scale(0.8);
+  transform: scale(1.3);
+  opacity: 0;
 }
 
 .splash-image img {
@@ -72,16 +89,22 @@ setTimeout(() => {
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: scale(0.8);
   }
   to {
     opacity: 1;
+    transform: scale(1);
   }
 }
 
+
+
+
+
 @media (max-width: 768px) {
   .splash-image {
-    width: 200px;
-    height: 200px;
+    width: 280px;
+    height: 280px;
   }
 }
 </style>

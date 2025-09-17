@@ -44,13 +44,28 @@
         <div v-if="!selectedPaymentMethod" class="payment-method-selection">
           <h3>お支払い方法を選択してください</h3>
           <div class="payment-options">
-            <button class="payment-option" @click="selectPaymentMethod('square')">
+            <!-- クレジットカード決済ボタン（設定により有効/無効） -->
+            <button 
+              v-if="isCreditCardEnabled()"
+              class="payment-option" 
+              @click="selectPaymentMethod('square')"
+            >
               <span class="icon">💳</span>
               <div class="payment-text">
                 <span class="payment-title">クレジットカード決済</span>
                 <small>（Square決済）</small>
               </div>
             </button>
+            
+            <!-- クレジットカード決済無効時のメッセージ -->
+            <div v-else class="payment-option disabled">
+              <span class="icon">💳</span>
+              <div class="payment-text">
+                <span class="payment-title">クレジットカード決済</span>
+                <small class="disabled-message">{{ getCreditCardDisabledMessage() }}</small>
+              </div>
+            </div>
+            
             <button class="payment-option" @click="selectPaymentMethod('bank')">
               <span class="icon">🏦</span>
               <div class="payment-text">
@@ -308,6 +323,7 @@ import BankTransferInfo from './BankTransferInfo.vue'
 import { useAddressLookup } from '../composables/useAddressLookup'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
+import { paymentConfig, isCreditCardEnabled, getCreditCardDisabledMessage } from '../config/paymentConfig.js'
 // import { sendBankTransferEmail } from '../lib/postmark.js' // メール送信機能を一時的にオフ
 // definePropsはコンパイラマクロのため、importする必要はありません
 
@@ -977,6 +993,18 @@ const backToForm = () => {
   transform: translateY(-2px);
 }
 
+.payment-option.disabled {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.payment-option.disabled:hover {
+  border-color: #dee2e6;
+  transform: none;
+}
+
 .payment-option .icon {
   font-size: 2.5rem;
   line-height: 1;
@@ -998,6 +1026,12 @@ const backToForm = () => {
   color: #6c757d;
   font-size: 0.9rem;
   margin-left: 0.5rem;
+}
+
+.disabled-message {
+  color: #dc3545 !important;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
 }
 
 .customer-form {

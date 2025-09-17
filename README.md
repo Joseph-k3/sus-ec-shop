@@ -1,5 +1,29 @@
-# Vue 3 + Vite
+# 多肉植物ECサイト
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite + Supabaseを使用した多肉植物のECサイトです。
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 決済方法の設定
+
+クレジットカード決済の有効/無効は `src/config/paymentConfig.js` で管理できます。
+
+### クレジットカード決済を無効にする場合
+
+```javascript
+// src/config/paymentConfig.js
+export const paymentConfig = {
+  creditCardEnabled: false, // ← falseに設定
+  // ...
+}
+```
+
+### クレジットカード決済を有効にする場合
+
+```javascript
+// src/config/paymentConfig.js
+export const paymentConfig = {
+  creditCardEnabled: true, // ← trueに設定
+  // ...
+}
+```
+
+無効化されている間は、決済画面でクレジットカードボタンが無効化され、メンテナンス中のメッセージが表示されます。

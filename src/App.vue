@@ -1,40 +1,51 @@
 <template>
-  <SplashScreen v-if="!loading" />
-  <div v-if="loading">
-    <div class="loading">読み込み中...</div>
+  <!-- ログイン後のスプラッシュスクリーン -->
+  <SplashScreen v-if="showSplashAfterLogin" @finished="handleSplashFinished" />
+  
+  <!-- 読み込み中 -->
+  <div v-else-if="loading" class="loading">
+    <div>読み込み中...</div>
   </div>
+  
   <div v-else>
-    <template v-if="isWithinPublishPeriod || isAdmin">
+    <!-- ログインページの場合は直接表示 -->
+    <template v-if="$route.name === 'login'">
+      <router-view></router-view>
+    </template>
+    <!-- その他のページの場合は公開期間チェック -->
+    <template v-else-if="isWithinPublishPeriod || isAdmin">
       <Header />
-      <main class="main-content">
-        <div class="admin-controls" v-if="isAdmin">
-          <router-link to="/admin" custom v-slot="{ navigate }">
-            <button @click="navigate">管理画面へ</button>
-          </router-link>
-          <router-link to="/" custom v-slot="{ navigate }">
-            <button @click="navigate">商品一覧に戻る</button>
-          </router-link>
-          <button @click="handleLogout" class="logout">ログアウト</button>
-        </div>
-        <button v-else-if="$route.name === 'ProductList'" @click="showLogin = true" class="login-button">管理者ログイン</button>
-
-        <router-view></router-view>
-
-        <!-- ログインモーダル -->
-        <div v-if="showLogin" class="modal-overlay" @click="showLogin = false">
-          <div class="modal-content" @click.stop>
-            <LoginForm @login-success="showLogin = false" />
+      <div class="app-content" :class="{ 'fade-in': showMainContent }">
+        <main class="main-content">
+          <div class="admin-controls" v-if="isAdmin">
+            <router-link to="/admin" custom v-slot="{ navigate }">
+              <button @click="navigate">管理画面へ</button>
+            </router-link>
+            <router-link to="/" custom v-slot="{ navigate }">
+              <button @click="navigate">商品一覧に戻る</button>
+            </router-link>
+            <button @click="handleLogout" class="logout">ログアウト</button>
           </div>
-        </div>
-      </main>
+          <button v-else-if="$route.name === 'home'" @click="showLogin = true" class="login-button">管理者ログイン</button>
+
+          <router-view></router-view>
+
+          <!-- ログインモーダル -->
+          <div v-if="showLogin" class="modal-overlay" @click="showLogin = false">
+            <div class="modal-content" @click.stop>
+              <LoginForm @login-success="showLogin = false" />
+            </div>
+          </div>
+        </main>
+      </div>
     </template>
     <ComingSoon v-else :siteSettings="siteSettings" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import Header from './components/Header.vue'
 import ProductList from './components/ProductList.vue'
 import AdminProductEdit from './components/AdminProductEdit.vue'
@@ -42,14 +53,20 @@ import LoginForm from './components/LoginForm.vue'
 import ComingSoon from './components/ComingSoon.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import { supabase, getCurrentUser } from './lib/supabase'
+import { useAuth } from './composables/useAuth'
 
 const router = useRouter()
+const route = useRoute()
+const { isAuthenticated } = useAuth()
 
 const showAdmin = ref(false)
 const isAdmin = ref(false)
 const showLogin = ref(false)
 const siteSettings = ref(null)
 const loading = ref(true)
+const showSplashAfterLogin = ref(false)
+const showMainContent = ref(false)
+const showInitialSplash = ref(false)
 
 // 公開期間内かどうかをチェック
 const isWithinPublishPeriod = computed(() => {
@@ -68,8 +85,45 @@ const checkAdmin = async () => {
   isAdmin.value = !!user
 }
 
+// スプラッシュ完了時の処理
+const handleSplashFinished = () => {
+  console.log('Splash finished, hiding splash screen')
+  showSplashAfterLogin.value = false
+  
+  // 少し遅延してからメインコンテンツを表示（優しいフェードイン効果）
+  setTimeout(() => {
+    showMainContent.value = true
+  }, 200)
+}
+
+// ルートの変更を監視してスプラッシュ表示を制御
+watch(() => route.path, (newPath, oldPath) => {
+  console.log('Route changed from', oldPath, 'to', newPath)
+  
+  // ログインページから他のページに遷移した時にスプラッシュをチェック
+  if (oldPath === '/login' && newPath === '/' && sessionStorage.getItem('show-splash-after-login') === 'true') {
+    console.log('Showing splash after login navigation')
+    showSplashAfterLogin.value = true
+    showMainContent.value = false // メインコンテンツを一旦隠す
+    sessionStorage.removeItem('show-splash-after-login')
+  } else if (newPath !== '/login') {
+    // ログインページ以外では、スプラッシュがない場合はメインコンテンツを表示
+    if (!showSplashAfterLogin.value && !loading.value) {
+      showMainContent.value = true
+    }
+  }
+})
+
 onMounted(async () => {
-  checkAdmin()
+  await checkAdmin()
+  
+  // 初回ロード時にもスプラッシュチェック
+  await nextTick()
+  if (route.path === '/' && sessionStorage.getItem('show-splash-after-login') === 'true') {
+    console.log('Showing splash after login on mount')
+    showSplashAfterLogin.value = true
+    sessionStorage.removeItem('show-splash-after-login')
+  }
   
   // サイト設定を取得
   try {
@@ -84,8 +138,13 @@ onMounted(async () => {
     siteSettings.value = data
   } catch (error) {
     console.error('サイト設定の取得に失敗しました:', error)
-  } finally {
-    loading.value = false
+  }
+  
+  loading.value = false
+  
+  // スプラッシュが表示されない場合は、すぐにメインコンテンツを表示
+  if (!showSplashAfterLogin.value) {
+    showMainContent.value = true
   }
   
   // ログイン状態の変更を監視
@@ -112,6 +171,27 @@ const handleLogout = async () => {
 </script>
 
 <style>
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+  position: relative;
+  min-height: 100vh;
+}
+
+body {
+  overflow-x: hidden;
+  background-image: url('/succulents.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
 .loading {
   height: 100vh;
   display: flex;
@@ -127,6 +207,11 @@ const handleLogout = async () => {
   margin-left: auto;
   margin-right: auto;
   padding: 1rem 2rem;
+  position: relative;
+  z-index: 1;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .admin-controls {
@@ -184,6 +269,20 @@ button.logout:hover {
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
+}
+
+.app-content {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 1s ease-out;
+  position: relative;
+  min-height: 100vh;
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+.app-content.fade-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
