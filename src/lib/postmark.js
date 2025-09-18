@@ -70,6 +70,7 @@ export async function sendBankTransferEmail(order) {
         <p>お名前: ${order.customer_name}</p>
         <p>メール: ${order.email}</p>
         <p>電話番号: ${order.phone}</p>
+        <p>郵便番号: ${order.zip_code || '未入力'}</p>
         <p>住所: ${order.address}</p>
       </div>
 
@@ -174,6 +175,7 @@ export async function sendPaymentConfirmationEmail(order) {
         <p>お名前: ${order.customer_name}</p>
         <p>メール: ${order.email}</p>
         <p>電話番号: ${order.phone}</p>
+        <p>郵便番号: ${order.zip_code || '未入力'}</p>
         <p>住所: ${order.address}</p>
       </div>
 
