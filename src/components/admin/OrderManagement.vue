@@ -31,6 +31,7 @@
 
           <div class="customer-info">
             <p><strong>購入者:</strong> {{ order.customer_name }}</p>
+            <p><strong>顧客ID:</strong> <code class="customer-id">{{ order.customer_id }}</code></p>
             <p><strong>メール:</strong> {{ order.email }}</p>
             <p><strong>電話:</strong> {{ order.phone }}</p>
             <p><strong>住所:</strong> {{ order.address }}</p>
@@ -475,6 +476,16 @@ onMounted(fetchOrders)
 
 .delete-product.warning:hover {
   background-color: #c82333;
+}
+
+.customer-id {
+  background: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #495057;
+  border: 1px solid #dee2e6;
 }
 
 @media (max-width: 768px) {

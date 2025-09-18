@@ -5,6 +5,10 @@
         <span class="back-arrow">←</span> 商品一覧に戻る
       </router-link>
       <h2>ご注文履歴</h2>
+      <!-- デバッグ用：顧客IDを表示（必要に応じてコメントアウト） -->
+      <div class="debug-info" v-if="false">
+        <small>顧客ID: <code>{{ getOrCreateCustomerId() }}</code></small>
+      </div>
     </div>
     
     <div v-if="loading" class="loading">
@@ -118,6 +122,7 @@ import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
+import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
 // import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を一時的にオフ
 
 const router = useRouter()
@@ -133,9 +138,14 @@ const fetchOrders = async () => {
   error.value = null
   
   try {
+    // 現在の顧客IDを取得
+    const customerId = getOrCreateCustomerId()
+    
+    // 顧客IDでフィルタリングして注文履歴を取得
     const { data, error: fetchError } = await supabase
       .from('orders')
       .select('*')
+      .eq('customer_id', customerId)
       .order('created_at', { ascending: false })
 
     if (fetchError) throw fetchError
