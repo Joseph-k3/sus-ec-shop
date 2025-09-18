@@ -44,7 +44,7 @@ export async function sendBankTransferEmail(order) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'sus.plants.ec@gmail.com', // 管理者のメールアドレス
+    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
     subject: `【新規注文】${order.product_name}が購入されました`,
     html_body: `
       <h2>新規注文がありました</h2>
@@ -75,7 +75,7 @@ export async function sendBankTransferEmail(order) {
 
       <p style="margin-top: 2rem; color: #666;">
         このメールは自動送信されています。<br>
-        銀行振込の入金を確認次第、商品の発送手続きをお願いいたします。
+        銀行振込の入金を確認次第、商品の発送をお願いしやす。
       </p>
     `
   }
@@ -148,7 +148,7 @@ export async function sendPaymentConfirmationEmail(order) {
 
   // 管理者向け通知メール
   const adminEmailData = {
-    to: 'sus.plants.ec@gmail.com',
+    to: 'ryosk8er1026@yahoo.co.jp',
     subject: `【入金確認】${order.product_name}の入金を確認しました`,
     html_body: `
       <h2>入金が確認されました</h2>
