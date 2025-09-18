@@ -324,7 +324,7 @@ import { useAddressLookup } from '../composables/useAddressLookup'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
 import { paymentConfig, isCreditCardEnabled, getCreditCardDisabledMessage } from '../config/paymentConfig.js'
-import { sendBankTransferEmail } from '../lib/postmark.js' // メール送信機能を有効化
+// import { sendBankTransferEmail } from '../lib/postmark.js' // メール送信機能を無効化
 // definePropsはコンパイラマクロのため、importする必要はありません
 
 const router = useRouter()
@@ -702,13 +702,15 @@ const saveOrder = async (paymentMethod) => {
 
     // 注文保存完了
     
-    // 銀行振込注文の場合、メール送信
+    // 銀行振込注文の場合、メール送信（無効化）
+    /*
     try {
       await sendBankTransferEmail(savedOrder)
     } catch (emailError) {
       console.error('メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
+    */
     
     return savedOrder
 

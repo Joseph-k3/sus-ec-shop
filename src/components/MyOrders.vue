@@ -123,7 +123,7 @@ import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
-import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を有効化
+// import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を無効化
 
 const router = useRouter()
 const orders = ref([])
@@ -196,13 +196,15 @@ const confirmPayment = async (order) => {
 
     if (updateError) throw updateError
     
-    // 入金確認メールを送信
+    // 入金確認メールを送信（無効化）
+    /*
     try {
       await sendPaymentConfirmationEmail(order)
     } catch (emailError) {
       console.error('入金確認メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない
     }
+    */
 
     await fetchOrders() // 注文リストを再取得して表示を更新
   } catch (e) {
