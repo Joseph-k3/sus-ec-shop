@@ -390,17 +390,43 @@ div[class~="admin-grid"] {
   div[class~="admin-grid"] {
     grid-template-columns: 1fr !important;
     gap: 1rem;
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .controls-section {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
+    padding: 0 0.5rem;
   }
 
   .user-actions {
     justify-content: center;
+  }
+  
+  .order-history-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 非常に小さなスマートフォン用 */
+@media screen and (max-width: 480px) {
+  .product-list {
+    padding: 0.25rem;
+    gap: 0.75rem;
+  }
+  
+  .controls-section {
+    padding: 0 0.25rem;
+  }
+  
+  .order-history-link .icon {
+    font-size: 1rem;
+  }
+  
+  .product-card {
+    padding: 1rem;
   }
 }
 </style>

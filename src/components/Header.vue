@@ -158,25 +158,85 @@ const handleSiteLogout = async () => {
   background: #c82333;
 }
 
-@media (max-width: 768px) {
+/* タブレット用のスタイル */
+@media (max-width: 1024px) {
   .header-content {
-    grid-template-columns: auto 1fr;
-    gap: 1rem;
+    padding: 1rem 1.5rem;
+    gap: 1.5rem;
+  }
+  
+  .logo-text {
+    font-size: 1.8rem;
+    margin-left: -60px;
+  }
+}
+
+/* スマートフォン用のスタイル */
+@media (max-width: 768px) {
+  .header {
+    height: 70px;
+  }
+  
+  .header-content {
+    grid-template-columns: auto auto 1fr;
+    gap: 0.8rem;
     padding: 0.5rem 1rem;
   }
 
+  .logo-image {
+    width: 40px;
+    height: 40px;
+  }
+
   .logo-text {
-    display: none;
+    display: flex;
+    font-size: 1.4rem;
+    margin-left: 0;
+    white-space: nowrap;
   }
 
   .nav-links {
-    gap: 1rem;
-    font-size: 0.9rem;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    justify-self: end;
+  }
+
+  .seller-info {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .seller-text {
+    font-size: 0.7rem;
+  }
+
+  .site-logout-button {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.5rem;
+  }
+}
+
+/* 非常に小さなスマートフォン用 */
+@media (max-width: 480px) {
+  .header-content {
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
   }
 
   .logo-image {
-    width: 32px;
-    height: 32px;
+    width: 35px;
+    height: 35px;
+  }
+
+  .logo-text {
+    font-size: 1.2rem;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    gap: 0.3rem;
+    align-items: flex-end;
   }
 
   .seller-text {
@@ -184,8 +244,8 @@ const handleSiteLogout = async () => {
   }
 
   .site-logout-button {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.5rem;
+    font-size: 0.6rem;
+    padding: 0.25rem 0.4rem;
   }
 }
 </style>

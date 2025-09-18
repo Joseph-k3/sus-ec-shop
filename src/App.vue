@@ -287,8 +287,10 @@ button.logout:hover {
 
 @media (max-width: 768px) {
   .main-content {
-    margin-top: 64px;
+    margin-top: 70px; /* ヘッダー高さに合わせて調整 */
     padding: 1rem;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
 
   .admin-controls {
