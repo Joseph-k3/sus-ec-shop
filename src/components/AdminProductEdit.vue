@@ -62,17 +62,51 @@
       </div>
 
       <div class="form-group">
-        <label for="image">画像URL <span class="required">*</span></label>
-        <div class="image-input-group">
-          <input
-            id="image"
-            v-model="currentProduct.image"
-            type="url"
-            required
-            placeholder="https://example.com/image.jpg"
-          >
+        <label for="image">商品画像</label>
+        <div class="image-upload-section">
+          <!-- ファイル選択 -->
+          <div class="upload-options">
+            <label for="imageFile" class="file-upload-btn">
+              📷 画像を選択
+              <input
+                id="imageFile"
+                type="file"
+                accept="image/*"
+                @change="handleImageSelect"
+                style="display: none;"
+              >
+            </label>
+            <span class="upload-info">JPG, PNG, WebP対応</span>
+          </div>
+          
+          <!-- アップロード進捗 -->
+          <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+            </div>
+            <span class="progress-text">{{ uploadProgress }}% アップロード中...</span>
+          </div>
+          
+          <!-- 手動URL入力（オプション） -->
+          <div class="manual-url-section">
+            <label class="toggle-manual" @click="showManualInput = !showManualInput">
+              🔗 手動でURLを入力
+            </label>
+            <div v-if="showManualInput" class="manual-input">
+              <input
+                v-model="currentProduct.image"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+              >
+            </div>
+          </div>
+          
+          <!-- 画像プレビュー -->
           <div class="image-preview" v-if="currentProduct.image">
             <img :src="currentProduct.image" alt="プレビュー">
+            <button type="button" class="remove-image" @click="removeImage">
+              ❌ 削除
+            </button>
           </div>
         </div>
       </div>
@@ -127,6 +161,8 @@ import { supabase } from '../lib/supabase'
 
 const products = ref([])
 const editingId = ref(null)
+const uploadProgress = ref(0)
+const showManualInput = ref(false)
 const currentProduct = ref({
   name: '',
   description: '',
@@ -225,6 +261,76 @@ const deleteProduct = async (id) => {
   } catch (error) {
     console.error('Error deleting product:', error)
     alert('削除中にエラーが発生しました')
+  }
+}
+
+// 画像ファイル選択時の処理
+const handleImageSelect = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // ファイルサイズチェック（10MB以下）
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ファイルサイズは10MB以下にしてください')
+    return
+  }
+  
+  // ファイル形式チェック
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    alert('JPG、PNG、WebP、GIF形式のファイルのみ対応しています')
+    return
+  }
+  
+  try {
+    uploadProgress.value = 0
+    
+    // ファイル名を生成（タイムスタンプ + ランダム文字列）
+    const timestamp = Date.now()
+    const randomString = Math.random().toString(36).substring(2, 15)
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `product_${timestamp}_${randomString}.${fileExtension}`
+    
+    // Supabase Storageにアップロード
+    const { data, error } = await supabase.storage
+      .from('succulents')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+    
+    if (error) {
+      console.error('Upload error:', error)
+      alert('アップロードに失敗しました: ' + error.message)
+      return
+    }
+    
+    // 公開URLを取得
+    const { data: urlData } = supabase.storage
+      .from('succulents')
+      .getPublicUrl(fileName)
+    
+    if (urlData?.publicUrl) {
+      currentProduct.value.image = urlData.publicUrl
+      uploadProgress.value = 100
+      
+      // 進捗表示を少し遅らせてから非表示にする
+      setTimeout(() => {
+        uploadProgress.value = 0
+      }, 1500)
+    }
+    
+  } catch (error) {
+    console.error('Upload error:', error)
+    alert('アップロードに失敗しました')
+    uploadProgress.value = 0
+  }
+}
+
+// 画像を削除
+const removeImage = () => {
+  if (confirm('画像を削除しますか？')) {
+    currentProduct.value.image = ''
   }
 }
 
@@ -337,167 +443,151 @@ onMounted(() => {
 }
 
 .image-preview {
-  width: 80px;
-  height: 80px;
-  border-radius: 4px;
+  position: relative;
+  max-width: 300px;
+  margin: 1rem 0;
+  border-radius: 8px;
   overflow: hidden;
-  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .image-preview img {
   width: 100%;
-  height: 100%;
+  height: 200px;
   object-fit: cover;
+  display: block;
 }
 
-.quantity-group {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.quantity-group input[type="number"] {
-  width: 120px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
-.btn-primary,
-.btn-secondary {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-primary {
-  background: #4CAF50;
-  color: white;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.products-list {
-  margin-top: 3rem;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 2rem;
-  padding: 1rem;
-}
-
-.product-item {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.product-image-container {
-  position: relative;
-  width: 100%;
-  padding-top: 100%;
-}
-
-.product-thumb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.status-badge {
+.remove-image {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: bold;
+  background: rgba(220, 53, 69, 0.9);
   color: white;
-}
-
-.reserved {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.sold-out {
-  background: rgba(128, 128, 128, 0.8);
-}
-
-.product-details {
-  padding: 1rem;
-}
-
-.product-details h4 {
-  margin: 0 0 0.5rem 0;
-  color: #2c3e50;
-}
-
-.price {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #2c3e50;
-  margin: 0.5rem 0;
-}
-
-.stock-info {
-  font-size: 0.875rem;
-  color: #666;
-  margin: 0.5rem 0;
-}
-
-.low-stock {
-  color: #dc3545;
-  font-weight: bold;
-}
-
-.product-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: #f8f9fa;
-}
-
-.btn-edit,
-.btn-delete {
-  flex: 1;
-  padding: 0.5rem;
   border: none;
+  padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.875rem;
   cursor: pointer;
-  transition: opacity 0.2s;
+  font-size: 0.8rem;
+  transition: background 0.2s;
 }
 
-.btn-edit {
-  background: #17a2b8;
+.remove-image:hover {
+  background: rgba(220, 53, 69, 1);
+}
+
+/* 画像アップロード関連のスタイル */
+.image-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.upload-options {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.file-upload-btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: #007bff;
   color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+  text-align: center;
+  user-select: none;
 }
 
-.btn-delete {
-  background: #dc3545;
-  color: white;
+.file-upload-btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
 }
 
-.btn-edit:hover,
-.btn-delete:hover,
-.btn-primary:hover,
-.btn-secondary:hover {
-  opacity: 0.9;
+.upload-info {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #28a745);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: #495057;
+  text-align: center;
+}
+
+.manual-url-section {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem;
+}
+
+.toggle-manual {
+  display: inline-block;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  text-decoration: underline;
+}
+
+.toggle-manual:hover {
+  color: #0056b3;
+}
+
+.manual-input {
+  margin-top: 0.5rem;
+}
+
+.manual-input input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .upload-options {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .file-upload-btn {
+    text-align: center;
+    width: 100%;
+  }
+  
+  .image-preview {
+    max-width: 100%;
+  }
+  
+  .image-preview img {
+    height: 250px;
+  }
 }
 </style>
