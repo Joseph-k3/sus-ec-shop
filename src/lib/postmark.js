@@ -328,3 +328,151 @@ export async function sendCartOrderEmail(orderData) {
     throw error
   }
 }
+
+// 追跡番号通知メール送信（単品注文用）
+export async function sendTrackingNumberEmail(order, trackingNumber, carrier) {
+  console.log('Sending tracking number email via Supabase Edge Function...')
+  
+  try {
+    const carrierNames = {
+      'yamato': 'ヤマト運輸',
+      'sagawa': '佐川急便',
+      'post': '日本郵便',
+      'other': 'その他'
+    }
+    
+    const carrierUrls = {
+      'yamato': `https://toi.kuronekoyamato.co.jp/cgi-bin/tneko?number=${trackingNumber}`,
+      'sagawa': `https://k2k.sagawa-exp.co.jp/p/sagawa/web/okurijoinput.jsp?okurijoNo=${trackingNumber}`,
+      'post': `https://trackings.post.japanpost.jp/services/srv/search/?requestNo1=${trackingNumber}`,
+      'other': null
+    }
+    
+    const trackingUrl = carrierUrls[carrier]
+    
+    const emailData = {
+      to: order.email,
+      subject: '【SUS Plants EC Shop】商品を発送いたしました',
+      html_body: `
+        <h2>商品を発送いたしました</h2>
+        <p>${order.customer_name} 様</p>
+        
+        <p>この度はご注文いただきありがとうございました。<br>
+        ご注文の商品を発送いたしましたのでお知らせいたします。</p>
+        
+        <h3>発送内容</h3>
+        <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+          <p><strong>注文番号:</strong> ${order.order_number}</p>
+          <p><strong>商品名:</strong> ${order.product_name}</p>
+          <p><strong>金額:</strong> ¥${order.price.toLocaleString()}</p>
+          <p><strong>配送先:</strong> ${order.address}</p>
+        </div>
+        
+        <h3>配送情報</h3>
+        <div style="background-color: #e7f3ff; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #bee5eb;">
+          <p><strong>配送業者:</strong> ${carrierNames[carrier] || 'その他'}</p>
+          <p><strong>追跡番号:</strong> <span style="font-family: monospace; font-size: 1.1em; font-weight: bold; color: #007bff;">${trackingNumber}</span></p>
+          ${trackingUrl ? `<p><strong>配送状況の確認:</strong> <a href="${trackingUrl}" target="_blank" style="color: #007bff;">こちらをクリック</a></p>` : ''}
+        </div>
+        
+        <p>商品の到着まで今しばらくお待ちください。<br>
+        ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+        
+        <hr>
+        <p>SUS Plants EC Shop</p>
+        <p>Instagram: <a href="https://www.instagram.com/ryo_suke_071210/">@ryo_suke_071210</a></p>
+      `
+    }
+
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: emailData
+    })
+
+    if (error) throw new Error(error.message)
+    
+    return data
+  } catch (error) {
+    console.error('追跡番号メール送信エラー:', error)
+    throw error
+  }
+}
+
+// 追跡番号通知メール送信（カート注文用）
+export async function sendCartTrackingNumberEmail(orders, trackingNumber, carrier) {
+  console.log('Sending cart tracking number email via Supabase Edge Function...')
+  
+  try {
+    const carrierNames = {
+      'yamato': 'ヤマト運輸',
+      'sagawa': '佐川急便', 
+      'post': '日本郵便',
+      'other': 'その他'
+    }
+    
+    const carrierUrls = {
+      'yamato': `https://toi.kuronekoyamato.co.jp/cgi-bin/tneko?number=${trackingNumber}`,
+      'sagawa': `https://k2k.sagawa-exp.co.jp/p/sagawa/web/okurijoinput.jsp?okurijoNo=${trackingNumber}`,
+      'post': `https://trackings.post.japanpost.jp/services/srv/search/?requestNo1=${trackingNumber}`,
+      'other': null
+    }
+    
+    const trackingUrl = carrierUrls[carrier]
+    const firstOrder = orders[0]
+    const totalAmount = orders.reduce((sum, order) => sum + (order.price * order.quantity), 0)
+    
+    // 商品リストのHTML生成
+    const itemsHtml = orders.map(order => `
+      <div style="border-bottom: 1px solid #eee; padding: 0.5rem 0;">
+        <span style="font-weight: bold;">${order.product_name}</span><br>
+        <span style="color: #666; font-size: 0.9em;">¥${order.price.toLocaleString()} × ${order.quantity}個</span>
+      </div>
+    `).join('')
+    
+    const emailData = {
+      to: firstOrder.email,
+      subject: '【SUS Plants EC Shop】ご注文の商品を発送いたしました',
+      html_body: `
+        <h2>ご注文の商品を発送いたしました</h2>
+        <p>${firstOrder.customer_name} 様</p>
+        
+        <p>この度はカートからのご注文をいただき、ありがとうございました。<br>
+        ご注文の全商品を発送いたしましたのでお知らせいたします。</p>
+        
+        <h3>発送内容</h3>
+        <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+          <p><strong>注文商品:</strong> ${orders.length}商品</p>
+          ${itemsHtml}
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #007bff;">
+            <p style="font-size: 1.1em;"><strong>合計金額:</strong> ¥${totalAmount.toLocaleString()}</p>
+          </div>
+          <p style="margin-top: 1rem;"><strong>配送先:</strong> ${firstOrder.address}</p>
+        </div>
+        
+        <h3>配送情報</h3>
+        <div style="background-color: #e7f3ff; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #bee5eb;">
+          <p><strong>配送業者:</strong> ${carrierNames[carrier] || 'その他'}</p>
+          <p><strong>追跡番号:</strong> <span style="font-family: monospace; font-size: 1.1em; font-weight: bold; color: #007bff;">${trackingNumber}</span></p>
+          ${trackingUrl ? `<p><strong>配送状況の確認:</strong> <a href="${trackingUrl}" target="_blank" style="color: #007bff;">こちらをクリック</a></p>` : ''}
+        </div>
+        
+        <p>商品の到着まで今しばらくお待ちください。<br>
+        ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+        
+        <hr>
+        <p>SUS Plants EC Shop</p>
+        <p>Instagram: <a href="https://www.instagram.com/ryo_suke_071210/">@ryo_suke_071210</a></p>
+      `
+    }
+
+    const { data, error } = await supabase.functions.invoke('send-email', {
+      body: emailData
+    })
+
+    if (error) throw new Error(error.message)
+    
+    return data
+  } catch (error) {
+    console.error('カート追跡番号メール送信エラー:', error)
+    throw error
+  }
+}

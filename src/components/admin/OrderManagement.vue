@@ -79,12 +79,34 @@
 
               <!-- 入金済み状態 -->
               <template v-if="orderGroup.orders[0].status === 'paid'">
+                <!-- 追跡番号入力セクション -->
+                <div class="tracking-section">
+                  <h5 class="tracking-title">📦 発送・追跡番号登録</h5>
+                  <div class="tracking-input-group">
+                    <input 
+                      type="text" 
+                      v-model="trackingNumbers[`cart_${orderGroup.cartGroupId || orderGroup.orders[0].order_number}`]" 
+                      placeholder="追跡番号を入力 (例: 1234-5678-9012)"
+                      class="tracking-input"
+                      maxlength="50"
+                    >
+                    <select v-model="shippingCarriers[`cart_${orderGroup.cartGroupId || orderGroup.orders[0].order_number}`]" class="carrier-select">
+                      <option value="">配送業者を選択</option>
+                      <option value="yamato">ヤマト運輸</option>
+                      <option value="sagawa">佐川急便</option>
+                      <option value="post">日本郵便</option>
+                      <option value="other">その他</option>
+                    </select>
+                  </div>
+                </div>
+                
                 <button 
                   class="unified-btn confirm-shipment" 
                   @click="confirmCartShipment(orderGroup.orders)"
-                  title="カート内全商品の発送を完了します"
+                  title="カート内全商品の発送を完了し、追跡番号をメール送信します"
+                  :disabled="!trackingNumbers[`cart_${orderGroup.cartGroupId || orderGroup.orders[0].order_number}`] || !shippingCarriers[`cart_${orderGroup.cartGroupId || orderGroup.orders[0].order_number}`]"
                 >
-                  🚚 発送完了
+                  🚚 発送完了＆追跡番号送信
                   <span class="btn-subtitle">{{ orderGroup.orders.length }}商品</span>
                 </button>
               </template>
@@ -166,11 +188,33 @@
             </template>
 
             <template v-if="orderGroup.orders[0].status === 'paid'">
+              <!-- 追跡番号入力セクション（単品注文用） -->
+              <div class="tracking-section-single">
+                <h5 class="tracking-title">📦 発送・追跡番号登録</h5>
+                <div class="tracking-input-group">
+                  <input 
+                    type="text" 
+                    v-model="trackingNumbers[orderGroup.orders[0].id]" 
+                    placeholder="追跡番号を入力"
+                    class="tracking-input"
+                    maxlength="50"
+                  >
+                  <select v-model="shippingCarriers[orderGroup.orders[0].id]" class="carrier-select">
+                    <option value="">配送業者</option>
+                    <option value="yamato">ヤマト運輸</option>
+                    <option value="sagawa">佐川急便</option>
+                    <option value="post">日本郵便</option>
+                    <option value="other">その他</option>
+                  </select>
+                </div>
+              </div>
+              
               <button 
                 class="action-button confirm-shipment" 
                 @click="confirmShipment(orderGroup.orders[0])"
+                :disabled="!trackingNumbers[orderGroup.orders[0].id] || !shippingCarriers[orderGroup.orders[0].id]"
               >
-                発送完了
+                発送完了＆追跡番号送信
               </button>
             </template>
 
@@ -210,9 +254,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../../lib/supabase'
+// import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を無効化
 
 const orders = ref([])
 const statusFilter = ref('all')
+const trackingNumbers = ref({}) // 追跡番号を格納
+const shippingCarriers = ref({}) // 配送業者を格納
 
 // ステータスラベルの取得
 const getStatusLabel = (status) => {
@@ -335,21 +382,55 @@ const confirmPayment = async (order) => {
 
 // 発送完了処理
 const confirmShipment = async (order) => {
-  if (!confirm(`注文番号: ${order.order_number} の商品を発送しましたか？`)) return
+  const trackingNumber = trackingNumbers.value[order.id]
+  const carrier = shippingCarriers.value[order.id]
+  
+  if (!trackingNumber || !carrier) {
+    alert('追跡番号と配送業者を入力してください。')
+    return
+  }
+  
+  if (!confirm(`注文番号: ${order.order_number} の商品を発送完了にし、追跡番号をお客様にメール送信しますか？`)) return
 
   try {
+    // ステータスを発送済みに更新し、追跡番号を保存
+    let updateData = { 
+      status: 'shipped',
+      updated_at: new Date().toISOString()
+    }
+    
+    // 追跡番号カラムが存在するかチェックしてから追加
+    try {
+      updateData.tracking_number = trackingNumber
+      updateData.shipping_carrier = carrier
+    } catch (e) {
+      console.warn('追跡番号カラムが存在しない可能性があります:', e)
+    }
+    
     const { error: orderError } = await supabase
       .from('orders')
-      .update({ 
-        status: 'shipped',
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', order.id)
 
     if (orderError) throw orderError
 
-    await fetchOrders()
+    // 追跡番号メールを送信（メール機能無効化）
+    /*
+    try {
+      await sendTrackingNumberEmail(order, trackingNumber, carrier)
+      alert('発送完了を記録し、追跡番号をお客様にメール送信しました。')
+    } catch (emailError) {
+      console.error('メール送信エラー:', emailError)
+      alert('発送完了は記録されましたが、メール送信に失敗しました。手動でお客様にご連絡ください。')
+    }
+    */
     alert('発送完了を記録しました。')
+
+    // 入力フィールドをクリア
+    delete trackingNumbers.value[order.id]
+    delete shippingCarriers.value[order.id]
+    
+    await fetchOrders()
   } catch (error) {
     console.error('発送完了処理に失敗しました:', error)
     alert('エラーが発生しました。もう一度お試しください。')
@@ -568,28 +649,65 @@ const cancelCartOrder = async (cartOrders) => {
 // カート注文の発送完了処理
 const confirmCartShipment = async (cartOrders) => {
   const cartGroupId = extractCartGroupId(cartOrders[0])
+  // orderGroup.keyを使用してtrackingNumberとcarrierを取得
+  const groupKey = `cart_${cartGroupId}`
+  const trackingNumber = trackingNumbers.value[groupKey]
+  const carrier = shippingCarriers.value[groupKey]
+  
+  if (!trackingNumber || !carrier) {
+    alert('追跡番号と配送業者を入力してください。')
+    return
+  }
   
   const confirmMessage = `🛒 カート注文の発送完了\n\n` +
     `📦 注文グループ: ${cartGroupId}\n` +
-    `🏷️  商品数: ${cartOrders.length}点\n\n` +
-    `すべての商品を発送しましたか？`
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `📫 追跡番号: ${trackingNumber}\n\n` +
+    `すべての商品を発送完了にし、追跡番号をお客様にメール送信しますか？`
   
   if (!confirm(confirmMessage)) return
 
   try {
     const orderIds = cartOrders.map(order => order.id)
+    
+    let updateData = { 
+      status: 'shipped',
+      updated_at: new Date().toISOString()
+    }
+    
+    // 追跡番号カラムが存在するかチェック
+    try {
+      updateData.tracking_number = trackingNumber
+      updateData.shipping_carrier = carrier
+    } catch (e) {
+      console.warn('追跡番号カラムが存在しない可能性があります:', e)
+    }
+    
     const { error: orderError } = await supabase
       .from('orders')
-      .update({ 
-        status: 'shipped',
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .in('id', orderIds)
 
     if (orderError) throw orderError
 
+    // 追跡番号メールを送信（カート注文用）（メール機能無効化）
+    /*
+    try {
+      await sendCartTrackingNumberEmail(cartOrders, trackingNumber, carrier)
+      alert(`✅ カート注文の発送完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n📫 追跡番号メールを送信しました。`)
+    } catch (emailError) {
+      console.error('メール送信エラー:', emailError)
+      alert(`✅ カート注文の発送完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n⚠️ 発送完了は記録されましたが、メール送信に失敗しました。手動でお客様にご連絡ください。`)
+    }
+    */
+    alert(`✅ カート注文の発送完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n📋 発送完了を記録しました。`)
+
+    // 入力フィールドをクリア
+    const groupKey = `cart_${cartGroupId}`
+    delete trackingNumbers.value[groupKey]
+    delete shippingCarriers.value[groupKey]
+
     await fetchOrders()
-    alert(`✅ カート注文の発送完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n発送完了を記録しました。`)
   } catch (error) {
     console.error('カート注文発送完了処理に失敗しました:', error)
     alert('❌ エラーが発生しました。もう一度お試しください。')
@@ -643,17 +761,42 @@ onMounted(fetchOrders)
 .order-management {
   max-width: 1200px;
   margin: 2rem auto;
-  padding: 0 1rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  min-height: 80vh;
+}
+
+.order-management h2 {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 2rem;
 }
 
 .filter-section {
   margin-bottom: 2rem;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
 }
 
 .filter-section select {
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #ddd;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  background: white;
+  color: #495057;
+  font-size: 1rem;
+  min-width: 200px;
+}
+
+.filter-section select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .orders-list {
@@ -662,10 +805,11 @@ onMounted(fetchOrders)
 }
 
 .order-card {
-  background: white;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
 }
 
 .order-header {
@@ -789,22 +933,61 @@ onMounted(fetchOrders)
   background-color: #c82333;
 }
 
-.customer-id {
-  background: #f8f9fa;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  color: #495057;
+/* 顧客情報のスタイル改善 */
+.customer-info {
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.customer-info p {
+  margin: 0.5rem 0;
+  color: #495057;
+  font-weight: 500;
+}
+
+.customer-info strong {
+  color: #2c3e50;
+}
+
+.customer-id {
+  background: #e3f2fd;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+  font-weight: 600;
+}
+
+.payment-info {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.payment-info p {
+  margin: 0.5rem 0;
+  color: #495057;
+  font-weight: 500;
+}
+
+.payment-info strong {
+  color: #2c3e50;
 }
 
 .order-group {
-  background: white;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
+  border: 1px solid #e9ecef;
 }
 
 .cart-order-header {
@@ -813,13 +996,18 @@ onMounted(fetchOrders)
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #f1f3f4;
+  border-bottom: 2px solid #2c5f2d;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  margin: -1.5rem -1.5rem 1rem -1.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px 12px 0 0;
 }
 
 .cart-order-header h3 {
   color: #2c5f2d;
   margin: 0;
   font-size: 1.3rem;
+  font-weight: 700;
 }
 
 .cart-summary {
@@ -827,7 +1015,8 @@ onMounted(fetchOrders)
   gap: 1rem;
   align-items: center;
   font-size: 0.9rem;
-  color: #666;
+  color: #495057;
+  font-weight: 500;
 }
 
 .total-amount {
@@ -838,8 +1027,9 @@ onMounted(fetchOrders)
 
 .cart-items {
   margin: 1rem 0;
-  background: #f8f9fa;
-  border-radius: 6px;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
   padding: 1rem;
 }
 
@@ -1028,6 +1218,76 @@ onMounted(fetchOrders)
   font-size: 0.95rem;
 }
 
+/* 追跡番号入力関連のスタイル */
+.tracking-section,
+.tracking-section-single {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.tracking-title {
+  color: #495057;
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.tracking-input-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tracking-input {
+  flex: 2;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+.tracking-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.carrier-select {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.carrier-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* 無効状態のボタンスタイル */
+.unified-btn:disabled,
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.unified-btn:disabled:hover,
+.action-button:disabled:hover {
+  transform: none;
+  background: #6c757d;
+}
+
+/* レスポンシブ対応 */
 @media (max-width: 768px) {
   .order-header {
     flex-direction: column;
@@ -1060,6 +1320,16 @@ onMounted(fetchOrders)
   .action-title {
     font-size: 1rem;
     text-align: center;
+  }
+
+  .tracking-input-group {
+    flex-direction: column;
+  }
+  
+  .tracking-input,
+  .carrier-select {
+    width: 100%;
+    min-width: auto;
   }
 }
 </style>

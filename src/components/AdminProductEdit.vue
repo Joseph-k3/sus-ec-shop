@@ -345,24 +345,35 @@ onMounted(() => {
   max-width: 1200px;
   margin: 2rem auto;
   padding: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 .admin-panel h2 {
   text-align: center;
   color: #2c3e50;
   margin-bottom: 2rem;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .admin-panel h3 {
   text-align: center;
-  color: #2c3e50;
+  color: #2c5f2d;
   margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .edit-form {
-  background: white;
+  background: rgba(255, 255, 255, 0.98);
   padding: 2rem;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   margin-bottom: 3rem;
   max-width: 800px;
@@ -387,7 +398,7 @@ onMounted(() => {
 
 .form-group label {
   color: #2c3e50;
-  font-weight: bold;
+  font-weight: 600;
   text-align: right;
 }
 
@@ -398,8 +409,18 @@ onMounted(() => {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #ced4da;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #495057;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2c5f2d;
+  box-shadow: 0 0 0 2px rgba(44, 95, 45, 0.25);
+  background: white;
 }
 
 .form-group.description-group {

@@ -408,7 +408,6 @@ const submitOrder = async () => {
     // メール送信機能を無効化
     /*
     try {
-
       await sendCartOrderEmail({
         customerName: form.customerName,
         email: form.email,
@@ -420,7 +419,7 @@ const submitOrder = async () => {
         paymentMethod: form.paymentMethod,
         notes: form.notes
       })
-
+      console.log('カート注文メール送信完了')
     } catch (emailError) {
       console.error('メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
