@@ -14,88 +14,193 @@
     </div>
 
     <div class="orders-list">
-      <div v-for="order in filteredOrders" :key="order.id" class="order-card">
-        <div class="order-header">
-          <h3>注文番号: {{ order.order_number }}</h3>
-          <span :class="['status-badge', order.status]">{{ getStatusLabel(order.status) }}</span>
+      <div v-for="orderGroup in groupedOrders" :key="orderGroup.key" class="order-group">
+        <!-- カート注文の場合は一括表示 -->
+        <div v-if="orderGroup.isCartOrder" class="cart-order-header">
+          <h3>🛒 カート注文: {{ orderGroup.cartGroupId || orderGroup.orders[0].order_number }}</h3>
+          <span :class="['status-badge', orderGroup.orders[0].status]">{{ getStatusLabel(orderGroup.orders[0].status) }}</span>
+          <div class="cart-summary">
+            <span>{{ orderGroup.orders.length }}商品</span>
+            <span class="total-amount">合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</span>
+          </div>
         </div>
 
-        <div class="order-details">
-          <div class="product-info">
-            <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail">
-            <div>
-              <h4>{{ order.product_name }}</h4>
-              <p class="price">¥{{ order.price.toLocaleString() }}</p>
+        <!-- カート注文の商品一覧 -->
+        <div v-if="orderGroup.isCartOrder" class="cart-items">
+          <div v-for="order in orderGroup.orders" :key="order.id" class="cart-item">
+            <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail-small">
+            <div class="cart-item-details">
+              <span class="product-name">{{ order.product_name }}</span>
+              <span class="product-price">¥{{ order.price.toLocaleString() }} × {{ order.quantity }}</span>
+            </div>
+            <div class="item-total">¥{{ (order.price * order.quantity).toLocaleString() }}</div>
+          </div>
+        </div>
+
+        <!-- カート注文の顧客情報（統一表示） -->
+        <div v-if="orderGroup.isCartOrder" class="cart-customer-info">
+          <div class="customer-info">
+            <p><strong>購入者:</strong> {{ orderGroup.orders[0].customer_name }}</p>
+            <p><strong>顧客ID:</strong> <code class="customer-id">{{ orderGroup.orders[0].customer_id }}</code></p>
+            <p><strong>メール:</strong> {{ orderGroup.orders[0].email }}</p>
+            <p><strong>電話:</strong> {{ orderGroup.orders[0].phone }}</p>
+            <p><strong>住所:</strong> {{ orderGroup.orders[0].address }}</p>
+          </div>
+          <div class="payment-info">
+            <p><strong>支払方法:</strong> 銀行振込</p>
+            <p><strong>支払期限:</strong> {{ formatDate(orderGroup.orders[0].payment_due_date) }}</p>
+          </div>
+        </div>
+
+        <!-- カート注文の統一一括操作ボタン -->
+        <div v-if="orderGroup.isCartOrder" class="cart-unified-actions">
+          <div class="action-section">
+            <h4 class="action-title">📦 カート注文 一括操作</h4>
+            <div class="action-buttons">
+              <!-- 入金待ち状態 -->
+              <template v-if="orderGroup.orders[0].status === 'pending_payment'">
+                <button 
+                  class="unified-btn confirm-payment" 
+                  @click="confirmCartPayment(orderGroup.orders)"
+                  title="カート内全商品の入金を確認します"
+                >
+                  💳 振込完了
+                  <span class="btn-subtitle">{{ orderGroup.orders.length }}商品</span>
+                </button>
+                <button 
+                  class="unified-btn cancel-order" 
+                  @click="cancelCartOrder(orderGroup.orders)"
+                  title="カート注文全体をキャンセルし、在庫を復元します"
+                >
+                  ❌ 注文をキャンセル
+                  <span class="btn-subtitle">在庫復元</span>
+                </button>
+              </template>
+
+              <!-- 入金済み状態 -->
+              <template v-if="orderGroup.orders[0].status === 'paid'">
+                <button 
+                  class="unified-btn confirm-shipment" 
+                  @click="confirmCartShipment(orderGroup.orders)"
+                  title="カート内全商品の発送を完了します"
+                >
+                  🚚 発送完了
+                  <span class="btn-subtitle">{{ orderGroup.orders.length }}商品</span>
+                </button>
+              </template>
+
+              <!-- 発送済み状態 -->
+              <template v-if="orderGroup.orders[0].status === 'shipped'">
+                <button 
+                  class="unified-btn complete-order" 
+                  @click="completeCartOrder(orderGroup.orders)"
+                  title="カート注文の取引を完了します"
+                >
+                  ✅ 取引完了
+                  <span class="btn-subtitle">完了処理</span>
+                </button>
+              </template>
+
+              <!-- 完了・キャンセル済み状態 -->
+              <template v-if="orderGroup.orders[0].status === 'completed'">
+                <div class="status-info completed">
+                  <span class="status-icon">✅</span>
+                  <span class="status-text">取引完了済み</span>
+                </div>
+              </template>
+
+              <template v-if="orderGroup.orders[0].status === 'cancelled'">
+                <div class="status-info cancelled">
+                  <span class="status-icon">❌</span>
+                  <span class="status-text">キャンセル済み</span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>        <!-- 通常の単品注文表示 -->
+        <div v-else class="order-card">
+          <div class="order-header">
+            <h3>注文番号: {{ orderGroup.orders[0].order_number }}</h3>
+            <span :class="['status-badge', orderGroup.orders[0].status]">{{ getStatusLabel(orderGroup.orders[0].status) }}</span>
+          </div>
+
+          <div class="order-details">
+            <div class="product-info">
+              <img :src="orderGroup.orders[0].product_image" :alt="orderGroup.orders[0].product_name" class="product-thumbnail">
+              <div>
+                <h4>{{ orderGroup.orders[0].product_name }}</h4>
+                <p class="price">¥{{ orderGroup.orders[0].price.toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <div class="customer-info">
+              <p><strong>購入者:</strong> {{ orderGroup.orders[0].customer_name }}</p>
+              <p><strong>顧客ID:</strong> <code class="customer-id">{{ orderGroup.orders[0].customer_id }}</code></p>
+              <p><strong>メール:</strong> {{ orderGroup.orders[0].email }}</p>
+              <p><strong>電話:</strong> {{ orderGroup.orders[0].phone }}</p>
+              <p><strong>住所:</strong> {{ orderGroup.orders[0].address }}</p>
+            </div>
+
+            <div class="payment-info">
+              <p><strong>支払方法:</strong> {{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込' : 'Square決済' }}</p>
+              <p v-if="orderGroup.orders[0].payment_method === 'bank'">
+                <strong>支払期限:</strong> {{ formatDate(orderGroup.orders[0].payment_due_date) }}
+              </p>
             </div>
           </div>
 
-          <div class="customer-info">
-            <p><strong>購入者:</strong> {{ order.customer_name }}</p>
-            <p><strong>顧客ID:</strong> <code class="customer-id">{{ order.customer_id }}</code></p>
-            <p><strong>メール:</strong> {{ order.email }}</p>
-            <p><strong>電話:</strong> {{ order.phone }}</p>
-            <p><strong>住所:</strong> {{ order.address }}</p>
+          <div class="order-actions">
+            <template v-if="orderGroup.orders[0].status === 'pending_payment'">
+              <button 
+                class="action-button confirm-payment" 
+                @click="confirmPayment(orderGroup.orders[0])"
+              >
+                入金確認
+              </button>
+              <button 
+                class="action-button cancel-order" 
+                @click="cancelOrder(orderGroup.orders[0])"
+              >
+                キャンセル
+              </button>
+            </template>
+
+            <template v-if="orderGroup.orders[0].status === 'paid'">
+              <button 
+                class="action-button confirm-shipment" 
+                @click="confirmShipment(orderGroup.orders[0])"
+              >
+                発送完了
+              </button>
+            </template>
+
+            <template v-if="orderGroup.orders[0].status === 'shipped'">
+              <button 
+                class="action-button complete-order" 
+                @click="completeOrder(orderGroup.orders[0])"
+              >
+                取引完了
+              </button>
+            </template>
+
+            <template v-if="orderGroup.orders[0].status === 'cancelled'">
+              <button 
+                class="action-button cancelled-order" 
+                disabled
+              >
+                キャンセル済み
+              </button>
+            </template>
+
+            <template v-if="orderGroup.orders[0].status === 'completed' && orderGroup.orders[0].stock_after_sale === 0">
+              <button 
+                class="action-button delete-product warning" 
+                @click="deleteProduct(orderGroup.orders[0])"
+              >
+                商品を完全削除
+              </button>
+            </template>
           </div>
-
-          <div class="payment-info">
-            <p><strong>支払方法:</strong> {{ order.payment_method === 'bank' ? '銀行振込' : 'Square決済' }}</p>
-            <p v-if="order.payment_method === 'bank'">
-              <strong>支払期限:</strong> {{ formatDate(order.payment_due_date) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="order-actions">
-          <template v-if="order.status === 'pending_payment'">
-            <button 
-              class="action-button confirm-payment" 
-              @click="confirmPayment(order)"
-            >
-              入金確認
-            </button>
-            <button 
-              class="action-button cancel-order" 
-              @click="cancelOrder(order)"
-            >
-              キャンセル
-            </button>
-          </template>
-
-          <template v-if="order.status === 'paid'">
-            <button 
-              class="action-button confirm-shipment" 
-              @click="confirmShipment(order)"
-            >
-              発送完了
-            </button>
-          </template>
-
-          <template v-if="order.status === 'shipped'">
-            <button 
-              class="action-button complete-order" 
-              @click="completeOrder(order)"
-            >
-              取引完了
-            </button>
-          </template>
-
-          <template v-if="order.status === 'cancelled'">
-            <button 
-              class="action-button cancelled-order" 
-              disabled
-            >
-              キャンセル済み
-            </button>
-          </template>
-
-          <template v-if="order.status === 'completed' && order.stock_after_sale === 0">
-            <button 
-              class="action-button delete-product warning" 
-              @click="deleteProduct(order)"
-            >
-              商品を完全削除
-            </button>
-          </template>
         </div>
       </div>
     </div>
@@ -139,6 +244,55 @@ const filteredOrders = computed(() => {
     return orders.value
   }
   return orders.value.filter(order => order.status === statusFilter.value)
+})
+
+// カート注文をグループ化した注文リスト
+const groupedOrders = computed(() => {
+  const groups = []
+  const processedCartGroups = new Set()
+  
+  for (const order of filteredOrders.value) {
+    // カート注文（order_numberがCARTで始まる）の場合
+    if (order.order_number && order.order_number.startsWith('CART')) {
+      // addressフィールドからカートグループIDを抽出
+      const cartGroupMatch = order.address?.match(/\[CartGroup:(CART\d+[A-Z0-9]*)\]/)
+      const cartGroupId = cartGroupMatch ? cartGroupMatch[1] : order.order_number.split('_')[0]
+      
+      // 既に処理済みのカートグループはスキップ
+      if (processedCartGroups.has(cartGroupId)) {
+        continue
+      }
+      
+      // 同じカートグループの全ての商品を取得
+      const cartOrders = filteredOrders.value.filter(o => {
+        if (!o.order_number || !o.order_number.startsWith('CART')) return false
+        const groupMatch = o.address?.match(/\[CartGroup:(CART\d+[A-Z0-9]*)\]/)
+        const groupId = groupMatch ? groupMatch[1] : o.order_number.split('_')[0]
+        return groupId === cartGroupId
+      })
+      
+      const totalAmount = cartOrders.reduce((sum, o) => sum + (o.price * o.quantity), 0)
+      
+      groups.push({
+        key: `cart_${cartGroupId}`,
+        isCartOrder: true,
+        orders: cartOrders,
+        totalAmount: totalAmount,
+        cartGroupId: cartGroupId
+      })
+      
+      processedCartGroups.add(cartGroupId)
+    } else {
+      // 通常の単品注文
+      groups.push({
+        key: `single_${order.id}`,
+        isCartOrder: false,
+        orders: [order]
+      })
+    }
+  }
+  
+  return groups
 })
 
 // 注文データの取得
@@ -324,6 +478,163 @@ const cancelOrder = async (order) => {
   }
 }
 
+// カート注文の振込完了処理
+const confirmCartPayment = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * order.quantity), 0)
+  
+  const confirmMessage = `🛒 カート注文の振込完了確認\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
+    `入金を確認しましたか？`
+  
+  if (!confirm(confirmMessage)) return
+
+  try {
+    // 全ての注文の状態を一括更新
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'paid',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    await fetchOrders()
+    alert(`✅ カート注文の振込完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n発送の準備を開始してください。`)
+  } catch (error) {
+    console.error('カート注文振込完了処理に失敗しました:', error)
+    alert('❌ エラーが発生しました。もう一度お試しください。')
+  }
+}
+
+// カート注文のキャンセル処理
+const cancelCartOrder = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * order.quantity), 0)
+  
+  const confirmMessage = `🛒 カート注文をキャンセル\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
+    `⚠️ この操作により在庫が元に戻されます。\n` +
+    `本当にキャンセルしますか？`
+  
+  if (!confirm(confirmMessage)) return
+
+  try {
+    // 全ての注文をキャンセル状態に更新
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    // 在庫を元に戻す
+    for (const order of cartOrders) {
+      const { data: product, error: productError } = await supabase
+        .from('succulents')
+        .select('quantity')
+        .eq('id', order.product_id)
+        .single()
+
+      if (!productError && product) {
+        await supabase
+          .from('succulents')
+          .update({ 
+            quantity: product.quantity + order.quantity 
+          })
+          .eq('id', order.product_id)
+      }
+    }
+
+    await fetchOrders()
+    alert(`✅ カート注文をキャンセルしました\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n在庫を復元しました。`)
+  } catch (error) {
+    console.error('カート注文キャンセル処理に失敗しました:', error)
+    alert('エラーが発生しました。もう一度お試しください。')
+  }
+}
+
+// カート注文の発送完了処理
+const confirmCartShipment = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  
+  const confirmMessage = `🛒 カート注文の発送完了\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n\n` +
+    `すべての商品を発送しましたか？`
+  
+  if (!confirm(confirmMessage)) return
+
+  try {
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'shipped',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    await fetchOrders()
+    alert(`✅ カート注文の発送完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n発送完了を記録しました。`)
+  } catch (error) {
+    console.error('カート注文発送完了処理に失敗しました:', error)
+    alert('❌ エラーが発生しました。もう一度お試しください。')
+  }
+}
+
+// カート注文の取引完了処理
+const completeCartOrder = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * order.quantity), 0)
+  
+  const confirmMessage = `🛒 カート注文の取引完了\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
+    `取引を完了としますか？`
+  
+  if (!confirm(confirmMessage)) return
+
+  try {
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    await fetchOrders()
+    alert(`✅ カート注文の取引完了\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n💰 ¥${totalAmount.toLocaleString()}\n\n取引が完了しました。`)
+  } catch (error) {
+    console.error('カート注文取引完了処理に失敗しました:', error)
+    alert('❌ エラーが発生しました。もう一度お試しください。')
+  }
+}
+
+// カートグループIDを抽出するヘルパー関数
+const extractCartGroupId = (order) => {
+  const groupMatch = order.address?.match(/\[CartGroup:(CART\d+[A-Z0-9]*)\]/)
+  return groupMatch ? groupMatch[1] : order.order_number.split('_')[0]
+}
+
 // 初期データ取得
 onMounted(fetchOrders)
 </script>
@@ -488,6 +799,235 @@ onMounted(fetchOrders)
   border: 1px solid #dee2e6;
 }
 
+.order-group {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 1.5rem;
+}
+
+.cart-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f3f4;
+}
+
+.cart-order-header h3 {
+  color: #2c5f2d;
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.cart-summary {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.total-amount {
+  font-weight: bold;
+  color: #2c5f2d;
+  font-size: 1.1rem;
+}
+
+.cart-items {
+  margin: 1rem 0;
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
+
+.product-thumbnail-small {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.cart-item-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-name {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.product-price {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.item-total {
+  font-weight: bold;
+  color: #2c5f2d;
+}
+
+.cart-customer-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.cart-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+/* 統一された一括操作ボタンのスタイル */
+.cart-unified-actions {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.action-title {
+  margin: 0;
+  color: #2c5f2d;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.unified-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.unified-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.unified-btn.confirm-payment {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.unified-btn.confirm-payment:hover {
+  background: linear-gradient(135deg, #218838, #1ea085);
+}
+
+.unified-btn.cancel-order {
+  background: linear-gradient(135deg, #dc3545, #e74c3c);
+  color: white;
+}
+
+.unified-btn.cancel-order:hover {
+  background: linear-gradient(135deg, #c82333, #dc2f3a);
+}
+
+.unified-btn.confirm-shipment {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+}
+
+.unified-btn.confirm-shipment:hover {
+  background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+.unified-btn.complete-order {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+}
+
+.unified-btn.complete-order:hover {
+  background: linear-gradient(135deg, #5a6268, #495057);
+}
+
+.btn-subtitle {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.9;
+  margin-top: 0.25rem;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.status-info.completed {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-info.cancelled {
+  background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+  color: #721c24;
+  border: 1px solid #f1b0b7;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+}
+
+.status-text {
+  font-size: 0.95rem;
+}
+
 @media (max-width: 768px) {
   .order-header {
     flex-direction: column;
@@ -501,6 +1041,25 @@ onMounted(fetchOrders)
 
   .action-button {
     width: 100%;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .unified-btn,
+  .status-info {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .cart-unified-actions {
+    padding: 1rem;
+  }
+
+  .action-title {
+    font-size: 1rem;
+    text-align: center;
   }
 }
 </style>

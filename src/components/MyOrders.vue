@@ -30,87 +30,177 @@
     </div>
 
     <div v-else class="orders-list">
-      <div v-for="order in orders" :key="order.id" class="order-card">
-        <div class="order-header">
-          <div class="order-info">
-            <h3>注文番号: {{ order.order_number }}</h3>
-            <p class="order-date">{{ formatDate(order.created_at) }}</p>
+      <div v-for="orderGroup in groupedOrders" :key="orderGroup.key" class="order-group">
+        
+        <!-- カート注文の場合は一括表示 -->
+        <div v-if="orderGroup.isCartOrder" class="cart-order-card">
+          <div class="cart-order-header">
+            <div class="cart-order-info">
+              <h3>🛒 カート注文: {{ orderGroup.cartGroupId }}</h3>
+              <p class="order-date">{{ formatDate(orderGroup.orders[0].created_at) }}</p>
+            </div>
+            <span :class="['status-badge', orderGroup.orders[0].status]">
+              {{ getStatusLabel(orderGroup.orders[0].status) }}
+            </span>
           </div>
-          <span :class="['status-badge', order.status]">
-            {{ getStatusLabel(order.status) }}
-          </span>
-        </div>
 
-        <div class="product-info">
-          <img 
-            :src="order.product_image" 
-            :alt="order.product_name"
-            class="product-image"
-          >
-          <div class="details">
-            <h4>{{ order.product_name }}</h4>
-            <p class="price">¥{{ formatPrice(order.price) }}</p>
-            
+          <div class="cart-summary">
+            <span>{{ orderGroup.orders.length }}商品</span>
+            <span class="total-amount">合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</span>
+          </div>
+
+          <!-- カート注文の商品一覧 -->
+          <div class="cart-items">
+            <div v-for="order in orderGroup.orders" :key="order.id" class="cart-item">
+              <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail-small">
+              <div class="cart-item-details">
+                <span class="product-name">{{ order.product_name }}</span>
+                <span class="product-price">¥{{ order.price.toLocaleString() }} × {{ order.quantity || 1 }}</span>
+              </div>
+              <div class="item-total">¥{{ ((order.price || 0) * (order.quantity || 1)).toLocaleString() }}</div>
+            </div>
+          </div>
+
+          <!-- カート注文の配送先情報 -->
+          <div class="cart-delivery-info">
             <dl class="purchase-details">
               <dt>支払方法</dt>
-              <dd>{{ getPaymentMethodLabel(order.payment_method) }}</dd>
+              <dd>{{ getPaymentMethodLabel(orderGroup.orders[0].payment_method) }}</dd>
               
               <dt>お届け先</dt>
-              <dd>{{ order.address }}</dd>
+              <dd>{{ orderGroup.orders[0].address?.split('\n[CartGroup:')[0] || orderGroup.orders[0].address }}</dd>
 
-              <template v-if="order.payment_method === 'bank'">
+              <template v-if="orderGroup.orders[0].payment_method === 'bank'">
                 <dt>支払期限</dt>
-                <dd :class="{ 'expired': isPaymentExpired(order) }">
-                  {{ formatDate(order.payment_due_date) }}
+                <dd :class="{ 'expired': isPaymentExpired(orderGroup.orders[0]) }">
+                  {{ formatDate(orderGroup.orders[0].payment_due_date) }}
                 </dd>
               </template>
             </dl>
           </div>
-        </div>
 
-        <!-- 銀行振込かつ未入金の場合 -->
-        <div v-if="shouldShowPaymentButton(order)" class="payment-actions">
-          <button 
-            @click="confirmPayment(order)"
-            @touchstart.passive="() => {}"
-            class="confirm-button"
-            :disabled="isConfirming || isCancelling"
-          >
-            {{ isConfirming ? '処理中...' : '振込完了' }}
-          </button>
-          <p class="payment-note">
-            ※お振込完了後、上のボタンを押してください
-          </p>
-          <button 
-            @click="cancelOrder(order)"
-            class="cancel-button"
-            :disabled="isConfirming || isCancelling"
-          >
-            {{ isCancelling ? '処理中...' : '注文をキャンセル' }}
-          </button>
-        </div>
-
-        <!-- お支払い待ち状態でキャンセルボタン表示 -->
-        <div v-else-if="shouldShowCancelButton(order)" class="cancel-actions">
-          <div class="pending-payment-message">
-            <p>{{ order.payment_method === 'bank' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
-            <p class="cancel-note">※ ご都合により注文をキャンセルされる場合は、下記ボタンからお手続きいただけます</p>
+          <!-- カート注文のアクションボタン -->
+          <div v-if="shouldShowCartPaymentButton(orderGroup.orders)" class="cart-payment-actions">
+            <button 
+              @click="confirmCartPayment(orderGroup.orders)"
+              class="confirm-button"
+              :disabled="isConfirming || isCancelling"
+            >
+              {{ isConfirming ? '処理中...' : '💳 振込完了' }}
+            </button>
+            <p class="payment-note">
+              ※お振込完了後、上のボタンを押してください
+            </p>
+            <button 
+              @click="cancelCartOrder(orderGroup.orders)"
+              class="cancel-button"
+              :disabled="isConfirming || isCancelling"
+            >
+              {{ isCancelling ? '処理中...' : '❌ 注文をキャンセル' }}
+            </button>
           </div>
-          <button 
-            @click="cancelOrder(order)"
-            class="cancel-button"
-            :disabled="isCancelling"
-          >
-            {{ isCancelling ? '処理中...' : '注文をキャンセル' }}
-          </button>
-        </div>
 
-        <!-- 入金確認済みの場合 -->
-        <div v-if="order.payment_confirmed_by_customer" class="payment-confirmed">
-          <p>
-            <span class="check-icon">✓</span>
-            お振込確認済み（{{ formatDate(order.payment_confirmed_at) }}）
-          </p>
+          <!-- カート注文のキャンセルボタン（入金待ち状態） -->
+          <div v-else-if="shouldShowCartCancelButton(orderGroup.orders)" class="cart-cancel-actions">
+            <div class="pending-payment-message">
+              <p>{{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
+              <p class="cancel-note">※ ご都合により注文をキャンセルされる場合は、下記ボタンからお手続きいただけます</p>
+            </div>
+            <button 
+              @click="cancelCartOrder(orderGroup.orders)"
+              class="cancel-button"
+              :disabled="isCancelling"
+            >
+              {{ isCancelling ? '処理中...' : '❌ 注文をキャンセル' }}
+            </button>
+          </div>
+
+          <!-- 入金確認済みの場合 -->
+          <div v-if="orderGroup.orders[0].payment_confirmed_by_customer" class="payment-confirmed">
+            <p>
+              <span class="check-icon">✓</span>
+              お振込確認済み（{{ formatDate(orderGroup.orders[0].payment_confirmed_at) }}）
+            </p>
+          </div>
+        </div>        <!-- 通常の単品注文表示 -->
+        <div v-else class="order-card">
+          <div class="order-header">
+            <div class="order-info">
+              <h3>注文番号: {{ orderGroup.orders[0].order_number }}</h3>
+              <p class="order-date">{{ formatDate(orderGroup.orders[0].created_at) }}</p>
+            </div>
+            <span :class="['status-badge', orderGroup.orders[0].status]">
+              {{ getStatusLabel(orderGroup.orders[0].status) }}
+            </span>
+          </div>          <div class="product-info">
+            <img 
+              :src="orderGroup.orders[0].product_image" 
+              :alt="orderGroup.orders[0].product_name"
+              class="product-image"
+            >
+            <div class="details">
+              <h4>{{ orderGroup.orders[0].product_name }}</h4>
+              <p class="price">¥{{ formatPrice(orderGroup.orders[0].price) }}</p>
+              
+              <dl class="purchase-details">
+                <dt>支払方法</dt>
+                <dd>{{ getPaymentMethodLabel(orderGroup.orders[0].payment_method) }}</dd>
+                
+                <dt>お届け先</dt>
+                <dd>{{ orderGroup.orders[0].address }}</dd>
+
+                <template v-if="orderGroup.orders[0].payment_method === 'bank'">
+                  <dt>支払期限</dt>
+                  <dd :class="{ 'expired': isPaymentExpired(orderGroup.orders[0]) }">
+                    {{ formatDate(orderGroup.orders[0].payment_due_date) }}
+                  </dd>
+                </template>
+              </dl>
+            </div>
+          </div>          <!-- 銀行振込かつ未入金の場合 -->
+          <div v-if="shouldShowPaymentButton(orderGroup.orders[0])" class="payment-actions">
+            <button 
+              @click="confirmPayment(orderGroup.orders[0])"
+              @touchstart.passive="() => {}"
+              class="confirm-button"
+              :disabled="isConfirming || isCancelling"
+            >
+              {{ isConfirming ? '処理中...' : '振込完了' }}
+            </button>
+            <p class="payment-note">
+              ※お振込完了後、上のボタンを押してください
+            </p>
+            <button 
+              @click="cancelOrder(orderGroup.orders[0])"
+              class="cancel-button"
+              :disabled="isConfirming || isCancelling"
+            >
+              {{ isCancelling ? '処理中...' : '注文をキャンセル' }}
+            </button>
+          </div>
+
+          <!-- お支払い待ち状態でキャンセルボタン表示 -->
+          <div v-else-if="shouldShowCancelButton(orderGroup.orders[0])" class="cancel-actions">
+            <div class="pending-payment-message">
+              <p>{{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
+              <p class="cancel-note">※ ご都合により注文をキャンセルされる場合は、下記ボタンからお手続きいただけます</p>
+            </div>
+            <button 
+              @click="cancelOrder(orderGroup.orders[0])"
+              class="cancel-button"
+              :disabled="isCancelling"
+            >
+              {{ isCancelling ? '処理中...' : '注文をキャンセル' }}
+            </button>
+          </div>
+
+          <!-- 入金確認済みの場合 -->
+          <div v-if="orderGroup.orders[0].payment_confirmed_by_customer" class="payment-confirmed">
+            <p>
+              <span class="check-icon">✓</span>
+              お振込確認済み（{{ formatDate(orderGroup.orders[0].payment_confirmed_at) }}）
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +217,7 @@ import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
 
 const router = useRouter()
 const orders = ref([])
+const groupedOrders = ref([])
 const loading = ref(true)
 const error = ref(null)
 const isConfirming = ref(false)
@@ -168,6 +259,9 @@ const fetchOrders = async () => {
       ...order,
       product_image: getPublicImageUrl(order.product_image)
     }))
+
+    // 注文をグループ化（カート注文と通常注文を分ける）
+    groupOrders()
   } catch (e) {
     console.error('注文履歴の取得に失敗:', e)
     error.value = '注文履歴の取得に失敗しました。'
@@ -276,6 +370,167 @@ const cancelOrder = async (order) => {
   }
 }
 
+// 注文をグループ化する関数
+const groupOrders = () => {
+  const orderMap = new Map()
+
+  orders.value.forEach(order => {
+    // カートグループIDを抽出
+    const cartGroupId = extractCartGroupId(order)
+    
+    if (cartGroupId) {
+      // カート注文の場合
+      if (orderMap.has(cartGroupId)) {
+        orderMap.get(cartGroupId).orders.push(order)
+      } else {
+        orderMap.set(cartGroupId, {
+          key: cartGroupId,
+          isCartOrder: true,
+          cartGroupId: cartGroupId,
+          orders: [order],
+          totalAmount: 0
+        })
+      }
+    } else {
+      // 通常の単品注文の場合
+      orderMap.set(order.id, {
+        key: order.id,
+        isCartOrder: false,
+        orders: [order],
+        totalAmount: order.price * (order.quantity || 1)
+      })
+    }
+  })
+
+  // 合計金額を計算
+  orderMap.forEach(group => {
+    if (group.isCartOrder) {
+      group.totalAmount = group.orders.reduce((sum, order) => 
+        sum + (order.price * (order.quantity || 1)), 0
+      )
+    }
+  })
+
+  // 作成日時でソート（新しい順）
+  groupedOrders.value = Array.from(orderMap.values()).sort((a, b) => {
+    const aDate = new Date(a.orders[0].created_at)
+    const bDate = new Date(b.orders[0].created_at)
+    return bDate - aDate
+  })
+}
+
+// カートグループIDを抽出するヘルパー関数
+const extractCartGroupId = (order) => {
+  // addressフィールドから[CartGroup:xxxx]を抽出
+  const groupMatch = order.address?.match(/\[CartGroup:(CART\d+[A-Z0-9]*)\]/)
+  if (groupMatch) {
+    return groupMatch[1]
+  }
+  
+  // 注文番号がCARTxxx_xの形式の場合
+  if (order.order_number && order.order_number.match(/^CART\d+[A-Z0-9]*_\d+$/)) {
+    return order.order_number.split('_')[0]
+  }
+  
+  return null
+}
+
+// カート注文の振込完了処理
+const confirmCartPayment = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  
+  const confirmMessage = `🛒 カート注文の振込完了を報告しますか？\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
+    `※この操作は取り消しできません。`
+  
+  if (!confirm(confirmMessage)) return
+
+  isConfirming.value = true
+
+  try {
+    // 全ての注文の状態を一括更新
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        payment_confirmed_by_customer: true,
+        payment_confirmed_at: new Date().toISOString(),
+        status: 'paid'
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    await fetchOrders()
+    alert(`✅ カート注文の振込完了を報告しました\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品`)
+  } catch (error) {
+    console.error('カート注文振込完了処理に失敗しました:', error)
+    alert('❌ エラーが発生しました。もう一度お試しください。')
+  } finally {
+    isConfirming.value = false
+  }
+}
+
+// カート注文のキャンセル処理
+const cancelCartOrder = async (cartOrders) => {
+  const cartGroupId = extractCartGroupId(cartOrders[0])
+  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  
+  const confirmMessage = `🛒 カート注文をキャンセルしますか？\n\n` +
+    `📦 注文グループ: ${cartGroupId}\n` +
+    `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
+    `⚠️ この操作により在庫が元に戻されます。\n` +
+    `※キャンセル後は復元できません。`
+  
+  if (!confirm(confirmMessage)) return
+
+  isCancelling.value = true
+
+  try {
+    // 全ての注文をキャンセル状態に更新
+    const orderIds = cartOrders.map(order => order.id)
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', orderIds)
+
+    if (orderError) throw orderError
+
+    // 在庫を元に戻す
+    for (const order of cartOrders) {
+      const { data: product, error: productError } = await supabase
+        .from('succulents')
+        .select('quantity')
+        .eq('id', order.product_id)
+        .single()
+
+      if (!productError && product) {
+        await supabase
+          .from('succulents')
+          .update({ 
+            quantity: product.quantity + (order.quantity || 1)
+          })
+          .eq('id', order.product_id)
+      }
+    }
+
+    await fetchOrders()
+    alert(`✅ カート注文をキャンセルしました\n\n📦 ${cartGroupId}\n🏷️ ${cartOrders.length}商品\n\n在庫を復元しました。`)
+  } catch (error) {
+    console.error('カート注文キャンセル処理に失敗しました:', error)
+    alert('❌ エラーが発生しました。もう一度お試しください。')
+  } finally {
+    isCancelling.value = false
+  }
+}
+
 // ステータスラベルの取得
 const getStatusLabel = (status) => {
   const labels = {
@@ -330,6 +585,17 @@ const shouldShowPaymentButton = (order) => {
   )
 }
 
+// カート注文の支払いボタンを表示すべきかどうか
+const shouldShowCartPaymentButton = (cartOrders) => {
+  const firstOrder = cartOrders[0]
+  return (
+    firstOrder.payment_method === 'bank' && 
+    !firstOrder.payment_confirmed_by_customer &&
+    !isPaymentExpired(firstOrder) &&
+    firstOrder.status !== 'cancelled'
+  )
+}
+
 // キャンセルボタンを表示すべきかどうか（入金待ち注文）
 const shouldShowCancelButton = (order) => {
   return (
@@ -340,6 +606,16 @@ const shouldShowCancelButton = (order) => {
   )
 }
 
+// カート注文のキャンセルボタンを表示すべきかどうか
+const shouldShowCartCancelButton = (cartOrders) => {
+  const firstOrder = cartOrders[0]
+  return (
+    firstOrder.status === 'pending_payment' &&
+    firstOrder.status !== 'cancelled' &&
+    !firstOrder.payment_confirmed_by_customer
+  )
+}
+
 onMounted(fetchOrders)
 </script>
 
@@ -347,6 +623,13 @@ onMounted(fetchOrders)
 .page-header {
   margin-bottom: 2rem;
   text-align: left;
+}
+
+.page-header h2 {
+  color: #2c5f2d;
+  margin: 1rem 0;
+  font-size: 2rem;
+  font-weight: bold;
 }
 
 .back-link {
@@ -373,6 +656,7 @@ onMounted(fetchOrders)
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
+  color: #333; /* 基本的な文字色を濃くする */
 }
 
 .loading, .error, .no-orders {
@@ -381,6 +665,7 @@ onMounted(fetchOrders)
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  color: #333; /* 文字色を濃くする */
 }
 
 .orders-list {
@@ -393,224 +678,369 @@ onMounted(fetchOrders)
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  color: #333; /* カード内の文字色を濃くする */
 }
 
-.order-header {
+/* カート注文のスタイル */
+.cart-order-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  border-left: 4px solid #4CAF50;
+}
+
+.cart-order-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 2px solid #f0f0f0;
 }
 
-.order-info h3 {
+.cart-order-info h3 {
+  color: #2c5f2d;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.cart-order-info .order-date {
+  color: #666;
+  font-size: 0.9rem;
   margin: 0;
-  color: #333;
 }
 
-.order-date {
-  margin: 0.5rem 0 0;
+.cart-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.cart-summary .total-amount {
+  font-weight: bold;
+  color: #2c5f2d;
+  font-size: 1.1rem;
+}
+
+.cart-items {
+  margin-bottom: 1.5rem;
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.product-thumbnail-small {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.cart-item-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-item-details .product-name {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.cart-item-details .product-price {
   color: #666;
   font-size: 0.9rem;
 }
 
-.status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+.cart-item .item-total {
   font-weight: bold;
+  color: #2c5f2d;
+}
+
+.cart-delivery-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.cart-delivery-info .purchase-details dt {
+  color: #555;
+  font-weight: bold;
+}
+
+.cart-delivery-info .purchase-details dd {
+  color: #333;
+}
+
+.cart-payment-actions, .cart-cancel-actions {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 6px;
+  text-align: center;
+  border: 2px solid #e9ecef;
+}
+
+.cart-payment-actions .confirm-button,
+.cart-payment-actions .cancel-button,
+.cart-cancel-actions .cancel-button {
+  margin: 0.5rem;
+  min-width: 140px;
+}
+
+.cart-payment-actions .confirm-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cart-payment-actions .confirm-button:hover:not(:disabled) {
+  background: #388E3C;
+}
+
+.cart-payment-actions .cancel-button,
+.cart-cancel-actions .cancel-button {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cart-payment-actions .cancel-button:hover:not(:disabled),
+.cart-cancel-actions .cancel-button:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+/* 文字色の改善 */
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.order-info h3 {
+  color: #2c5f2d;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.order-date {
+  color: #666;
   font-size: 0.9rem;
-}
-
-.status-badge.pending_payment {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-badge.paid {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.cancelled {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.status-badge.completed {
-  background: #cce5ff;
-  color: #004085;
+  margin: 0;
 }
 
 .product-info {
   display: flex;
   gap: 1.5rem;
-  margin-top: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .product-image {
   width: 120px;
   height: 120px;
   object-fit: cover;
-  border-radius: 4px;
-}
-
-.details {
-  flex: 1;
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .details h4 {
-  margin: 0 0 0.5rem;
-  color: #333;
+  color: #2c5f2d;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: bold;
 }
 
-.price {
-  font-size: 1.2rem;
+.details .price {
+  color: #e67e22;
+  font-size: 1.1rem;
   font-weight: bold;
-  color: #2c3e50;
-  margin: 0 0 1rem;
+  margin-bottom: 1rem;
 }
 
 .purchase-details {
   display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 0.5rem;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
   margin: 0;
 }
 
 .purchase-details dt {
-  color: #666;
-  font-weight: 500;
+  font-weight: bold;
+  color: #555;
+  margin: 0;
 }
 
 .purchase-details dd {
-  margin: 0;
   color: #333;
+  margin: 0;
+  word-break: break-word;
 }
 
-.expired {
-  color: #dc3545;
+.purchase-details dd.expired {
+  color: #e74c3c;
+  font-weight: bold;
 }
 
-.payment-actions {
+/* ステータスバッジの改善 */
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-badge.pending_payment {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-badge.paid {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.cancelled {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-badge.completed {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.status-badge.shipped {
+  background: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
+}
+
+/* ボタンとアクション部分の改善 */
+.payment-actions, .cancel-actions {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #dee2e6;
   margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eee;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.cancel-actions {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #eee;
 }
 
 .pending-payment-message {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 1rem;
   margin-bottom: 1rem;
 }
 
 .pending-payment-message p {
+  color: #495057;
   margin: 0.5rem 0;
-  color: #333;
+  line-height: 1.4;
 }
 
 .cancel-note {
   font-size: 0.9rem;
-  color: #666 !important;
-  font-style: italic;
+  color: #6c757d;
+}
+
+.payment-note {
+  color: #495057;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
 }
 
 .confirm-button {
-  width: 100%;
-  padding: 1rem;
-  background: #4CAF50;
+  background: #28a745;
   color: white;
   border: none;
-  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
   font-weight: bold;
-  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s;
-  /* スマホ対応 */
-  min-height: 48px;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+  margin: 0.5rem;
 }
 
-.confirm-button:hover {
-  background: #388E3C;
+.confirm-button:hover:not(:disabled) {
+  background: #218838;
 }
 
 .confirm-button:disabled {
-  background: #ccc;
+  background: #6c757d;
   cursor: not-allowed;
 }
 
 .cancel-button {
-  width: 100%;
-  padding: 0.75rem;
   background: #dc3545;
   color: white;
   border: none;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.2s;
+  margin: 0.5rem;
 }
 
-.cancel-button:hover {
+.cancel-button:hover:not(:disabled) {
   background: #c82333;
 }
 
 .cancel-button:disabled {
-  background: #ccc;
+  background: #6c757d;
   cursor: not-allowed;
 }
 
-.payment-note {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-  color: #666;
-  text-align: center;
-}
-
 .payment-confirmed {
-  margin-top: 1rem;
-  padding: 1rem;
   background: #d4edda;
-  border-radius: 4px;
   color: #155724;
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid #c3e6cb;
 }
 
 .check-icon {
+  color: #28a745;
+  font-weight: bold;
   margin-right: 0.5rem;
 }
 
-.retry-button {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 1rem;
-}
-
-.primary-button {
-  display: inline-block;
-  background: #4CAF50;
-  color: white;
-  text-decoration: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
+/* レスポンシブ対応 */
 @media (max-width: 768px) {
   .my-orders {
     padding: 1rem;
@@ -641,6 +1071,34 @@ onMounted(fetchOrders)
 
   .purchase-details dd {
     margin-bottom: 1rem;
+  }
+
+  .cart-order-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cart-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .cart-item {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .cart-payment-actions, .cart-cancel-actions {
+    padding: 1rem;
+  }
+
+  .cart-payment-actions .confirm-button,
+  .cart-payment-actions .cancel-button,
+  .cart-cancel-actions .cancel-button {
+    width: 100%;
+    margin: 0.25rem 0;
+    min-width: auto;
   }
 }
 </style>

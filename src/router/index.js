@@ -8,6 +8,8 @@ import OrderManagement from '../components/admin/OrderManagement.vue'
 import BankTransferForm from '../components/BankTransferForm.vue'
 import SquarePaymentForm from '../components/SquarePaymentForm.vue'
 import SimpleLogin from '../components/SimpleLogin.vue'
+import ShoppingCart from '../components/ShoppingCart.vue'
+import CartCheckout from '../components/CartCheckout.vue'
 import { useAuth } from '../composables/useAuth'
 
 // サイト認証ガード
@@ -109,6 +111,18 @@ const routes = [
     path: '/my-orders',
     name: 'my-orders',
     component: MyOrders,
+    beforeEnter: siteAuthGuard
+  },
+  {
+    path: '/cart',
+    name: 'cart',
+    component: ShoppingCart,
+    beforeEnter: siteAuthGuard
+  },
+  {
+    path: '/cart-checkout',
+    name: 'cart-checkout',
+    component: CartCheckout,
     beforeEnter: siteAuthGuard
   }
 ]

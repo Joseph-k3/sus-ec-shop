@@ -3,6 +3,11 @@
     <div class="controls-section">
       <SortSelector v-model:sort="sortKey" />
       <div class="user-actions">
+        <router-link to="/cart" class="cart-link">
+          <span class="icon">🛒</span>
+          <span class="cart-text">カート</span>
+          <span v-if="cart.itemCount > 0" class="cart-badge">{{ cart.itemCount }}</span>
+        </router-link>
         <router-link to="/my-orders" class="order-history-link">
           <span class="icon">📋</span>
           ご注文履歴
@@ -29,17 +34,36 @@
           <p class="stock-status" :class="{ 'low-stock': product.quantity <= 1 }">
             残り{{ product.quantity }}点
           </p>
-          <router-link 
-            v-if="product.quantity > 0 && !product.is_reserved"
-            :to="{ name: 'purchase', params: { id: product.id }}" 
-            class="purchase-button"
-          >
-            購入する
-          </router-link>
+          <div v-if="product.quantity > 0 && !product.is_reserved" class="action-buttons">
+            <button 
+              @click="addToCart(product, $event)"
+              class="cart-button"
+              :disabled="cartLoading"
+              :ref="`cartBtn_${product.id}`"
+            >
+              🛒 カートに追加
+            </button>
+            <router-link 
+              :to="{ name: 'purchase', params: { id: product.id }}" 
+              class="purchase-button"
+            >
+              即購入
+            </router-link>
+          </div>
           <span v-else-if="product.is_reserved" class="status-text">取引中</span>
           <span v-else class="status-text">売約済み</span>
         </div>
       </div>
+    </div>
+
+    <!-- ポップアップメッセージ表示 -->
+    <div 
+      v-if="message" 
+      class="popup-message" 
+      :class="[messageType, { 'show': message }]"
+      :style="popupStyle"
+    >
+      {{ message }}
     </div>
   </div>
 </template>
@@ -52,14 +76,20 @@ import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customerUtils'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
+import { useCartStore } from '../stores/cart'
 
 const route = useRoute()
+const cart = useCartStore()
 
 // 画像エラーハンドリング
 const { handleImageError, handleImageLoad } = useImageFallback()
 
 const products = ref([])
 const customerId = ref('')
+const cartLoading = ref(false)
+const message = ref('')
+const messageType = ref('success')
+const popupStyle = ref({})
 
 onMounted(async () => {
   // 購入者IDを取得
@@ -115,7 +145,60 @@ const sortedProducts = computed(() => {
   return arr
 })
 
-// ソート処理のみ残す
+// カートに商品を追加
+const addToCart = async (product, event) => {
+  cartLoading.value = true
+  try {
+    const result = await cart.addToCart(product, 1)
+    if (result.success) {
+      showMessage('カートに追加しました！', 'success', event)
+      // 商品リストを更新して在庫数を反映
+      await fetchProducts()
+    } else {
+      showMessage(result.message, 'error', event)
+    }
+  } catch (error) {
+    console.error('カート追加エラー:', error)
+    showMessage('カートへの追加に失敗しました', 'error', event)
+  } finally {
+    cartLoading.value = false
+  }
+}
+
+// メッセージ表示
+const showMessage = (text, type = 'success', event = null) => {
+  message.value = text
+  messageType.value = type
+  
+  // クリックされたボタンの真上にポップアップを表示
+  if (event && event.target) {
+    const containerRect = document.querySelector('.product-list-container').getBoundingClientRect()
+    const buttonRect = event.target.getBoundingClientRect()
+    
+    // ボタンを基準とした相対位置で計算
+    popupStyle.value = {
+      position: 'absolute',
+      top: `${buttonRect.top - containerRect.top - 50}px`,
+      left: `${buttonRect.left - containerRect.left + buttonRect.width / 2}px`,
+      transform: 'translateX(-50%)',
+      zIndex: 1000
+    }
+  } else {
+    // フォールバック：画面中央に表示
+    popupStyle.value = {
+      position: 'fixed',
+      top: '20%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 1000
+    }
+  }
+  
+  setTimeout(() => {
+    message.value = ''
+    popupStyle.value = {}
+  }, 3000)
+}
 </script>
 
 <style scoped>
@@ -195,6 +278,45 @@ const sortedProducts = computed(() => {
   display: flex;
   gap: 1rem;
   align-items: center;
+}
+
+.cart-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #2c5f2d;
+  border-radius: 8px;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  position: relative;
+}
+
+.cart-link:hover {
+  background: #1e4220;
+  transform: translateY(-1px);
+}
+
+.cart-badge {
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
 }
 
 .order-history-link {
@@ -309,19 +431,50 @@ div[class~="admin-grid"] {
   font-weight: bold;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.cart-button {
+  padding: 0.5rem 1rem;
+  background-color: #2c5f2d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 110px;
+}
+
+.cart-button:hover:not(:disabled) {
+  background-color: #1e4220;
+}
+
+.cart-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
 .purchase-button {
   display: inline-block;
-  margin-top: 1rem;
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem 1rem;
   background-color: #4CAF50;
   color: white;
   text-decoration: none;
   border-radius: 4px;
   font-weight: bold;
   transition: background-color 0.2s;
-  min-width: 120px;
   text-align: center;
   box-sizing: border-box;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 110px;
 }
 
 .purchase-button:hover {
@@ -367,6 +520,63 @@ div[class~="admin-grid"] {
   box-sizing: border-box;
 }
 
+/* ポップアップメッセージ表示 */
+.popup-message {
+  background: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  text-align: center;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.8);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  border: 2px solid transparent;
+}
+
+.popup-message.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.popup-message.success {
+  color: #28a745;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
+  border-color: #28a745;
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.2);
+}
+
+.popup-message.error {
+  color: #dc3545;
+  background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
+  border-color: #dc3545;
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.2);
+}
+
+.popup-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid white;
+}
+
+.popup-message.success::after {
+  border-top-color: #f0fff4;
+}
+
+.popup-message.error::after {
+  border-top-color: #fff5f5;
+}
+
 
 
 /* レスポンシブ対応 */
@@ -398,6 +608,17 @@ div[class~="admin-grid"] {
     gap: 1rem;
     align-items: stretch;
     padding: 0 0.5rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cart-button,
+  .purchase-button {
+    width: 100%;
+    flex: none;
   }
 
   .user-actions {

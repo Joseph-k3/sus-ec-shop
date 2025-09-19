@@ -44,7 +44,7 @@ export async function sendBankTransferEmail(order) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
+    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
     subject: `【新規注文】${order.product_name}が購入されました`,
     html_body: `
       <h2>新規注文がありました</h2>
@@ -149,7 +149,7 @@ export async function sendPaymentConfirmationEmail(order) {
 
   // 管理者向け通知メール
   const adminEmailData = {
-    to: 'ryosk8er1026@yahoo.co.jp',
+    to: 'k3.ns.208_b50@icloud.com',
     subject: `【入金確認】${order.product_name}の入金を確認しました`,
     html_body: `
       <h2>入金が確認されました</h2>
@@ -203,6 +203,128 @@ export async function sendPaymentConfirmationEmail(order) {
     return { customerEmailResult, adminEmailResult }
   } catch (error) {
     console.error('入金確認メール送信エラー:', error)
+    throw error
+  }
+}
+
+// カート注文用のメール送信関数
+export async function sendCartOrderEmail(orderData) {
+  console.log('Sending cart order emails via Supabase Edge Function...')
+
+  // 購入者向けメール
+  const customerEmailData = {
+    to: orderData.email,
+    subject: '【SUS Plants EC Shop】ご注文ありがとうございます',
+    html_body: `
+      <h2>ご注文ありがとうございます</h2>
+      <p>${orderData.customerName} 様</p>
+      
+      <h3>ご注文内容</h3>
+      ${orderData.items.map(item => `
+        <div style="border-bottom: 1px solid #eee; padding: 1rem 0;">
+          <p>商品名: ${item.name}</p>
+          <p>数量: ${item.quantity}個</p>
+          <p>単価: ¥${item.price.toLocaleString()}</p>
+          <p>小計: ¥${(item.price * item.quantity).toLocaleString()}</p>
+        </div>
+      `).join('')}
+      
+      <div style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+        <p style="font-size: 1.2rem; font-weight: bold; margin: 0;">
+          合計金額: ¥${orderData.totalAmount.toLocaleString()}
+        </p>
+      </div>
+      
+      <div style="background-color: #fff3cd; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #ffeeba;">
+        <p style="color: #856404; margin: 0;">
+          <strong>お支払い期限: 注文から48時間以内</strong><br>
+          ※期限を過ぎますと、ご注文は自動的にキャンセルとなります。
+        </p>
+      </div>
+      
+      <h3>お振込先情報</h3>
+      <p>以下の口座へお振込をお願いいたします。</p>
+      <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+        <p>銀行名: 西日本シティ銀行</p>
+        <p>支店名: 糸島支店</p>
+        <p>口座種類: 普通</p>
+        <p>口座番号: 1756034</p>
+        <p>口座名義: 納富亮典（ノウドミリョウスケ）</p>
+      </div>
+      
+      <h3>お客様情報</h3>
+      <p>お名前: ${orderData.customerName}</p>
+      <p>電話番号: ${orderData.phone}</p>
+      <p>郵便番号: ${orderData.postal}</p>
+      <p>住所: ${orderData.address}</p>
+      ${orderData.notes ? `<p>備考: ${orderData.notes}</p>` : ''}
+      
+      <p>お振込確認後、商品を発送させていただきます。</p>
+      <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+      
+      <hr>
+      <p>SUS Plants EC Shop</p>
+      <p>Instagram: <a href="https://www.instagram.com/ryo_suke_071210/">@ryo_suke_071210</a></p>
+    `
+  }
+
+  // 管理者向けメール
+  const adminEmailData = {
+    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
+    subject: `【カート注文】新規注文が${orderData.items.length}件ありました`,
+    html_body: `
+      <h2>カート注文がありました</h2>
+      
+      <h3>お客様情報</h3>
+      <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+        <p>お名前: ${orderData.customerName}</p>
+        <p>メール: ${orderData.email}</p>
+        <p>電話番号: ${orderData.phone}</p>
+        <p>郵便番号: ${orderData.postal}</p>
+        <p>住所: ${orderData.address}</p>
+        ${orderData.notes ? `<p>備考: ${orderData.notes}</p>` : ''}
+      </div>
+      
+      <h3>注文内容</h3>
+      ${orderData.items.map(item => `
+        <div style="border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem; margin: 1rem 0;">
+          <p><strong>商品名:</strong> ${item.name}</p>
+          <p><strong>数量:</strong> ${item.quantity}個</p>
+          <p><strong>単価:</strong> ¥${item.price.toLocaleString()}</p>
+          <p><strong>小計:</strong> ¥${(item.price * item.quantity).toLocaleString()}</p>
+        </div>
+      `).join('')}
+      
+      <div style="background-color: #d4edda; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #c3e6cb;">
+        <p style="color: #155724; font-size: 1.2rem; font-weight: bold; margin: 0;">
+          <strong>合計金額: ¥${orderData.totalAmount.toLocaleString()}</strong>
+        </p>
+      </div>
+
+      <p style="margin-top: 2rem;">
+        商品の発送準備をお願いいたします。
+      </p>
+    `
+  }
+
+  try {
+    // 購入者向けメール送信
+    const { data: customerEmailResult, error: customerError } = await supabase.functions.invoke('send-email', {
+      body: customerEmailData
+    })
+
+    if (customerError) throw new Error(customerError.message)
+
+    // 管理者向けメール送信
+    const { data: adminEmailResult, error: adminError } = await supabase.functions.invoke('send-email', {
+      body: adminEmailData
+    })
+
+    if (adminError) throw new Error(adminError.message)
+
+    return { customerEmailResult, adminEmailResult }
+  } catch (error) {
+    console.error('カート注文メール送信エラー:', error)
     throw error
   }
 }
