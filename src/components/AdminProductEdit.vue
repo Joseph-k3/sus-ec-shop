@@ -591,8 +591,227 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+/* 商品一覧のスタイル */
+.products-list {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-top: 2rem;
+}
+
+.products-list h3 {
+  text-align: center;
+  color: #2c5f2d;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.product-item {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.product-image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #f8f9fa;
+}
+
+.status-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.status-badge.reserved {
+  background: rgba(255, 193, 7, 0.9);
+  color: #212529;
+}
+
+.status-badge.sold-out {
+  background: rgba(108, 117, 125, 0.9);
+}
+
+.product-details {
+  margin-bottom: 1.5rem;
+}
+
+.product-details h4 {
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
+
+.product-details .price {
+  color: #2c5f2d;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.product-details .stock-info {
+  color: #495057;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.product-details .stock-info.low-stock {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.product-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.btn-edit,
+.btn-delete {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.btn-edit {
+  background: #007bff;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* フォームボタンのスタイル */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+  min-width: 120px;
+}
+
+.btn-primary {
+  background: #2c5f2d;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1e4220;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(44, 95, 45, 0.3);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* 数量グループのスタイル */
+.quantity-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quantity-group input[type="number"] {
+  max-width: 120px;
+}
+
+.quantity-group .checkbox-label {
+  color: #2c3e50;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* モバイル対応 */
 @media (max-width: 768px) {
+  .admin-panel {
+    margin: 1rem;
+    padding: 1rem;
+  }
+  
+  .form-group {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .form-group label {
+    text-align: left;
+  }
+  
   .upload-options {
     flex-direction: column;
     align-items: stretch;
@@ -609,6 +828,30 @@ onMounted(() => {
   
   .image-preview img {
     height: 250px;
+  }
+  
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+  
+  .product-actions {
+    flex-direction: column;
+  }
+  
+  .quantity-group {
+    flex-direction: column;
+    align-items: start;
+    gap: 0.5rem;
   }
 }
 </style>

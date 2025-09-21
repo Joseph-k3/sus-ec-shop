@@ -221,15 +221,11 @@ const showMessage = (text, type = 'success', event = null) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('/succulents.JPEG');
-  background-size: cover;
-  background-position: center 90%;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background: #444444;
   z-index: -2;
 }
 
-/* 背景画像の上に半透明のオーバーレイを追加 */
+/* 背景のオーバーレイを削除（#444444の単色背景を使用） */
 .product-list-container::before {
   content: '';
   position: fixed;
@@ -237,7 +233,7 @@ const showMessage = (text, type = 'success', event = null) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: transparent;
   pointer-events: none;
   z-index: -1;
 }
@@ -264,7 +260,7 @@ const showMessage = (text, type = 'success', event = null) => {
   padding: 1rem;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   position: relative;
   z-index: 10;
   min-height: 44px;
@@ -373,9 +369,10 @@ div[class~="admin-grid"] {
 
 .product-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   overflow: hidden;
   transition: transform 0.2s ease;
   z-index: 5;
@@ -383,6 +380,7 @@ div[class~="admin-grid"] {
 
 .product-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 .image-container {
@@ -404,26 +402,29 @@ div[class~="admin-grid"] {
 .product-name {
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
-  color: #333;
+  color: #1a1a1a;
+  font-weight: 600;
 }
 
 .product-description {
   margin: 0 0 1rem 0;
-  color: #666;
+  color: #555;
   font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .product-price {
   margin: 0;
   font-size: 1.5rem;
   font-weight: bold;
-  color: #2c3e50;
+  color: #2c5f2d;
 }
 
 .stock-status {
   margin: 0.5rem 0;
   font-size: 0.9rem;
-  color: #666;
+  color: #555;
+  font-weight: 500;
 }
 
 .low-stock {
