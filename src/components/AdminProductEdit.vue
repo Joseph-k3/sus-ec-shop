@@ -2,6 +2,8 @@
   <div class="admin-panel">
     <h2>商品管理画面</h2>
 
+
+
     <!-- 商品追加・編集フォーム -->
     <form @submit.prevent="handleSubmit" class="edit-form">
       <h3>{{ editingId ? '商品を編集' : '新規商品を追加' }}</h3>
@@ -144,10 +146,18 @@
             <p class="stock-info" :class="{ 'low-stock': product.quantity <= 1 }">
               残り{{ product.quantity }}点
             </p>
+
           </div>
           <div class="product-actions">
-            <button @click="startEdit(product)" class="btn-edit">編集</button>
-            <button @click="deleteProduct(product.id)" class="btn-delete">削除</button>
+            <button 
+              @click="startEdit(product)" 
+              @click.stop
+              class="btn-edit" 
+              type="button"
+            >
+              編集
+            </button>
+            <button @click="deleteProduct(product.id)" class="btn-delete" type="button">削除</button>
           </div>
         </div>
       </div>
@@ -156,7 +166,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+/*
+ * Supabaseストレージ設定について:
+ * 
+ * 1. バケット作成: このコンポーネントは自動的に'succulents-images'バケットを作成しますが、
+ *    手動でSupabase管理画面から作成することも可能です。
+ * 
+ * 2. RLS (Row Level Security) ポリシー設定:
+ *    Supabase管理画面 > Storage > Policies で以下を設定:
+ *    - 読み取り（SELECT）: public read access
+ *    - 書き込み（INSERT）: 認証されたユーザーのみ
+ *    - 更新（UPDATE）: 認証されたユーザーのみ
+ *    - 削除（DELETE）: 認証されたユーザーのみ
+ * 
+ * 3. バケット設定:
+ *    - Public bucket: true
+ *    - File size limit: 10MB
+ *    - Allowed mime types: image/jpeg, image/png, image/webp, image/gif
+ */
+
+import { ref, onMounted, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
 
 const products = ref([])
@@ -167,15 +196,16 @@ const currentProduct = ref({
   name: '',
   description: '',
   price: 0,
-  image: '',
-  instagram: ''
+  quantity: 1,
+  is_reserved: false,
+  image: ''
 })
 
 // 商品一覧を取得
 const loadProducts = async () => {
   const { data, error } = await supabase
     .from('succulents')
-    .select('*')
+    .select('id, name, description, price, quantity, is_reserved, image')
     .order('id', { ascending: true })
   
   if (error) {
@@ -189,11 +219,21 @@ const loadProducts = async () => {
 // 商品を追加・更新
 const handleSubmit = async () => {
   try {
+    // データベースに存在するフィールドのみを抽出
+    const productData = {
+      name: currentProduct.value.name,
+      description: currentProduct.value.description,
+      price: currentProduct.value.price,
+      quantity: currentProduct.value.quantity,
+      is_reserved: currentProduct.value.is_reserved,
+      image: currentProduct.value.image
+    }
+
     if (editingId.value) {
       // 更新
       const { error } = await supabase
         .from('succulents')
-        .update(currentProduct.value)
+        .update(productData)
         .eq('id', editingId.value)
       
       if (error) throw error
@@ -202,7 +242,7 @@ const handleSubmit = async () => {
       // 新規追加
       const { error } = await supabase
         .from('succulents')
-        .insert([currentProduct.value])
+        .insert([productData])
       
       if (error) throw error
       alert('商品を追加しました')
@@ -221,7 +261,17 @@ const handleSubmit = async () => {
 // 編集を開始
 const startEdit = (product) => {
   editingId.value = product.id
-  currentProduct.value = { ...product }
+  
+  // nextTickを使用してDOMの更新を待つ
+  nextTick(() => {
+    // 各フィールドを個別に設定してリアクティブ更新を確実にする
+    currentProduct.value.name = product.name || ''
+    currentProduct.value.description = product.description || ''
+    currentProduct.value.price = product.price || 0
+    currentProduct.value.quantity = product.quantity || 1
+    currentProduct.value.is_reserved = product.is_reserved || false
+    currentProduct.value.image = product.image || ''
+  })
 }
 
 // 編集をキャンセル
@@ -239,8 +289,7 @@ const resetForm = () => {
     price: 0,
     quantity: 1,
     is_reserved: false,
-    image: '',
-    instagram: ''
+    image: ''
   }
 }
 
@@ -265,6 +314,86 @@ const deleteProduct = async (id) => {
 }
 
 // 画像ファイル選択時の処理
+// バケットが存在するかチェックし、存在しない場合の対処
+const ensureBucketExists = async () => {
+  try {
+    // まず簡単なテストアップロードでバケットの存在と権限を確認
+    const testBlob = new Blob(['test'], { type: 'text/plain' })
+    const testPath = `test_${Date.now()}.txt`
+    
+    const { data: testUpload, error: testError } = await supabase.storage
+      .from('succulents-images')
+      .upload(testPath, testBlob, { upsert: true })
+    
+    // テストファイルをすぐに削除
+    if (testUpload) {
+      await supabase.storage
+        .from('succulents-images')
+        .remove([testPath])
+    }
+    
+    // バケットが存在し、アップロード権限がある場合
+    if (!testError) {
+      return true
+    }
+    
+    // バケットが存在しない場合のエラーチェック
+    if (testError.message.includes('Bucket not found')) {
+      console.warn('succulents-imagesバケットが存在しません')
+      
+      // 自動作成を試行（管理者権限が必要）
+      try {
+        const { data, error: createError } = await supabase.storage.createBucket('succulents-images', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+          fileSizeLimit: 10485760 // 10MB
+        })
+        
+        if (createError) {
+          throw createError
+        }
+        
+        console.log('succulents-imagesバケットを作成しました')
+        return true
+      } catch (createError) {
+        console.error('バケット自動作成に失敗:', createError)
+        alert(`ストレージバケットが存在しません。\n\n以下の手順で手動で作成してください：\n1. Supabase管理画面にログイン\n2. Storage > Create Bucket\n3. バケット名: succulents-images\n4. Public: チェック\n5. File size limit: 10MB\n\n詳細は supabase_storage_setup.md を参照してください。`)
+        return false
+      }
+    }
+    
+    // RLSポリシーエラーの場合
+    if (testError.message.includes('Row Level Security') || testError.message.includes('policy')) {
+      console.error('ストレージアクセス権限エラー:', testError)
+      alert(`🚨 ストレージのアクセス権限がありません
+      
+📋 即座に解決する方法：
+1. Supabase管理画面にログイン
+2. Storage → succulents-images バケット
+3. Settings タブ → Row Level Security を OFF
+4. または Policies で "Allow all for development" を作成
+
+💡 SQLエディターで実行（推奨）：
+CREATE POLICY "Allow all for development" ON storage.objects
+FOR ALL USING (bucket_id = 'succulents-images')
+WITH CHECK (bucket_id = 'succulents-images');
+
+詳細な手順は supabase_storage_setup.md を参照してください。`)
+      return false
+    }
+    
+    // その他のエラー
+    console.error('予期しないストレージエラー:', testError)
+    alert('ストレージの確認中にエラーが発生しました: ' + testError.message)
+    return false
+    
+  } catch (error) {
+    console.error('バケット確認中にエラー:', error)
+    alert('ストレージの確認中にエラーが発生しました。ネットワーク接続を確認してください。')
+    return false
+  }
+}
+
 const handleImageSelect = async (event) => {
   const file = event.target.files[0]
   if (!file) return
@@ -285,6 +414,12 @@ const handleImageSelect = async (event) => {
   try {
     uploadProgress.value = 0
     
+    // バケットの存在確認・作成
+    const bucketReady = await ensureBucketExists()
+    if (!bucketReady) {
+      return
+    }
+    
     // ファイル名を生成（タイムスタンプ + ランダム文字列）
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 15)
@@ -293,7 +428,7 @@ const handleImageSelect = async (event) => {
     
     // Supabase Storageにアップロード
     const { data, error } = await supabase.storage
-      .from('succulents')
+      .from('succulents-images')
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false
@@ -301,13 +436,26 @@ const handleImageSelect = async (event) => {
     
     if (error) {
       console.error('Upload error:', error)
-      alert('アップロードに失敗しました: ' + error.message)
+      let errorMessage = 'アップロードに失敗しました'
+      
+      if (error.message.includes('Bucket not found')) {
+        errorMessage = 'ストレージバケットが見つかりません。管理者権限でバケットを作成してください。'
+      } else if (error.message.includes('Row Level Security')) {
+        errorMessage = 'ストレージのアクセス権限がありません。管理者に確認してください。'
+      } else if (error.message.includes('size')) {
+        errorMessage = 'ファイルサイズが大きすぎます。10MB以下のファイルを選択してください。'
+      } else {
+        errorMessage += ': ' + error.message
+      }
+      
+      alert(errorMessage)
+      uploadProgress.value = 0
       return
     }
     
     // 公開URLを取得
     const { data: urlData } = supabase.storage
-      .from('succulents')
+      .from('succulents-images')
       .getPublicUrl(fileName)
     
     if (urlData?.publicUrl) {
@@ -322,7 +470,13 @@ const handleImageSelect = async (event) => {
     
   } catch (error) {
     console.error('Upload error:', error)
-    alert('アップロードに失敗しました')
+    let errorMessage = 'アップロードに失敗しました'
+    
+    if (error.message) {
+      errorMessage += ': ' + error.message
+    }
+    
+    alert(errorMessage)
     uploadProgress.value = 0
   }
 }
@@ -335,8 +489,10 @@ const removeImage = () => {
 }
 
 // 初期読み込み
-onMounted(() => {
-  loadProducts()
+onMounted(async () => {
+  await loadProducts()
+  // ストレージバケットの存在確認・作成
+  await ensureBucketExists()
 })
 </script>
 
@@ -854,4 +1010,5 @@ onMounted(() => {
     gap: 0.5rem;
   }
 }
+
 </style>

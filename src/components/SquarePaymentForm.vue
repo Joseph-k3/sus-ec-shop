@@ -151,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineProps, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { initializeSquare, createCardPaymentForm, processPayment } from '../lib/square'
 import { supabase } from '../lib/supabase'
