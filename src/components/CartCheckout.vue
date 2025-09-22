@@ -212,7 +212,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customerUtils'
-// import { sendCartOrderEmail } from '../lib/postmark' // メール送信機能を無効化
+import { sendCartOrderEmail } from '../lib/postmark' // メール送信機能を有効化
 import { useAddressLookup } from '../composables/useAddressLookup'
 
 const router = useRouter()
@@ -405,8 +405,7 @@ const submitOrder = async () => {
 
     const orders = await Promise.all(orderPromises)
     
-    // メール送信機能を無効化
-    /*
+    // メール送信機能を有効化
     try {
       await sendCartOrderEmail({
         customerName: form.customerName,
@@ -424,7 +423,6 @@ const submitOrder = async () => {
       console.error('メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
-    */
 
     // カートを空にする（在庫は既に減らされているので、戻さない）
     cart.items.splice(0)

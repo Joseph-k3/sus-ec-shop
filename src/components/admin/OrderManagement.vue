@@ -254,7 +254,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../../lib/supabase'
-// import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を無効化
+import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を有効化
 
 const orders = ref([])
 const statusFilter = ref('all')
