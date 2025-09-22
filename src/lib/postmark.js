@@ -1,8 +1,6 @@
 import { supabase } from './supabase'
 
 export async function sendBankTransferEmail(order) {
-  console.log('Sending emails via Supabase Edge Function...')
-
   // 購入者向けメール
   const customerEmailData = {
     to: order.email,
@@ -81,21 +79,34 @@ export async function sendBankTransferEmail(order) {
     `
   }
 
+  let customerEmailResult = null
+  let adminEmailResult = null
+  
   try {
+    console.log('購入者向けメール送信開始:', customerEmailData.to)
+    
     // 購入者向けメール送信
-    const { data: customerEmailResult, error: customerError } = await supabase.functions.invoke('send-email', {
-      body: customerEmailData
-    })
+    try {
+      const { data, error: customerError } = await supabase.functions.invoke('send-email', {
+        body: customerEmailData
+      })
 
-    if (customerError) {
-      console.error('購入者向けメール送信エラー:', customerError)
-      throw new Error(customerError.message || '購入者向けメール送信に失敗しました')
+      if (customerError) {
+        console.error('購入者向けメール送信エラー:', customerError)
+        console.warn('購入者向けメール送信は失敗しましたが、処理を続行します')
+      } else {
+        customerEmailResult = data
+        console.log('購入者向けメール送信成功')
+      }
+    } catch (customerEmailError) {
+      console.error('購入者向けメール送信で予期しないエラー:', customerEmailError)
+      console.warn('購入者向けメール送信は失敗しましたが、処理を続行します')
     }
 
-    console.log('購入者向けメール送信成功:', customerEmailResult)
-
+    console.log('管理者向けメール送信開始:', adminEmailData.to)
+    
     // 管理者向けメール送信
-    const { data: adminEmailResult, error: adminError } = await supabase.functions.invoke('send-email', {
+    const { data, error: adminError } = await supabase.functions.invoke('send-email', {
       body: adminEmailData
     })
 
@@ -104,7 +115,8 @@ export async function sendBankTransferEmail(order) {
       throw new Error(adminError.message || '管理者向けメール送信に失敗しました')
     }
 
-    console.log('管理者向けメール送信成功:', adminEmailResult)
+    adminEmailResult = data
+    console.log('管理者向けメール送信成功')
 
     return {
       customerEmail: customerEmailResult,
@@ -307,20 +319,44 @@ export async function sendCartOrderEmail(orderData) {
     `
   }
 
+  let customerEmailResult = null
+  let adminEmailResult = null
+  
   try {
+    console.log('カート注文購入者向けメール送信開始:', customerEmailData.to)
+    
     // 購入者向けメール送信
-    const { data: customerEmailResult, error: customerError } = await supabase.functions.invoke('send-email', {
-      body: customerEmailData
-    })
+    try {
+      const { data, error: customerError } = await supabase.functions.invoke('send-email', {
+        body: customerEmailData
+      })
 
-    if (customerError) throw new Error(customerError.message)
+      if (customerError) {
+        console.error('カート注文購入者向けメール送信エラー:', customerError)
+        console.warn('カート注文購入者向けメール送信は失敗しましたが、処理を続行します')
+      } else {
+        customerEmailResult = data
+        console.log('カート注文購入者向けメール送信成功')
+      }
+    } catch (customerEmailError) {
+      console.error('カート注文購入者向けメール送信で予期しないエラー:', customerEmailError)
+      console.warn('カート注文購入者向けメール送信は失敗しましたが、処理を続行します')
+    }
 
+    console.log('カート注文管理者向けメール送信開始:', adminEmailData.to)
+    
     // 管理者向けメール送信
-    const { data: adminEmailResult, error: adminError } = await supabase.functions.invoke('send-email', {
+    const { data, error: adminError } = await supabase.functions.invoke('send-email', {
       body: adminEmailData
     })
 
-    if (adminError) throw new Error(adminError.message)
+    if (adminError) {
+      console.error('カート注文管理者向けメール送信エラー:', adminError)
+      throw new Error(adminError.message || 'カート注文管理者向けメール送信に失敗しました')
+    }
+
+    adminEmailResult = data
+    console.log('カート注文管理者向けメール送信成功')
 
     return { customerEmailResult, adminEmailResult }
   } catch (error) {

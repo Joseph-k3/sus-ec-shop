@@ -704,9 +704,16 @@ const saveOrder = async (paymentMethod) => {
     
     // 銀行振込注文の場合、メール送信（有効化）
     try {
+      console.log('メール送信開始:', savedOrder)
       await sendBankTransferEmail(savedOrder)
+      console.log('メール送信成功')
     } catch (emailError) {
-      console.error('メール送信エラー:', emailError)
+      console.error('メール送信エラー詳細:', {
+        error: emailError,
+        message: emailError.message,
+        stack: emailError.stack,
+        orderData: savedOrder
+      })
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
     

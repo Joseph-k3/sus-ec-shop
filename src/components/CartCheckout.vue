@@ -420,7 +420,11 @@ const submitOrder = async () => {
       })
       console.log('カート注文メール送信完了')
     } catch (emailError) {
-      console.error('メール送信エラー:', emailError)
+      console.error('カート注文メール送信エラー詳細:', {
+        error: emailError,
+        message: emailError.message,
+        stack: emailError.stack
+      })
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
 
