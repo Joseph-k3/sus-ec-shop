@@ -771,6 +771,13 @@ onMounted(async () => {
   gap: 2rem;
 }
 
+@media (max-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
 .product-item {
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #e9ecef;
@@ -792,13 +799,42 @@ onMounted(async () => {
   margin-bottom: 1rem;
   border-radius: 8px;
   overflow: hidden;
+  background: #f8f9fa;
 }
 
 .product-thumb {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   background: #f8f9fa;
+  transition: object-fit 0.3s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.product-thumb:hover {
+  object-fit: cover;
+  border: 1px solid #007bff;
+}
+
+/* 画像のフォールバック表示 */
+.product-thumb:not([src]), 
+.product-thumb[src=""], 
+.product-thumb[src="#"] {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  position: relative;
+}
+
+.product-thumb:not([src])::before, 
+.product-thumb[src=""]::before, 
+.product-thumb[src="#"]::before {
+  content: "📷";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  color: #6c757d;
 }
 
 .status-badge {
@@ -952,6 +988,27 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+/* タブレット対応 */
+@media (max-width: 992px) {
+  .admin-panel {
+    margin: 1.5rem;
+    padding: 1.5rem;
+  }
+  
+  .edit-form {
+    padding: 1.5rem;
+  }
+  
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .product-image-container {
+    height: 180px;
+  }
+}
+
 /* モバイル対応 */
 @media (max-width: 768px) {
   .admin-panel {
@@ -959,13 +1016,30 @@ onMounted(async () => {
     padding: 1rem;
   }
   
+  .admin-panel h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .admin-panel h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  
+  .edit-form {
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+  
   .form-group {
     grid-template-columns: 1fr;
     gap: 0.5rem;
+    margin-bottom: 1.5rem;
   }
   
   .form-group label {
     text-align: left;
+    font-size: 0.9rem;
   }
   
   .form-group.description-group {
@@ -993,43 +1067,86 @@ onMounted(async () => {
   .upload-options {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
   
   .file-upload-btn {
     text-align: center;
     width: 100%;
+    padding: 1rem;
   }
   
   .image-preview {
     max-width: 100%;
+    margin: 0.75rem 0;
   }
   
   .image-preview img {
-    height: 250px;
+    height: 200px;
+    object-fit: contain;
   }
   
   .product-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.5rem;
+  }
+  
+  .product-item {
+    padding: 1rem;
+  }
+  
+  .product-image-container {
+    height: 250px;
+    margin-bottom: 0.75rem;
+  }
+  
+  .product-thumb {
+    object-fit: contain;
+  }
+  
+  .product-details h4 {
+    font-size: 1.1rem;
+  }
+  
+  .product-details .price {
+    font-size: 1.2rem;
   }
   
   .form-actions {
     flex-direction: column;
+    gap: 0.75rem;
   }
   
   .btn-primary,
   .btn-secondary {
     width: 100%;
+    padding: 1rem;
   }
   
   .product-actions {
     flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .btn-edit,
+  .btn-delete {
+    width: 100%;
+    padding: 0.75rem;
   }
   
   .quantity-group {
     flex-direction: column;
     align-items: start;
-    gap: 0.5rem;
+    gap: 0.75rem;
+  }
+  
+  .quantity-group input[type="number"] {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .products-list {
+    padding: 1rem;
   }
 }
 
@@ -1038,6 +1155,18 @@ onMounted(async () => {
   .admin-panel {
     margin: 0.5rem;
     padding: 0.75rem;
+  }
+  
+  .admin-panel h2 {
+    font-size: 1.25rem;
+  }
+  
+  .edit-form {
+    padding: 0.75rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
   }
   
   .form-group input[type="text"],
@@ -1051,6 +1180,47 @@ onMounted(async () => {
   .form-group.description-group textarea {
     min-height: 100px;
     padding: 0.5rem;
+  }
+  
+  .file-upload-btn {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .image-preview img {
+    height: 180px;
+  }
+  
+  .product-item {
+    padding: 0.75rem;
+  }
+  
+  .product-image-container {
+    height: 200px;
+  }
+  
+  .product-details h4 {
+    font-size: 1rem;
+  }
+  
+  .product-details .price {
+    font-size: 1.1rem;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .btn-edit,
+  .btn-delete {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .products-list {
+    padding: 0.75rem;
   }
   
   .form-row {
