@@ -968,6 +968,28 @@ onMounted(async () => {
     text-align: left;
   }
   
+  .form-group.description-group {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .form-group.description-group textarea {
+    width: 100%;
+    min-height: 120px;
+    height: auto;
+    box-sizing: border-box;
+  }
+  
+  .form-group input[type="text"],
+  .form-group input[type="number"],
+  .form-group input[type="url"],
+  .form-group textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+  
   .upload-options {
     flex-direction: column;
     align-items: stretch;
@@ -1008,6 +1030,31 @@ onMounted(async () => {
     flex-direction: column;
     align-items: start;
     gap: 0.5rem;
+  }
+}
+
+/* より小さなスマホ画面対応 */
+@media (max-width: 480px) {
+  .admin-panel {
+    margin: 0.5rem;
+    padding: 0.75rem;
+  }
+  
+  .form-group input[type="text"],
+  .form-group input[type="number"],
+  .form-group input[type="url"],
+  .form-group textarea {
+    padding: 0.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .form-group.description-group textarea {
+    min-height: 100px;
+    padding: 0.5rem;
+  }
+  
+  .form-row {
+    gap: 1rem;
   }
 }
 
