@@ -21,8 +21,11 @@
             </div>
           </div>
         </div>
-        <div class="order-total">
-          <strong>合計: ¥{{ cart.totalAmount.toLocaleString() }}</strong>
+        <div class="order-total-breakdown">
+          <div class="subtotal">商品小計: ¥{{ cart.totalAmount.toLocaleString() }}</div>
+          <div class="shipping-fee">送料 ({{ shippingInfo.region }}): ¥{{ shippingInfo.shippingFee.toLocaleString() }}</div>
+          <div class="total-amount"><strong>合計: ¥{{ shippingInfo.totalAmount.toLocaleString() }}</strong></div>
+          <div class="shipping-note">※ 北海道・沖縄・離島は送料1,800円となります</div>
         </div>
       </div>
 
@@ -214,6 +217,7 @@ import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customerUtils'
 import { sendCartOrderEmail } from '../lib/postmark' // メール送信機能を有効化
 import { useAddressLookup } from '../composables/useAddressLookup'
+import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
 
 const router = useRouter()
 const cart = useCartStore()
@@ -245,11 +249,51 @@ const form = reactive({
   paymentMethod: 'bank' // カートからの注文は銀行振込固定
 })
 
+// 送料計算
+const shippingInfo = ref({
+  itemTotal: 0,
+  shippingFee: 1000,
+  totalAmount: 0,
+  region: '本州・四国・九州'
+})
+
+// 送料込みの合計金額を計算
+const updateShippingInfo = () => {
+  const itemTotal = cart.totalAmount
+  if (form.postal && form.postal.length >= 7) {
+    const shipping = calculateTotalWithShipping(itemTotal, form.postal)
+    shippingInfo.value = shipping
+  } else {
+    // 郵便番号が未入力の場合はデフォルト送料
+    shippingInfo.value = {
+      itemTotal,
+      shippingFee: 1000,
+      totalAmount: itemTotal + 1000,
+      region: '本州・四国・九州'
+    }
+  }
+}
+
+// カートの内容が変更されたときに送料を再計算
+cart.$subscribe(() => {
+  updateShippingInfo()
+})
+
+// 郵便番号が変更されたときに送料を再計算
+const watchZipCode = () => {
+  if (form.postal && form.postal.length >= 7) {
+    updateShippingInfo()
+  }
+}
+
 onMounted(() => {
   // カートが空の場合はカート画面にリダイレクト
   if (cart.items.length === 0) {
     router.push('/cart')
   }
+  
+  // 初期送料計算
+  updateShippingInfo()
 })
 
 const onPostalInput = async (event) => {
@@ -275,10 +319,17 @@ const onPostalInput = async (event) => {
   // 完全な郵便番号（7桁）が入力されたら自動的に住所を検索
   if (isValidZipCode(formattedValue) && formattedValue.length === 8) {
     await lookupAddress(formattedValue)
+    // 送料を再計算
+    updateShippingInfo()
   } else {
     // 郵便番号が完全でない場合は提案をクリア
     showAddressSuggestion.value = false
     suggestedAddresses.value = []
+  }
+  
+  // 部分的でも郵便番号が変更されたら送料を更新
+  if (formattedValue.length >= 7) {
+    updateShippingInfo()
   }
 }
 
@@ -414,17 +465,14 @@ const submitOrder = async () => {
         postal: form.postal,
         address: form.address,
         items: cart.items,
-        totalAmount: cart.totalAmount,
+        itemTotal: cart.totalAmount, // 商品代金のみ
+        shippingFee: shippingInfo.value.shippingFee, // 送料
+        shippingRegion: shippingInfo.value.region, // 配送地域
+        totalAmount: shippingInfo.value.totalAmount, // 送料込み合計
         paymentMethod: form.paymentMethod,
         notes: form.notes
       })
-      console.log('カート注文メール送信完了')
     } catch (emailError) {
-      console.error('カート注文メール送信エラー詳細:', {
-        error: emailError,
-        message: emailError.message,
-        stack: emailError.stack
-      })
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
 
@@ -905,6 +953,38 @@ const showMessage = (text, type = 'success') => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* 送料表示のスタイル */
+.order-total-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.subtotal, .shipping-fee {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.total-amount {
+  color: #007bff;
+  font-size: 1.2rem;
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 2px solid #007bff;
+}
+
+.shipping-note {
+  color: #666;
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
 }
 
 .message {

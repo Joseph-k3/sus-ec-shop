@@ -290,15 +290,24 @@ const confirmPayment = async (order) => {
 
     if (updateError) throw updateError
     
-    // 入金確認メールを送信（無効化）
-    /*
+    // 入金確認メールを送信（有効化）
     try {
-      await sendPaymentConfirmationEmail(order)
+      // 住所から送料情報を抽出
+      const { extractShippingInfoFromAddress } = await import('../lib/shipping.js')
+      const shippingInfo = extractShippingInfoFromAddress(order.address, order.price)
+      
+      // メール送信用に送料情報を追加
+      const orderWithShipping = {
+        ...order,
+        shipping_fee: shippingInfo.shippingFee,
+        shipping_region: shippingInfo.region,
+        item_price: shippingInfo.itemPrice
+      }
+      
+      await sendPaymentConfirmationEmail(orderWithShipping)
     } catch (emailError) {
-      console.error('入金確認メール送信エラー:', emailError)
       // メール送信に失敗してもエラーにしない
     }
-    */
 
     await fetchOrders() // 注文リストを再取得して表示を更新
   } catch (e) {

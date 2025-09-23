@@ -34,7 +34,12 @@
         <div class="product-info">
           <div class="product-details">
             <h2>{{ product?.name }}</h2>
-            <p class="price">¥{{ product?.price?.toLocaleString() }}</p>
+            <div class="price-breakdown">
+              <p class="item-price">商品代金: ¥{{ product?.price?.toLocaleString() }}</p>
+              <p class="shipping-fee">送料 ({{ shippingInfo.region }}): ¥{{ shippingInfo.shippingFee?.toLocaleString() }}</p>
+              <p class="total-price">合計: ¥{{ shippingInfo.totalAmount?.toLocaleString() }}</p>
+              <p class="shipping-note">※ 北海道・沖縄・離島は送料1,800円となります</p>
+            </div>
           </div>
         </div>
       </div>
@@ -255,7 +260,11 @@
                 >
                 <div>
                   <p class="product-name">{{ product?.name }}</p>
-                  <p class="product-price">¥{{ product?.price?.toLocaleString() }}</p>
+                  <div class="price-details">
+                    <p class="item-price-small">商品代金: ¥{{ product?.price?.toLocaleString() }}</p>
+                    <p class="shipping-fee-small">送料: ¥{{ shippingInfo.shippingFee?.toLocaleString() }}</p>
+                    <p class="total-price-small">合計: ¥{{ shippingInfo.totalAmount?.toLocaleString() }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -314,7 +323,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customer'
@@ -325,6 +334,7 @@ import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
 import { paymentConfig, isCreditCardEnabled, getCreditCardDisabledMessage } from '../config/paymentConfig.js'
 import { sendBankTransferEmail } from '../lib/postmark.js' // メール送信機能を有効化
+import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
 // definePropsはコンパイラマクロのため、importする必要はありません
 
 const router = useRouter()
@@ -340,6 +350,14 @@ const loading = ref(true)
 const error = ref(null)
 const product = ref(null)
 const orderData = ref(null)
+
+// 送料計算
+const shippingInfo = ref({
+  itemTotal: 0,
+  shippingFee: 1000,
+  totalAmount: 0,
+  region: '本州・四国・九州'
+})
 
 // 住所自動補完機能
 const { 
@@ -369,6 +387,38 @@ const formData = ref({
   email: '',
   zipCode: '',
   address: ''
+})
+
+// 送料計算
+const updateShippingInfo = () => {
+  if (product.value && formData.value.zipCode) {
+    const itemTotal = Number(product.value.price)
+    const shipping = calculateTotalWithShipping(itemTotal, formData.value.zipCode)
+    shippingInfo.value = shipping
+  } else if (product.value) {
+    // 郵便番号が未入力の場合はデフォルト送料
+    const itemTotal = Number(product.value.price)
+    shippingInfo.value = {
+      itemTotal,
+      shippingFee: 1000,
+      totalAmount: itemTotal + 1000,
+      region: '本州・四国・九州'
+    }
+  }
+}
+
+// 郵便番号が変更されたときに送料を再計算
+watch(() => formData.value.zipCode, (newZip) => {
+  if (newZip && newZip.length >= 7) {
+    updateShippingInfo()
+  }
+})
+
+// 商品データが読み込まれたときに送料を計算
+watch(product, (newProduct) => {
+  if (newProduct) {
+    updateShippingInfo()
+  }
 })
 
 // 現在の注文データを計算
@@ -567,9 +617,11 @@ const backToPreviousStep = () => {
 
 // 注文を保存（在庫は減らさない）
 const saveOrder = async (paymentMethod) => {
+  let stockData = null // エラーハンドリングでも参照できるようにスコープを拡張
+  
   try {
     // 1. 在庫確認と在庫減少
-    const { data: stockData, error: stockError } = await supabase
+    const { data: fetchedStockData, error: stockError } = await supabase
       .from('succulents')
       .select('quantity')
       .eq('id', product.value.id)
@@ -580,6 +632,8 @@ const saveOrder = async (paymentMethod) => {
       throw new Error('商品情報の取得に失敗しました')
     }
 
+    stockData = fetchedStockData // 外部スコープの変数に代入
+    
     if (!stockData || stockData.quantity < 1) {
       throw new Error('申し訳ありません。在庫が不足しています')
     }
@@ -611,13 +665,13 @@ const saveOrder = async (paymentMethod) => {
       product_id: product.value.id,
       product_name: product.value.name,
       product_image: product.value.image,
-      price: Number(product.value.price),
+      price: shippingInfo.value.totalAmount, // 送料込みの合計金額
       quantity: 1,
       customer_name: formData.value.name.trim(),
       email: formData.value.email.trim(),
       phone: formData.value.phone.trim(),
-      // 郵便番号と住所を統合（カラムがない場合の回避策）
-      address: `〒${formattedZipCode}\n${formData.value.address.trim()}`,
+      // 郵便番号と住所を統合（送料情報も含める）
+      address: `〒${formattedZipCode}\n${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`,
       payment_method: paymentMethod,
       status: 'pending_payment', // 全ての注文を最初は決済待ちステータスに
       payment_due_date: paymentMethod === 'bank' 
@@ -638,8 +692,8 @@ const saveOrder = async (paymentMethod) => {
 
       if (!schemaError) {
         orderDetails.zip_code = formattedZipCode // フォーマットされた郵便番号を使用
-        // addressも元の形式に戻す
-        orderDetails.address = formData.value.address.trim()
+        // addressも元の形式に戻す（送料情報は保持）
+        orderDetails.address = `${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`
       }
     } catch (e) {
       // zip_codeカラムが存在しない場合は統合形式を使用
@@ -704,16 +758,15 @@ const saveOrder = async (paymentMethod) => {
     
     // 銀行振込注文の場合、メール送信（有効化）
     try {
-      console.log('メール送信開始:', savedOrder)
-      await sendBankTransferEmail(savedOrder)
-      console.log('メール送信成功')
+      // メール送信用に送料情報を追加
+      const orderWithShipping = {
+        ...savedOrder,
+        shipping_fee: shippingInfo.value.shippingFee,
+        shipping_region: shippingInfo.value.region,
+        item_price: Number(product.value.price)
+      }
+      await sendBankTransferEmail(orderWithShipping)
     } catch (emailError) {
-      console.error('メール送信エラー詳細:', {
-        error: emailError,
-        message: emailError.message,
-        stack: emailError.stack,
-        orderData: savedOrder
-      })
       // メール送信に失敗してもエラーにしない（注文は成功扱い）
     }
     
@@ -840,14 +893,18 @@ const proceedToPurchase = async () => {
         product_id: product.value.id,
         product_name: product.value.name,
         product_image: product.value.image,
-        price: Number(product.value.price),
+        price: shippingInfo.value.totalAmount, // 送料込みの合計金額
         quantity: 1,
         customer_name: formData.value.name.trim(),
         email: formData.value.email.trim(),
         phone: formData.value.phone.trim(),
         zip_code: formattedZipCode,
-        address: formData.value.address.trim(),
-        payment_method: 'square'
+        address: `${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`,
+        payment_method: 'square',
+        // メール送信用に送料情報を保持
+        shipping_fee: shippingInfo.value.shippingFee,
+        shipping_region: shippingInfo.value.region,
+        item_price: Number(product.value.price)
       }
       
       // 購入確認画面を非表示にして決済画面に移行
@@ -1511,6 +1568,62 @@ button:disabled {
 .error-text {
   color: #dc3545;
   font-size: 0.85rem;
+}
+
+/* 送料表示のスタイル */
+.price-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item-price {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.shipping-fee {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.total-price {
+  color: #007bff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.price-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.item-price-small, .shipping-fee-small {
+  color: #666;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.total-price-small {
+  color: #007bff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin: 0;
+  padding-top: 0.25rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.shipping-note {
+  color: #666;
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
 }
 
 /* レスポンシブ対応 */

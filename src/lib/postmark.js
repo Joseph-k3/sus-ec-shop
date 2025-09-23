@@ -12,7 +12,11 @@ export async function sendBankTransferEmail(order) {
       <h3>ご注文内容</h3>
       <p>注文番号: ${order.order_number}</p>
       <p>商品名: ${order.product_name}</p>
-      <p>金額: ¥${order.price.toLocaleString()}</p>
+      <div style="margin: 1rem 0; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+        <p>商品代金: ¥${(order.item_price || order.price).toLocaleString()}</p>
+        <p>送料 (${order.shipping_region || '配送地域'}): ¥${(order.shipping_fee || 1000).toLocaleString()}</p>
+        <p style="font-weight: bold; font-size: 1.1em; color: #007bff; border-top: 1px solid #dee2e6; padding-top: 0.5rem; margin-top: 0.5rem;">合計金額: ¥${order.price.toLocaleString()}</p>
+      </div>
       
       <div style="background-color: #fff3cd; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #ffeeba;">
         <p style="color: #856404; margin: 0;">
@@ -42,7 +46,7 @@ export async function sendBankTransferEmail(order) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
+    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
     subject: `【新規注文】${order.product_name}が購入されました`,
     html_body: `
       <h2>新規注文がありました</h2>
@@ -57,7 +61,11 @@ export async function sendBankTransferEmail(order) {
       <div style="margin-bottom: 2rem;">
         <p>商品ID: ${order.product_id}</p>
         <p>商品名: ${order.product_name}</p>
-        <p>価格: ¥${order.price.toLocaleString()}</p>
+        <div style="margin: 1rem 0; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+          <p>商品代金: ¥${(order.item_price || order.price).toLocaleString()}</p>
+          <p>送料 (${order.shipping_region || '配送地域'}): ¥${(order.shipping_fee || 1000).toLocaleString()}</p>
+          <p style="font-weight: bold; font-size: 1.1em; color: #007bff;">合計金額: ¥${order.price.toLocaleString()}</p>
+        </div>
         <div style="margin: 1rem 0;">
           <img src="${order.product_image}" alt="${order.product_name}" style="max-width: 300px; height: auto;">
         </div>
@@ -83,8 +91,6 @@ export async function sendBankTransferEmail(order) {
   let adminEmailResult = null
   
   try {
-    console.log('購入者向けメール送信開始:', customerEmailData.to)
-    
     // 購入者向けメール送信
     try {
       const { data, error: customerError } = await supabase.functions.invoke('send-email', {
@@ -92,38 +98,30 @@ export async function sendBankTransferEmail(order) {
       })
 
       if (customerError) {
-        console.error('購入者向けメール送信エラー:', customerError)
-        console.warn('購入者向けメール送信は失敗しましたが、処理を続行します')
+        // 購入者向けメール送信は失敗しても処理を続行
       } else {
         customerEmailResult = data
-        console.log('購入者向けメール送信成功')
       }
     } catch (customerEmailError) {
-      console.error('購入者向けメール送信で予期しないエラー:', customerEmailError)
-      console.warn('購入者向けメール送信は失敗しましたが、処理を続行します')
+      // 購入者向けメール送信は失敗しても処理を続行
     }
 
-    console.log('管理者向けメール送信開始:', adminEmailData.to)
-    
     // 管理者向けメール送信
     const { data, error: adminError } = await supabase.functions.invoke('send-email', {
       body: adminEmailData
     })
 
     if (adminError) {
-      console.error('管理者向けメール送信エラー:', adminError)
       throw new Error(adminError.message || '管理者向けメール送信に失敗しました')
     }
 
     adminEmailResult = data
-    console.log('管理者向けメール送信成功')
 
     return {
       customerEmail: customerEmailResult,
       adminEmail: adminEmailResult
     }
   } catch (error) {
-    console.error('メール送信エラー:', error)
     throw new Error(error.message || 'メール送信に失敗しました')
   }
 }
@@ -141,7 +139,11 @@ export async function sendPaymentConfirmationEmail(order) {
       <h3>ご注文内容</h3>
       <p>注文番号: ${order.order_number}</p>
       <p>商品名: ${order.product_name}</p>
-      <p>金額: ¥${order.price.toLocaleString()}</p>
+      <div style="margin: 1rem 0; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+        <p>商品代金: ¥${(order.item_price || order.price).toLocaleString()}</p>
+        <p>送料 (${order.shipping_region || '配送地域'}): ¥${(order.shipping_fee || 1000).toLocaleString()}</p>
+        <p style="font-weight: bold; font-size: 1.1em; color: #007bff; border-top: 1px solid #dee2e6; padding-top: 0.5rem; margin-top: 0.5rem;">合計金額: ¥${order.price.toLocaleString()}</p>
+      </div>
       
       <div style="background-color: #e8f5e9; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #c8e6c9;">
         <p style="color: #2e7d32; margin: 0;">
@@ -161,7 +163,7 @@ export async function sendPaymentConfirmationEmail(order) {
 
   // 管理者向け通知メール
   const adminEmailData = {
-    to: 'k3.ns.208_b50@icloud.com',
+    to: 'ryosk8er1026@yahoo.co.jp',
     subject: `【入金確認】${order.product_name}の入金を確認しました`,
     html_body: `
       <h2>入金が確認されました</h2>
@@ -176,7 +178,11 @@ export async function sendPaymentConfirmationEmail(order) {
       <div style="margin-bottom: 2rem;">
         <p>商品ID: ${order.product_id}</p>
         <p>商品名: ${order.product_name}</p>
-        <p>価格: ¥${order.price.toLocaleString()}</p>
+        <div style="margin: 1rem 0; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+          <p>商品代金: ¥${(order.item_price || order.price).toLocaleString()}</p>
+          <p>送料 (${order.shipping_region || '配送地域'}): ¥${(order.shipping_fee || 1000).toLocaleString()}</p>
+          <p style="font-weight: bold; font-size: 1.1em; color: #007bff;">合計金額: ¥${order.price.toLocaleString()}</p>
+        </div>
         <div style="margin: 1rem 0;">
           <img src="${order.product_image}" alt="${order.product_name}" style="max-width: 300px; height: auto;">
         </div>
@@ -214,14 +220,12 @@ export async function sendPaymentConfirmationEmail(order) {
 
     return { customerEmailResult, adminEmailResult }
   } catch (error) {
-    console.error('入金確認メール送信エラー:', error)
     throw error
   }
 }
 
 // カート注文用のメール送信関数
 export async function sendCartOrderEmail(orderData) {
-  console.log('Sending cart order emails via Supabase Edge Function...')
 
   // 購入者向けメール
   const customerEmailData = {
@@ -242,7 +246,9 @@ export async function sendCartOrderEmail(orderData) {
       `).join('')}
       
       <div style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
-        <p style="font-size: 1.2rem; font-weight: bold; margin: 0;">
+        <p>商品小計: ¥${(orderData.itemTotal || orderData.totalAmount).toLocaleString()}</p>
+        <p>送料 (${orderData.shippingRegion || '配送地域'}): ¥${(orderData.shippingFee || 1000).toLocaleString()}</p>
+        <p style="font-size: 1.2rem; font-weight: bold; margin: 0; border-top: 1px solid #dee2e6; padding-top: 0.5rem; margin-top: 0.5rem; color: #007bff;">
           合計金額: ¥${orderData.totalAmount.toLocaleString()}
         </p>
       </div>
@@ -282,7 +288,7 @@ export async function sendCartOrderEmail(orderData) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
+    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
     subject: `【カート注文】新規注文が${orderData.items.length}件ありました`,
     html_body: `
       <h2>カート注文がありました</h2>
@@ -308,7 +314,9 @@ export async function sendCartOrderEmail(orderData) {
       `).join('')}
       
       <div style="background-color: #d4edda; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #c3e6cb;">
-        <p style="color: #155724; font-size: 1.2rem; font-weight: bold; margin: 0;">
+        <p style="color: #155724;">商品小計: ¥${(orderData.itemTotal || orderData.totalAmount).toLocaleString()}</p>
+        <p style="color: #155724;">送料 (${orderData.shippingRegion || '配送地域'}): ¥${(orderData.shippingFee || 1000).toLocaleString()}</p>
+        <p style="color: #155724; font-size: 1.2rem; font-weight: bold; margin: 0; border-top: 1px solid #c3e6cb; padding-top: 0.5rem; margin-top: 0.5rem;">
           <strong>合計金額: ¥${orderData.totalAmount.toLocaleString()}</strong>
         </p>
       </div>
@@ -323,8 +331,6 @@ export async function sendCartOrderEmail(orderData) {
   let adminEmailResult = null
   
   try {
-    console.log('カート注文購入者向けメール送信開始:', customerEmailData.to)
-    
     // 購入者向けメール送信
     try {
       const { data, error: customerError } = await supabase.functions.invoke('send-email', {
@@ -332,42 +338,33 @@ export async function sendCartOrderEmail(orderData) {
       })
 
       if (customerError) {
-        console.error('カート注文購入者向けメール送信エラー:', customerError)
-        console.warn('カート注文購入者向けメール送信は失敗しましたが、処理を続行します')
+        // 購入者向けメール送信は失敗しても処理を続行
       } else {
         customerEmailResult = data
-        console.log('カート注文購入者向けメール送信成功')
       }
     } catch (customerEmailError) {
-      console.error('カート注文購入者向けメール送信で予期しないエラー:', customerEmailError)
-      console.warn('カート注文購入者向けメール送信は失敗しましたが、処理を続行します')
+      // 購入者向けメール送信は失敗しても処理を続行
     }
 
-    console.log('カート注文管理者向けメール送信開始:', adminEmailData.to)
-    
     // 管理者向けメール送信
     const { data, error: adminError } = await supabase.functions.invoke('send-email', {
       body: adminEmailData
     })
 
     if (adminError) {
-      console.error('カート注文管理者向けメール送信エラー:', adminError)
       throw new Error(adminError.message || 'カート注文管理者向けメール送信に失敗しました')
     }
 
     adminEmailResult = data
-    console.log('カート注文管理者向けメール送信成功')
 
     return { customerEmailResult, adminEmailResult }
   } catch (error) {
-    console.error('カート注文メール送信エラー:', error)
     throw error
   }
 }
 
 // 追跡番号通知メール送信（単品注文用）
 export async function sendTrackingNumberEmail(order, trackingNumber, carrier) {
-  console.log('Sending tracking number email via Supabase Edge Function...')
   
   try {
     const carrierNames = {
@@ -428,14 +425,12 @@ export async function sendTrackingNumberEmail(order, trackingNumber, carrier) {
     
     return data
   } catch (error) {
-    console.error('追跡番号メール送信エラー:', error)
     throw error
   }
 }
 
 // 追跡番号通知メール送信（カート注文用）
 export async function sendCartTrackingNumberEmail(orders, trackingNumber, carrier) {
-  console.log('Sending cart tracking number email via Supabase Edge Function...')
   
   try {
     const carrierNames = {
@@ -508,7 +503,6 @@ export async function sendCartTrackingNumberEmail(orders, trackingNumber, carrie
     
     return data
   } catch (error) {
-    console.error('カート追跡番号メール送信エラー:', error)
     throw error
   }
 }
