@@ -56,7 +56,7 @@
             class="remove-btn"
             title="カートから削除"
           >
-            ×
+            削除🗑️
           </button>
         </div>
       </div>
@@ -225,6 +225,7 @@ const showMessage = (text, type = 'success') => {
   border-radius: 10px;
   margin-bottom: 1rem;
   background: white;
+  position: relative;
 }
 
 .item-image {
@@ -306,18 +307,28 @@ const showMessage = (text, type = 'success') => {
   background: #dc3545;
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
+  transition: background-color 0.3s ease;
+  min-width: 60px;
 }
 
 .remove-btn:hover {
   background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.remove-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .cart-actions {
@@ -441,30 +452,47 @@ const showMessage = (text, type = 'success') => {
   }
 
   .cart-item {
-    grid-template-columns: 80px 1fr;
+    grid-template-columns: 80px 1fr auto;
     grid-template-rows: auto auto auto;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    position: relative;
+    padding: 1rem;
   }
 
   .item-image {
     width: 80px;
     height: 80px;
+    grid-row: 1 / 3;
+  }
+
+  .item-details {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .item-quantity {
     grid-column: 1 / -1;
+    grid-row: 2;
     justify-self: center;
+    margin-top: 0.5rem;
   }
 
   .item-subtotal {
     grid-column: 1 / -1;
+    grid-row: 3;
     text-align: center;
+    font-weight: bold;
+    color: #2c5f2d;
+    margin-top: 0.5rem;
   }
 
   .remove-btn {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    grid-column: 3;
+    grid-row: 1;
+    align-self: flex-start;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 50px;
   }
 
   .action-buttons {
