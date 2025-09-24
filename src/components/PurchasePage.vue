@@ -38,7 +38,7 @@
               <p class="item-price">商品代金: ¥{{ product?.price?.toLocaleString() }}</p>
               <p class="shipping-fee">送料 ({{ shippingInfo.region }}): ¥{{ shippingInfo.shippingFee?.toLocaleString() }}</p>
               <p class="total-price">合計: ¥{{ shippingInfo.totalAmount?.toLocaleString() }}</p>
-              <p class="shipping-note">※ 北海道・沖縄・離島は送料1,800円となります</p>
+              <p class="shipping-note">※ 北海道・沖縄は送料1,800円となります</p>
             </div>
           </div>
         </div>
@@ -671,7 +671,7 @@ const saveOrder = async (paymentMethod) => {
       email: formData.value.email.trim(),
       phone: formData.value.phone.trim(),
       // 郵便番号と住所を統合（送料情報も含める）
-      address: `〒${formattedZipCode}\n${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`,
+      address: `〒${formattedZipCode}\n${formData.value.address.trim()}\n[送料:${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).shippingFee}円(${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).region})]`,
       payment_method: paymentMethod,
       status: 'pending_payment', // 全ての注文を最初は決済待ちステータスに
       payment_due_date: paymentMethod === 'bank' 
@@ -693,7 +693,8 @@ const saveOrder = async (paymentMethod) => {
       if (!schemaError) {
         orderDetails.zip_code = formattedZipCode // フォーマットされた郵便番号を使用
         // addressも元の形式に戻す（送料情報は保持）
-        orderDetails.address = `${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`
+        const latestShipping = calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode)
+        orderDetails.address = `${formData.value.address.trim()}\n[送料:${latestShipping.shippingFee}円(${latestShipping.region})]`
       }
     } catch (e) {
       // zip_codeカラムが存在しない場合は統合形式を使用
@@ -758,11 +759,12 @@ const saveOrder = async (paymentMethod) => {
     
     // 銀行振込注文の場合、メール送信（有効化）
     try {
-      // メール送信用に送料情報を追加
+      // メール送信用に最新の送料情報を計算
+      const latestShippingInfo = calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode)
       const orderWithShipping = {
         ...savedOrder,
-        shipping_fee: shippingInfo.value.shippingFee,
-        shipping_region: shippingInfo.value.region,
+        shipping_fee: latestShippingInfo.shippingFee,
+        shipping_region: latestShippingInfo.region,
         item_price: Number(product.value.price)
       }
       await sendBankTransferEmail(orderWithShipping)
@@ -899,11 +901,11 @@ const proceedToPurchase = async () => {
         email: formData.value.email.trim(),
         phone: formData.value.phone.trim(),
         zip_code: formattedZipCode,
-        address: `${formData.value.address.trim()}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]`,
+        address: `${formData.value.address.trim()}\n[送料:${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).shippingFee}円(${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).region})]`,
         payment_method: 'square',
-        // メール送信用に送料情報を保持
-        shipping_fee: shippingInfo.value.shippingFee,
-        shipping_region: shippingInfo.value.region,
+        // メール送信用に送料情報を保持（最新の計算結果を使用）
+        shipping_fee: calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).shippingFee,
+        shipping_region: calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).region,
         item_price: Number(product.value.price)
       }
       

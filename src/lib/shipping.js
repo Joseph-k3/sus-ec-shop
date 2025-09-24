@@ -30,33 +30,8 @@ export function calculateShippingFee(zipCode) {
     return 1800
   }
 
-  // 離島判定（主要な離島の郵便番号範囲）
-  const islandCodes = [
-    // 伊豆諸島
-    [100, 102],
-    // 小笠原諸島
-    [100, 104],
-    // 佐渡島
-    [952, 952],
-    // 隠岐諸島
-    [684, 685],
-    // 対馬
-    [817, 817],
-    // 壱岐
-    [811, 811],
-    // 五島列島
-    [853, 857],
-    // 奄美諸島
-    [891, 894],
-    // その他の離島
-    [898, 899]
-  ]
-
-  for (const [start, end] of islandCodes) {
-    if (prefixCode >= start && prefixCode <= end) {
-      return 1800
-    }
-  }
+  // 離島は通常送料とする（1000円）
+  // 離島判定コードを削除
 
   // その他の地域は通常送料
   return 1000
@@ -78,11 +53,10 @@ export function getShippingRegion(zipCode) {
       return '沖縄'
     } else if (prefixCode >= 1 && prefixCode <= 99) {
       return '北海道'
-    } else {
-      return '離島'
     }
   }
   
+  // 離島も本州・四国・九州と同じ扱い
   return '本州・四国・九州'
 }
 

@@ -25,7 +25,7 @@
           <div class="subtotal">商品小計: ¥{{ cart.totalAmount.toLocaleString() }}</div>
           <div class="shipping-fee">送料 ({{ shippingInfo.region }}): ¥{{ shippingInfo.shippingFee.toLocaleString() }}</div>
           <div class="total-amount"><strong>合計: ¥{{ shippingInfo.totalAmount.toLocaleString() }}</strong></div>
-          <div class="shipping-note">※ 北海道・沖縄・離島は送料1,800円となります</div>
+          <div class="shipping-note">※ 北海道・沖縄は送料1,800円となります</div>
         </div>
       </div>
 
