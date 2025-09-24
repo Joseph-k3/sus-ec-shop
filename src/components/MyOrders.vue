@@ -46,7 +46,11 @@
 
           <div class="cart-summary">
             <span>{{ orderGroup.orders.length }}商品</span>
-            <span class="total-amount">合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</span>
+            <div class="price-breakdown">
+              <span class="item-subtotal">商品: ¥{{ getItemTotal(orderGroup.orders).toLocaleString() }}</span>
+              <span class="shipping-fee">送料: ¥{{ calculateShippingFee(orderGroup.orders[0]?.address || '').toLocaleString() }}</span>
+              <span class="total-amount">合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</span>
+            </div>
           </div>
 
           <!-- カート注文の商品一覧 -->
@@ -140,7 +144,11 @@
             >
             <div class="details">
               <h4>{{ orderGroup.orders[0].product_name }}</h4>
-              <p class="price">¥{{ formatPrice(orderGroup.orders[0].price) }}</p>
+              <div class="price-details">
+                <p class="item-price">商品: ¥{{ formatPrice(orderGroup.orders[0].price) }}</p>
+                <p class="shipping-price">送料: ¥{{ calculateShippingFee(orderGroup.orders[0].address).toLocaleString() }}</p>
+                <p class="total-price"><strong>合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</strong></p>
+              </div>
               
               <dl class="purchase-details">
                 <dt>支払方法</dt>
@@ -214,6 +222,7 @@ import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
 import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を有効化
+import { getShippingRegion } from '../lib/shipping.js' // 送料計算機能
 
 const router = useRouter()
 const orders = ref([])
@@ -222,6 +231,34 @@ const loading = ref(true)
 const error = ref(null)
 const isConfirming = ref(false)
 const isCancelling = ref(false)
+
+// 商品合計金額を計算する関数
+const getItemTotal = (orders) => {
+  return orders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+}
+
+// 住所から送料を計算する関数
+const calculateShippingFee = (address) => {
+  if (!address) return 1000 // デフォルト送料
+
+  try {
+    // 住所から郵便番号を抽出
+    const zipCodeMatch = address.match(/〒?(\d{3}-?\d{4})/)
+    if (zipCodeMatch) {
+      const zipCode = zipCodeMatch[1]
+      const region = getShippingRegion(zipCode)
+      
+      // 北海道・沖縄・離島は1800円、その他は1000円
+      if (region === '北海道' || region === '沖縄' || region === '離島') {
+        return 1800
+      }
+    }
+  } catch (error) {
+    // エラーの場合はデフォルト送料
+  }
+  
+  return 1000 // 本州・四国・九州のデフォルト送料
+}
 
 // 注文履歴を取得
 const fetchOrders = async () => {
@@ -411,12 +448,24 @@ const groupOrders = () => {
     }
   })
 
-  // 合計金額を計算
+  // 合計金額を計算（送料込み）
   orderMap.forEach(group => {
     if (group.isCartOrder) {
-      group.totalAmount = group.orders.reduce((sum, order) => 
+      // カート注文の場合、商品合計に送料を加算
+      const itemTotal = group.orders.reduce((sum, order) => 
         sum + (order.price * (order.quantity || 1)), 0
       )
+      
+      // 最初の注文から住所を取得して送料を計算
+      const firstOrder = group.orders[0]
+      const shippingFee = calculateShippingFee(firstOrder?.address || '')
+      group.totalAmount = itemTotal + shippingFee
+    } else {
+      // 単品注文の場合も送料を含める
+      const itemTotal = group.orders[0].price * (group.orders[0].quantity || 1)
+      const order = group.orders[0]
+      const shippingFee = calculateShippingFee(order?.address || '')
+      group.totalAmount = itemTotal + shippingFee
     }
   })
 
@@ -447,11 +496,15 @@ const extractCartGroupId = (order) => {
 // カート注文の振込完了処理
 const confirmCartPayment = async (cartOrders) => {
   const cartGroupId = extractCartGroupId(cartOrders[0])
-  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  const itemTotal = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '')
+  const totalAmount = itemTotal + shippingFee
   
   const confirmMessage = `🛒 カート注文の振込完了を報告しますか？\n\n` +
     `📦 注文グループ: ${cartGroupId}\n` +
     `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 商品合計: ¥${itemTotal.toLocaleString()}\n` +
+    `🚚 送料: ¥${shippingFee.toLocaleString()}\n` +
     `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
     `※この操作は取り消しできません。`
   
@@ -486,11 +539,15 @@ const confirmCartPayment = async (cartOrders) => {
 // カート注文のキャンセル処理
 const cancelCartOrder = async (cartOrders) => {
   const cartGroupId = extractCartGroupId(cartOrders[0])
-  const totalAmount = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  const itemTotal = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
+  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '')
+  const totalAmount = itemTotal + shippingFee
   
   const confirmMessage = `🛒 カート注文をキャンセルしますか？\n\n` +
     `📦 注文グループ: ${cartGroupId}\n` +
     `🏷️  商品数: ${cartOrders.length}点\n` +
+    `💰 商品合計: ¥${itemTotal.toLocaleString()}\n` +
+    `🚚 送料: ¥${shippingFee.toLocaleString()}\n` +
     `💰 合計金額: ¥${totalAmount.toLocaleString()}\n\n` +
     `⚠️ この操作により在庫が元に戻されます。\n` +
     `※キャンセル後は復元できません。`
@@ -888,6 +945,44 @@ onMounted(fetchOrders)
   margin: 0 0 0.5rem 0;
   font-size: 1.1rem;
   font-weight: bold;
+}
+
+/* 価格詳細の表示 */
+.price-details {
+  margin: 0.5rem 0;
+}
+
+.price-details .item-price,
+.price-details .shipping-price {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+.price-details .total-price {
+  color: #2c5f2d;
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0 0;
+}
+
+/* カート注文の価格内訳 */
+.price-breakdown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.price-breakdown .item-subtotal,
+.price-breakdown .shipping-fee {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.price-breakdown .total-amount {
+  color: #2c5f2d;
+  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .details .price {
