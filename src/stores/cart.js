@@ -80,11 +80,7 @@ export const useCartStore = defineStore('cart', () => {
         })
       }
 
-      // 一時的に在庫を減らす（他の人が同時に購入するのを防ぐ）
-      await supabase
-        .from('succulents')
-        .update({ quantity: currentProduct.quantity - quantity })
-        .eq('id', product.id)
+      // カート追加時は在庫を減らさない（注文確定時に在庫チェック・減少を行う）
 
       saveCartToStorage()
       return { success: true, message: 'カートに追加しました' }
@@ -100,26 +96,7 @@ export const useCartStore = defineStore('cart', () => {
   const removeFromCart = async (productId) => {
     const itemIndex = items.value.findIndex(item => item.id === productId)
     if (itemIndex >= 0) {
-      const item = items.value[itemIndex]
-      
-      try {
-        // 在庫を戻す
-        const { data: currentProduct, error: fetchError } = await supabase
-          .from('succulents')
-          .select('quantity')
-          .eq('id', productId)
-          .single()
-
-        if (!fetchError) {
-          await supabase
-            .from('succulents')
-            .update({ quantity: currentProduct.quantity + item.quantity })
-            .eq('id', productId)
-        }
-      } catch (error) {
-        console.error('在庫復元エラー:', error)
-      }
-
+      // カート追加時に在庫を減らしていないので、削除時も在庫を戻さない
       items.value.splice(itemIndex, 1)
       saveCartToStorage()
     }
@@ -152,11 +129,7 @@ export const useCartStore = defineStore('cart', () => {
           throw new Error('在庫不足です')
         }
 
-        // 在庫を調整
-        await supabase
-          .from('succulents')
-          .update({ quantity: currentProduct.quantity - quantityDiff })
-          .eq('id', productId)
+        // カート内の数量変更時は在庫を調整しない（注文確定時に在庫チェックを行う）
 
         items.value[itemIndex].quantity = newQuantity
         saveCartToStorage()
@@ -170,26 +143,7 @@ export const useCartStore = defineStore('cart', () => {
 
   // カートを空にする
   const clearCart = async () => {
-    // 全ての在庫を戻す
-    for (const item of items.value) {
-      try {
-        const { data: currentProduct, error: fetchError } = await supabase
-          .from('succulents')
-          .select('quantity')
-          .eq('id', item.id)
-          .single()
-
-        if (!fetchError) {
-          await supabase
-            .from('succulents')
-            .update({ quantity: currentProduct.quantity + item.quantity })
-            .eq('id', item.id)
-        }
-      } catch (error) {
-        console.error('在庫復元エラー:', error)
-      }
-    }
-
+    // カート追加時に在庫を減らしていないので、クリア時も在庫を戻さない
     items.value = []
     saveCartToStorage()
   }

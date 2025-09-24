@@ -48,7 +48,7 @@
             <span>{{ orderGroup.orders.length }}商品</span>
             <div class="price-breakdown">
               <span class="item-subtotal">商品: ¥{{ getItemTotal(orderGroup.orders).toLocaleString() }}</span>
-              <span class="shipping-fee">送料: ¥{{ calculateShippingFee(orderGroup.orders[0]?.address || '').toLocaleString() }}</span>
+              <span class="shipping-fee">送料: ¥{{ calculateShippingFee(orderGroup.orders[0]?.address || '', orderGroup.orders[0], orderGroup.totalAmount).toLocaleString() }}</span>
               <span class="total-amount">合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</span>
             </div>
           </div>
@@ -145,8 +145,9 @@
             <div class="details">
               <h4>{{ orderGroup.orders[0].product_name }}</h4>
               <div class="price-details">
-                <p class="item-price">商品: ¥{{ formatPrice(orderGroup.orders[0].price) }}</p>
-                <p class="shipping-price">送料: ¥{{ calculateShippingFee(orderGroup.orders[0].address).toLocaleString() }}</p>
+                <!-- 統一処理：住所から送料情報を抽出して表示 -->
+                <p class="item-price">商品: ¥{{ (orderGroup.orders[0].price - calculateShippingFee(orderGroup.orders[0].address, orderGroup.orders[0], orderGroup.totalAmount)).toLocaleString() }}</p>
+                <p class="shipping-price">送料: ¥{{ calculateShippingFee(orderGroup.orders[0].address, orderGroup.orders[0], orderGroup.totalAmount).toLocaleString() }}</p>
                 <p class="total-price"><strong>合計: ¥{{ orderGroup.totalAmount.toLocaleString() }}</strong></p>
               </div>
               
@@ -222,7 +223,7 @@ import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
 import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を有効化
-import { getShippingRegion } from '../lib/shipping.js' // 送料計算機能
+import { getShippingRegion, calculateShippingFee as getShippingFee, extractShippingInfoFromAddress } from '../lib/shipping.js' // 送料計算機能
 
 const router = useRouter()
 const orders = ref([])
@@ -237,24 +238,89 @@ const getItemTotal = (orders) => {
   return orders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
 }
 
-// 住所から送料を計算する関数
-const calculateShippingFee = (address) => {
+// 即購入の注文かどうかを判定する関数
+const isDirectPurchaseOrder = (order) => {
+  // 注文番号がORDで始まる場合は即購入
+  return order.order_number && order.order_number.startsWith('ORD')
+}
+
+// 住所から送料を計算する関数（統一処理）
+const calculateShippingFee = (address, order = null, totalPrice = null) => {
   if (!address) return 1000 // デフォルト送料
 
   try {
-    // 住所から郵便番号を抽出
-    const zipCodeMatch = address.match(/〒?(\d{3}-?\d{4})/)
-    if (zipCodeMatch) {
-      const zipCode = zipCodeMatch[1]
-      const region = getShippingRegion(zipCode)
+    // まず、住所に送料情報が含まれているかチェック（即購入・カート注文共通）
+    if (address.includes('[送料:')) {
+      // 即購入の場合は注文価格を使用、カート注文の場合はtotalPriceを使用
+      const priceForExtraction = order && isDirectPurchaseOrder(order) ? order.price : totalPrice
+      const shippingInfo = extractShippingInfoFromAddress(address, priceForExtraction)
       
-      // 北海道・沖縄・離島は1800円、その他は1000円
-      if (region === '北海道' || region === '沖縄' || region === '離島') {
-        return 1800
+      if (shippingInfo.shippingFee > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('送料情報を住所から抽出:', {
+            orderType: order && isDirectPurchaseOrder(order) ? '即購入' : 'カート注文',
+            orderNumber: order?.order_number,
+            address: address.substring(0, 50) + '...',
+            extractedShippingFee: shippingInfo.shippingFee,
+            region: shippingInfo.region
+          })
+        }
+        return shippingInfo.shippingFee
+      }
+    }
+
+    // 送料情報がない場合は郵便番号から計算
+    const zipCodeMatch = address.match(/(?:〒|郵便番号[:\s]*)?(\d{3}[-\s]?\d{4})/)
+    if (zipCodeMatch) {
+      let zipCode = zipCodeMatch[1]
+      // 郵便番号を正規化（ハイフンがない場合は追加）
+      if (/^\d{7}$/.test(zipCode)) {
+        zipCode = zipCode.slice(0, 3) + '-' + zipCode.slice(3)
+      }
+      
+      // shipping.jsの関数を直接使用して一貫性を保つ
+      const shippingFee = getShippingFee(zipCode)
+      
+      // デバッグ: 送料計算の詳細をログ出力（開発時のみ）
+      if (process.env.NODE_ENV === 'development') {
+        const region = getShippingRegion(zipCode)
+        console.log('送料計算詳細（郵便番号から）:', {
+          address: address.substring(0, 50) + '...',
+          extractedZipCode: zipCode,
+          region,
+          shippingFee
+        })
+      }
+      
+      return shippingFee
+    } else {
+      // 郵便番号が抽出できない場合、別のパターンを試す
+      const altMatch = address.match(/(\d{3})\D*(\d{4})/)
+      if (altMatch) {
+        const zipCode = altMatch[1] + '-' + altMatch[2]
+        const shippingFee = getShippingFee(zipCode)
+        
+        if (process.env.NODE_ENV === 'development') {
+          const region = getShippingRegion(zipCode)
+          console.log('代替パターンで郵便番号抽出成功:', {
+            address: address.substring(0, 50) + '...',
+            extractedZipCode: zipCode,
+            region,
+            shippingFee
+          })
+        }
+        
+        return shippingFee
+      } else {
+        // 郵便番号が抽出できない場合のデバッグ
+        if (process.env.NODE_ENV === 'development') {
+          console.log('郵便番号抽出失敗:', address.substring(0, 100))
+        }
       }
     }
   } catch (error) {
     // エラーの場合はデフォルト送料
+    console.error('送料計算エラー:', error)
   }
   
   return 1000 // 本州・四国・九州のデフォルト送料
@@ -458,14 +524,20 @@ const groupOrders = () => {
       
       // 最初の注文から住所を取得して送料を計算
       const firstOrder = group.orders[0]
-      const shippingFee = calculateShippingFee(firstOrder?.address || '')
+      const shippingFee = calculateShippingFee(firstOrder?.address || '', firstOrder, itemTotal + 1000)
       group.totalAmount = itemTotal + shippingFee
     } else {
-      // 単品注文の場合も送料を含める
-      const itemTotal = group.orders[0].price * (group.orders[0].quantity || 1)
+      // 単品注文の場合
       const order = group.orders[0]
-      const shippingFee = calculateShippingFee(order?.address || '')
-      group.totalAmount = itemTotal + shippingFee
+      if (isDirectPurchaseOrder(order)) {
+        // 即購入の場合は価格に送料が含まれている
+        group.totalAmount = order.price * (order.quantity || 1)
+      } else {
+        // カート注文の単品の場合は送料を加算
+        const itemTotal = order.price * (order.quantity || 1)
+        const shippingFee = calculateShippingFee(order?.address || '', order, itemTotal + 1000)
+        group.totalAmount = itemTotal + shippingFee
+      }
     }
   })
 
@@ -497,7 +569,7 @@ const extractCartGroupId = (order) => {
 const confirmCartPayment = async (cartOrders) => {
   const cartGroupId = extractCartGroupId(cartOrders[0])
   const itemTotal = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
-  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '')
+  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '', cartOrders[0], itemTotal + 1000)
   const totalAmount = itemTotal + shippingFee
   
   const confirmMessage = `🛒 カート注文の振込完了を報告しますか？\n\n` +
@@ -540,7 +612,7 @@ const confirmCartPayment = async (cartOrders) => {
 const cancelCartOrder = async (cartOrders) => {
   const cartGroupId = extractCartGroupId(cartOrders[0])
   const itemTotal = cartOrders.reduce((sum, order) => sum + (order.price * (order.quantity || 1)), 0)
-  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '')
+  const shippingFee = calculateShippingFee(cartOrders[0]?.address || '', cartOrders[0], itemTotal + 1000)
   const totalAmount = itemTotal + shippingFee
   
   const confirmMessage = `🛒 カート注文をキャンセルしますか？\n\n` +

@@ -380,6 +380,33 @@ const submitOrder = async () => {
   try {
     const customerId = getOrCreateCustomerId()
     
+    // 1. 全商品の在庫チェックと確保
+    for (const item of cart.items) {
+      const { data: stockData, error: stockError } = await supabase
+        .from('succulents')
+        .select('quantity')
+        .eq('id', item.id)
+        .single()
+
+      if (stockError) {
+        throw new Error(`商品「${item.name}」の在庫確認に失敗しました`)
+      }
+
+      if (!stockData || stockData.quantity < item.quantity) {
+        throw new Error(`申し訳ありません。商品「${item.name}」の在庫が不足しています（在庫: ${stockData?.quantity || 0}個）`)
+      }
+
+      // 在庫を減らす
+      const { error: updateError } = await supabase
+        .from('succulents')
+        .update({ quantity: stockData.quantity - item.quantity })
+        .eq('id', item.id)
+
+      if (updateError) {
+        throw new Error(`商品「${item.name}」の在庫更新に失敗しました`)
+      }
+    }
+    
     // カート注文用の統一注文番号を生成
     const cartOrderNumber = `CART${Date.now()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`
     const now = new Date().toISOString()
@@ -418,12 +445,12 @@ const submitOrder = async () => {
         // is_cart_order: true
       }
 
-      // 住所にカートグループIDを含める（管理者画面でのグループ化のため）
+      // 住所にカートグループIDと送料情報を含める（管理者画面でのグループ化のため）
       let addressWithCartGroup = form.address
       if (form.notes) {
-        addressWithCartGroup = `${form.address}\n備考: ${form.notes}\n[CartGroup:${cartOrderNumber}]`
+        addressWithCartGroup = `${form.address}\n備考: ${form.notes}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]\n[CartGroup:${cartOrderNumber}]`
       } else {
-        addressWithCartGroup = `${form.address}\n[CartGroup:${cartOrderNumber}]`
+        addressWithCartGroup = `${form.address}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]\n[CartGroup:${cartOrderNumber}]`
       }
 
       // zip_codeカラムの存在を確認
@@ -494,6 +521,27 @@ const submitOrder = async () => {
       stack: error.stack,
       name: error.name
     })
+    
+    // エラーが発生した場合、在庫を元に戻す
+    for (const item of cart.items) {
+      try {
+        const { data: currentStock } = await supabase
+          .from('succulents')
+          .select('quantity')
+          .eq('id', item.id)
+          .single()
+        
+        if (currentStock) {
+          await supabase
+            .from('succulents')
+            .update({ quantity: currentStock.quantity + item.quantity })
+            .eq('id', item.id)
+        }
+      } catch (rollbackError) {
+        console.error('在庫復元エラー:', rollbackError)
+      }
+    }
+    
     showMessage(`注文処理中にエラーが発生しました: ${error.message}`, 'error')
   } finally {
     isSubmitting.value = false
