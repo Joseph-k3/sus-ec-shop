@@ -5,6 +5,21 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   envPrefix: 'VITE_',  // 環境変数のプレフィックスを明示的に設定
+  base: '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'vue-router', 'pinia'],
+          supabase: ['@supabase/supabase-js'],
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api': {
