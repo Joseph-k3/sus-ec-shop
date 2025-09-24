@@ -47,6 +47,6 @@ SELECT
     email,
     TRUE
 FROM auth.users
-WHERE email = 'k3.ns.208_b50@icloud.com' -- ここを実際の管理者メールアドレスに変更
+WHERE email = 'ryosk8er1026@yahoo.co.jp' -- ここを実際の管理者メールアドレスに変更
 ON CONFLICT (id) DO UPDATE
 SET is_admin = TRUE;
