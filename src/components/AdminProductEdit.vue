@@ -5,7 +5,7 @@
 
 
     <!-- 商品追加・編集フォーム -->
-    <form @submit.prevent="handleSubmit" class="edit-form">
+    <form @submit.prevent="handleSubmit" class="edit-form" ref="editForm">
       <h3>{{ editingId ? '商品を編集' : '新規商品を追加' }}</h3>
       
       <div class="form-group">
@@ -64,20 +64,23 @@
 
       <div class="form-group">
         <label for="image">商品画像</label>
-        <div class="image-upload-section">
-          <!-- ファイル選択 -->
+        <div class="multiple-image-upload-section">
+          <!-- 複数ファイル選択 -->
           <div class="upload-options">
-            <label for="imageFile" class="file-upload-btn">
-              📷 画像を選択
+            <label for="imageFiles" class="file-upload-btn">
+              📷 画像を追加（複数選択可）
               <input
-                id="imageFile"
+                id="imageFiles"
                 type="file"
                 accept="image/*"
-                @change="handleImageSelect"
+                multiple
+                @change="handleMultipleImageSelect"
                 style="display: none;"
               >
             </label>
-            <span class="upload-info">JPG, PNG, WebP対応</span>
+            
+
+            <span class="upload-info">JPG, PNG, WebP対応 | 複数選択可</span>
           </div>
           
           <!-- アップロード進捗 -->
@@ -88,27 +91,106 @@
             <span class="progress-text">{{ uploadProgress }}% アップロード中...</span>
           </div>
           
-          <!-- 手動URL入力（オプション） -->
-          <div class="manual-url-section">
-            <label class="toggle-manual" @click="showManualInput = !showManualInput">
-              🔗 手動でURLを入力
-            </label>
-            <div v-if="showManualInput" class="manual-input">
-              <input
-                v-model="currentProduct.image"
-                type="url"
-                placeholder="https://example.com/image.jpg"
+          <!-- 一時画像一覧（新規商品用） -->
+          <div v-if="!editingId && tempImages.length > 0" class="images-gallery">
+            <h4>選択した画像（商品保存時にアップロードされます）</h4>
+            <div class="images-grid temp-images-grid">
+              <div 
+                v-for="(image, index) in tempImages" 
+                :key="image.id"
+                class="image-item temp-image-item"
+                :class="{ 'primary': image.is_primary }"
               >
+                <img :src="image.preview_url" :alt="image.alt_text || `画像 ${index + 1}`">
+                <div class="image-controls">
+                  <button 
+                    type="button" 
+                    class="primary-btn"
+                    :class="{ active: image.is_primary }"
+                    @click="setTempPrimaryImage(image.id)"
+                    title="メイン画像に設定"
+                  >
+                    ⭐
+                  </button>
+                  <button 
+                    type="button" 
+                    class="delete-btn"
+                    @click="removeTempImage(image.id)"
+                    title="画像を削除"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div class="image-order">{{ index + 1 }}</div>
+                <div v-if="image.is_primary" class="primary-badge">メイン</div>
+                <div class="temp-badge">未保存</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 既存画像一覧 -->
+          <div v-if="editingId && productImages.length > 0" class="images-gallery">
+            <h4>登録済み画像（ドラッグ&ドロップで順序変更）</h4>
+            <div 
+              class="images-grid"
+              @drop="handleDrop"
+              @dragover.prevent
+              @dragenter.prevent
+            >
+              <div 
+                v-for="(image, index) in productImages" 
+                :key="image.id"
+                class="image-item"
+                :class="{ 'primary': image.is_primary }"
+                draggable="true"
+                @dragstart="handleDragStart($event, index)"
+                @dragend="handleDragEnd"
+              >
+                <img :src="image.image_url" :alt="image.alt_text || `画像 ${index + 1}`">
+                <div class="image-controls">
+                  <button 
+                    type="button" 
+                    class="primary-btn"
+                    :class="{ active: image.is_primary }"
+                    @click="setPrimaryImage(image.id)"
+                    title="メイン画像に設定"
+                  >
+                    ⭐
+                  </button>
+                  <button 
+                    type="button" 
+                    class="delete-btn"
+                    @click="deleteImage(image.id)"
+                    title="画像を削除"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div class="image-order">{{ index + 1 }}</div>
+                <div v-if="image.is_primary" class="primary-badge">メイン</div>
+              </div>
             </div>
           </div>
           
-          <!-- 画像プレビュー -->
-          <div class="image-preview" v-if="currentProduct.image">
-            <img :src="currentProduct.image" alt="プレビュー">
-            <button type="button" class="remove-image" @click="removeImage">
-              ❌ 削除
-            </button>
+          <!-- 手動URL入力（オプション） -->
+          <div class="manual-url-section">
+            <label class="toggle-manual" @click="showManualInput = !showManualInput">
+              🔗 手動でURLを追加
+            </label>
+            <div v-if="showManualInput" class="manual-input">
+              <input
+                v-model="manualImageUrl"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+              >
+              <button type="button" @click="addManualImage" class="add-url-btn">
+                追加
+              </button>
+            </div>
           </div>
+          
+          <!-- 後方互換性のための単一画像フィールド（非表示） -->
+          <input v-model="currentProduct.image" type="hidden">
         </div>
       </div>
 
@@ -131,8 +213,16 @@
 
     <!-- 商品一覧 -->
     <div class="products-list">
-      <h3>商品一覧</h3>
-      <div class="product-grid">
+      <h3>商品一覧 ({{ products.length }}件)</h3>
+      
+      <!-- 商品がない場合のメッセージ -->
+      <div v-if="products.length === 0" class="no-products">
+        <p>登録された商品がありません。</p>
+        <p>上のフォームから新しい商品を追加してください。</p>
+      </div>
+      
+      <!-- 商品グリッド -->
+      <div v-else class="product-grid">
         <div v-for="product in products" :key="product.id" class="product-item">
           <div class="product-image-container">
             <img :src="product.image" :alt="product.name" class="product-thumb">
@@ -186,11 +276,24 @@
 
 import { ref, onMounted, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
+import { 
+  getProductImages, 
+  addProductImage, 
+  updateProductImage, 
+  deleteProductImage, 
+  updateImageDisplayOrder 
+} from '../lib/productImages'
 
 const products = ref([])
 const editingId = ref(null)
 const uploadProgress = ref(0)
 const showManualInput = ref(false)
+const productImages = ref([])
+const manualImageUrl = ref('')
+const draggedIndex = ref(null)
+const tempImages = ref([]) // 新規商品用の一時画像保存
+const tempImageFiles = ref([]) // アップロード予定のファイル
+const editForm = ref(null) // フォーム要素への参照
 const currentProduct = ref({
   name: '',
   description: '',
@@ -202,17 +305,25 @@ const currentProduct = ref({
 
 // 商品一覧を取得
 const loadProducts = async () => {
-  const { data, error } = await supabase
-    .from('succulents')
-    .select('id, name, description, price, quantity, is_reserved, image')
-    .order('id', { ascending: true })
+  console.log('商品一覧を読み込み中...')
   
-  if (error) {
-    console.error('Error loading products:', error)
-    return
+  try {
+    const { data, error } = await supabase
+      .from('succulents')
+      .select('id, name, description, price, quantity, is_reserved, image')
+      .order('id', { ascending: true })
+    
+    if (error) {
+      console.error('Error loading products:', error)
+      return
+    }
+    
+    console.log('読み込まれた商品:', data)
+    products.value = data || []
+  } catch (error) {
+    console.error('商品読み込み時にエラーが発生しました:', error)
+    products.value = []
   }
-  
-  products.value = data
 }
 
 // 商品を追加・更新
@@ -228,6 +339,8 @@ const handleSubmit = async () => {
       image: currentProduct.value.image
     }
 
+    let savedProductId = editingId.value
+
     if (editingId.value) {
       // 更新
       const { error } = await supabase
@@ -236,16 +349,26 @@ const handleSubmit = async () => {
         .eq('id', editingId.value)
       
       if (error) throw error
-      alert('商品を更新しました')
+      console.log('商品を更新しました')
     } else {
       // 新規追加
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('succulents')
         .insert([productData])
+        .select()
+        .single()
       
       if (error) throw error
-      alert('商品を追加しました')
+      savedProductId = data.id
+      console.log('商品を追加しました:', savedProductId)
+      
+      // 新規商品の場合、一時画像をアップロード
+      if (tempImages.value.length > 0) {
+        await uploadTempImages(savedProductId)
+      }
     }
+    
+    alert(editingId.value ? '商品を更新しました' : '商品を追加しました')
     
     // フォームをリセット
     resetForm()
@@ -253,13 +376,16 @@ const handleSubmit = async () => {
     loadProducts()
   } catch (error) {
     console.error('Error saving product:', error)
-    alert('エラーが発生しました')
+    alert('エラーが発生しました: ' + error.message)
   }
 }
 
 // 編集を開始
-const startEdit = (product) => {
+const startEdit = async (product) => {
   editingId.value = product.id
+  
+  // 商品の画像を読み込み
+  await loadProductImages(product.id)
   
   // nextTickを使用してDOMの更新を待つ
   nextTick(() => {
@@ -270,6 +396,14 @@ const startEdit = (product) => {
     currentProduct.value.quantity = product.quantity || 1
     currentProduct.value.is_reserved = product.is_reserved || false
     currentProduct.value.image = product.image || ''
+    
+    // 編集フォームまでスムーズにスクロール
+    if (editForm.value) {
+      editForm.value.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }
   })
 }
 
@@ -282,6 +416,19 @@ const cancelEdit = () => {
 // フォームをリセット
 const resetForm = () => {
   editingId.value = null
+  productImages.value = []
+  manualImageUrl.value = ''
+  uploadProgress.value = 0
+  
+  // 一時画像のプレビューURLを解放
+  tempImages.value.forEach(img => {
+    if (img.preview_url) {
+      URL.revokeObjectURL(img.preview_url)
+    }
+  })
+  tempImages.value = []
+  tempImageFiles.value = []
+  
   currentProduct.value = {
     name: '',
     description: '',
@@ -312,167 +459,67 @@ const deleteProduct = async (id) => {
   }
 }
 
-// 画像ファイル選択時の処理
-// バケットが存在するかチェックし、存在しない場合の対処
-const ensureBucketExists = async () => {
+// 商品の画像一覧を読み込み
+const loadProductImages = async (productId) => {
   try {
-    // まず簡単なテストアップロードでバケットの存在と権限を確認
-    const testBlob = new Blob(['test'], { type: 'text/plain' })
-    const testPath = `test_${Date.now()}.txt`
+    const images = await getProductImages(productId)
+    productImages.value = images
     
-    const { data: testUpload, error: testError } = await supabase.storage
-      .from('succulents-images')
-      .upload(testPath, testBlob, { upsert: true })
-    
-    // テストファイルをすぐに削除
-    if (testUpload) {
-      await supabase.storage
-        .from('succulents-images')
-        .remove([testPath])
+    // メイン画像をcurrentProduct.imageに設定（後方互換性）
+    const primaryImage = images.find(img => img.is_primary)
+    if (primaryImage) {
+      currentProduct.value.image = primaryImage.image_url
     }
-    
-    // バケットが存在し、アップロード権限がある場合
-    if (!testError) {
-      return true
-    }
-    
-    // バケットが存在しない場合のエラーチェック
-    if (testError.message.includes('Bucket not found')) {
-      console.warn('succulents-imagesバケットが存在しません')
-      
-      // 自動作成を試行（管理者権限が必要）
-      try {
-        const { data, error: createError } = await supabase.storage.createBucket('succulents-images', {
-          public: true,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-          fileSizeLimit: 10485760 // 10MB
-        })
-        
-        if (createError) {
-          throw createError
-        }
-        
-        console.log('succulents-imagesバケットを作成しました')
-        return true
-      } catch (createError) {
-        console.error('バケット自動作成に失敗:', createError)
-        alert(`ストレージバケットが存在しません。\n\n以下の手順で手動で作成してください：\n1. Supabase管理画面にログイン\n2. Storage > Create Bucket\n3. バケット名: succulents-images\n4. Public: チェック\n5. File size limit: 10MB\n\n詳細は supabase_storage_setup.md を参照してください。`)
-        return false
-      }
-    }
-    
-    // RLSポリシーエラーの場合
-    if (testError.message.includes('Row Level Security') || testError.message.includes('policy')) {
-      console.error('ストレージアクセス権限エラー:', testError)
-      alert(`🚨 ストレージのアクセス権限がありません
-      
-📋 即座に解決する方法：
-1. Supabase管理画面にログイン
-2. Storage → succulents-images バケット
-3. Settings タブ → Row Level Security を OFF
-4. または Policies で "Allow all for development" を作成
-
-💡 SQLエディターで実行（推奨）：
-CREATE POLICY "Allow all for development" ON storage.objects
-FOR ALL USING (bucket_id = 'succulents-images')
-WITH CHECK (bucket_id = 'succulents-images');
-
-詳細な手順は supabase_storage_setup.md を参照してください。`)
-      return false
-    }
-    
-    // その他のエラー
-    console.error('予期しないストレージエラー:', testError)
-    alert('ストレージの確認中にエラーが発生しました: ' + testError.message)
-    return false
-    
   } catch (error) {
-    console.error('バケット確認中にエラー:', error)
-    alert('ストレージの確認中にエラーが発生しました。ネットワーク接続を確認してください。')
-    return false
+    console.error('画像の読み込みに失敗しました:', error)
   }
 }
 
-const handleImageSelect = async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
+// 複数画像選択処理
+const handleMultipleImageSelect = async (event) => {
+  const files = Array.from(event.target.files)
+  if (files.length === 0) return
   
-  // ファイルサイズチェック（10MB以下）
-  if (file.size > 10 * 1024 * 1024) {
-    alert('ファイルサイズは10MB以下にしてください')
-    return
-  }
-  
-  // ファイル形式チェック
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  if (!allowedTypes.includes(file.type)) {
-    alert('JPG、PNG、WebP、GIF形式のファイルのみ対応しています')
+  // 新規商品の場合は一時保存
+  if (!editingId.value) {
+    handleTempImageSelect(files)
     return
   }
   
   try {
     uploadProgress.value = 0
+    const totalFiles = files.length
     
-    // バケットの存在確認・作成
-    const bucketReady = await ensureBucketExists()
-    if (!bucketReady) {
-      return
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      await uploadSingleImage(file, i === 0 && productImages.value.length === 0) // 最初の画像をプライマリに
+      uploadProgress.value = Math.round(((i + 1) / totalFiles) * 100)
     }
     
-    // ファイル名を生成（タイムスタンプ + ランダム文字列）
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 15)
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `product_${timestamp}_${randomString}.${fileExtension}`
+    // 画像一覧を再読み込み
+    await loadProductImages(editingId.value)
+    uploadProgress.value = 0
     
-    // Supabase Storageにアップロード
-    const { data, error } = await supabase.storage
-      .from('succulents-images')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
-    
-    if (error) {
-      console.error('Upload error:', error)
-      let errorMessage = 'アップロードに失敗しました'
-      
-      if (error.message.includes('Bucket not found')) {
-        errorMessage = 'ストレージバケットが見つかりません。管理者権限でバケットを作成してください。'
-      } else if (error.message.includes('Row Level Security')) {
-        errorMessage = 'ストレージのアクセス権限がありません。管理者に確認してください。'
-      } else if (error.message.includes('size')) {
-        errorMessage = 'ファイルサイズが大きすぎます。10MB以下のファイルを選択してください。'
-      } else {
-        errorMessage += ': ' + error.message
-      }
-      
-      alert(errorMessage)
-      uploadProgress.value = 0
-      return
-    }
-    
-    // 公開URLを取得
-    const { data: urlData } = supabase.storage
-      .from('succulents-images')
-      .getPublicUrl(fileName)
-    
-    if (urlData?.publicUrl) {
-      currentProduct.value.image = urlData.publicUrl
-      uploadProgress.value = 100
-      
-      // 進捗表示を少し遅らせてから非表示にする
-      setTimeout(() => {
-        uploadProgress.value = 0
-      }, 1500)
-    }
-    
+    // ファイル入力をリセット
+    event.target.value = ''
   } catch (error) {
-    console.error('Upload error:', error)
-    let errorMessage = 'アップロードに失敗しました'
+    console.error('画像アップロードに失敗しました:', error)
+    console.error('エラー詳細:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    })
     
-    if (error.message) {
-      errorMessage += ': ' + error.message
+    // 詳細なエラーメッセージを表示
+    let errorMessage = '画像のアップロードに失敗しました。'
+    if (error.message?.includes('relation "product_images" does not exist')) {
+      errorMessage += '\n複数画像機能を使用するには、データベースのマイグレーションが必要です。'
+    } else if (error.code === '42501') {
+      errorMessage += '\n権限が不足しています。管理者でログインしてください。'
+    } else if (error.message?.includes('storage')) {
+      errorMessage += '\nストレージの設定を確認してください。'
     }
     
     alert(errorMessage)
@@ -480,18 +527,315 @@ const handleImageSelect = async (event) => {
   }
 }
 
-// 画像を削除
-const removeImage = () => {
-  if (confirm('画像を削除しますか？')) {
+// 新規商品の場合の一時画像選択処理
+const handleTempImageSelect = (files) => {
+  const newTempImages = []
+  const newTempFiles = []
+  
+  Array.from(files).forEach((file, index) => {
+    // ファイルから一時的なプレビューURLを作成
+    const previewUrl = URL.createObjectURL(file)
+    
+    const tempImage = {
+      id: `temp-${Date.now()}-${index}`,
+      file: file,
+      preview_url: previewUrl,
+      alt_text: file.name,
+      is_primary: tempImages.value.length === 0 && index === 0, // 最初の画像をプライマリに
+      display_order: tempImages.value.length + index
+    }
+    
+    newTempImages.push(tempImage)
+    newTempFiles.push(file)
+  })
+  
+  // 既存の一時画像に追加
+  tempImages.value = [...tempImages.value, ...newTempImages]
+  tempImageFiles.value = [...tempImageFiles.value, ...newTempFiles]
+  
+  // 最初の画像をcurrentProduct.imageに設定（プレビュー用）
+  if (tempImages.value.length > 0 && !currentProduct.value.image) {
+    const primaryImage = tempImages.value.find(img => img.is_primary) || tempImages.value[0]
+    currentProduct.value.image = primaryImage.preview_url
+  }
+  
+  console.log('一時画像を追加しました:', tempImages.value.length, '枚')
+}
+
+// 単一画像のアップロード
+const uploadSingleImage = async (file, isPrimary = false) => {
+  console.log('画像アップロード開始:', file.name)
+  
+  try {
+    // ファイル名を生成（タイムスタンプ + ランダム文字列）
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(7)
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `${timestamp}_${randomId}.${fileExtension}`
+    
+    console.log('ストレージにアップロード中:', fileName)
+    
+    // Supabaseストレージにアップロード
+    const { data, error } = await supabase.storage
+      .from('succulents-images')
+      .upload(fileName, file)
+    
+    if (error) {
+      console.error('ストレージアップロードエラー:', error)
+      throw error
+    }
+    
+    console.log('ストレージアップロード成功:', data)
+    
+    // 公開URLを取得
+    const { data: { publicUrl } } = supabase.storage
+      .from('succulents-images')
+      .getPublicUrl(fileName)
+    
+    console.log('公開URL取得:', publicUrl)
+    
+    // データベースに画像情報を保存
+    console.log('データベースに画像情報を保存中...')
+    await addProductImage(editingId.value, publicUrl, {
+      displayOrder: productImages.value.length,
+      altText: file.name,
+      isPrimary: isPrimary
+    })
+    
+    console.log('画像アップロード完了')
+  } catch (error) {
+    console.error('uploadSingleImageでエラー:', error)
+    throw error
+  }
+}
+
+// 一時画像を実際にアップロード
+const uploadTempImages = async (productId) => {
+  console.log('一時画像をアップロード中...', tempImages.value.length, '枚')
+  
+  try {
+    uploadProgress.value = 0
+    const totalImages = tempImages.value.length
+    
+    for (let i = 0; i < tempImages.value.length; i++) {
+      const tempImage = tempImages.value[i]
+      console.log(`画像 ${i + 1}/${totalImages} をアップロード中:`, tempImage.alt_text)
+      
+      // ファイル名を生成
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(7)
+      const fileExtension = tempImage.file.name.split('.').pop()
+      const fileName = `${timestamp}_${randomId}_${i}.${fileExtension}`
+      
+      // ストレージにアップロード  
+      const { data, error: uploadError } = await supabase.storage
+        .from('succulents-images')
+        .upload(fileName, tempImage.file)
+      
+      if (uploadError) {
+        console.error('ストレージアップロードエラー:', uploadError)
+        // ストレージエラーの場合はフォールバック（単一画像フィールドに最初の画像を保存）
+        if (i === 0) {
+          console.log('フォールバック: 単一画像フィールドを使用')
+          const { data: { publicUrl } } = supabase.storage
+            .from('succulents-images')
+            .getPublicUrl(fileName)
+          
+          await supabase
+            .from('succulents')
+            .update({ image: publicUrl })
+            .eq('id', productId)
+        }
+        continue
+      }
+      
+      // 公開URLを取得
+      const { data: { publicUrl } } = supabase.storage
+        .from('succulents-images')
+        .getPublicUrl(fileName)
+      
+      try {
+        // product_imagesテーブルに保存を試行
+        await addProductImage(productId, publicUrl, {
+          displayOrder: i,
+          altText: tempImage.alt_text,
+          isPrimary: tempImage.is_primary
+        })
+        console.log(`画像 ${i + 1} をproduct_imagesテーブルに保存完了`)
+      } catch (dbError) {
+        console.error('product_imagesテーブルへの保存に失敗:', dbError)
+        
+        // フォールバック: 最初の画像のみsucculents.imageフィールドに保存
+        if (i === 0) {
+          console.log('フォールバック: succulents.imageフィールドに保存')
+          await supabase
+            .from('succulents')
+            .update({ image: publicUrl })
+            .eq('id', productId)
+        }
+      }
+      
+      uploadProgress.value = Math.round(((i + 1) / totalImages) * 100)
+    }
+    
+    console.log('すべての一時画像のアップロードが完了しました')
+    uploadProgress.value = 0
+    
+  } catch (error) {
+    console.error('一時画像のアップロードに失敗しました:', error)
+    uploadProgress.value = 0
+    throw error
+  }
+}
+
+// 手動URL追加
+const addManualImage = async () => {
+  if (!manualImageUrl.value.trim()) return
+  
+  if (!editingId.value) {
+    alert('まず商品を保存してから画像を追加してください')
+    return
+  }
+  
+  try {
+    await addProductImage(editingId.value, manualImageUrl.value, {
+      displayOrder: productImages.value.length,
+      altText: '',
+      isPrimary: productImages.value.length === 0
+    })
+    
+    manualImageUrl.value = ''
+    await loadProductImages(editingId.value)
+  } catch (error) {
+    console.error('画像の追加に失敗しました:', error)
+    alert('画像の追加に失敗しました')
+  }
+}
+
+// メイン画像に設定
+const setPrimaryImage = async (imageId) => {
+  try {
+    await updateProductImage(imageId, { is_primary: true })
+    await loadProductImages(editingId.value)
+  } catch (error) {
+    console.error('メイン画像の設定に失敗しました:', error)
+    alert('メイン画像の設定に失敗しました')
+  }
+}
+
+// 画像削除
+const deleteImage = async (imageId) => {
+  if (!confirm('この画像を削除しますか？')) return
+  
+  try {
+    await deleteProductImage(imageId)
+    await loadProductImages(editingId.value)
+  } catch (error) {
+    console.error('画像の削除に失敗しました:', error)
+    alert('画像の削除に失敗しました')
+  }
+}
+
+// ドラッグ&ドロップで順序変更
+const handleDragStart = (event, index) => {
+  draggedIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+}
+
+const handleDragEnd = () => {
+  draggedIndex.value = null
+}
+
+const handleDrop = async (event) => {
+  event.preventDefault()
+  
+  if (draggedIndex.value === null) return
+  
+  const dropZone = event.target.closest('.image-item')
+  if (!dropZone) return
+  
+  const targetIndex = Array.from(dropZone.parentNode.children).indexOf(dropZone)
+  
+  if (draggedIndex.value === targetIndex) return
+  
+  // 配列の順序を変更
+  const newImages = [...productImages.value]
+  const draggedImage = newImages.splice(draggedIndex.value, 1)[0]
+  newImages.splice(targetIndex, 0, draggedImage)
+  
+  // 表示順序を更新
+  const imageIds = newImages.map(img => img.id)
+  
+  try {
+    await updateImageDisplayOrder(imageIds)
+    await loadProductImages(editingId.value)
+  } catch (error) {
+    console.error('順序の更新に失敗しました:', error)
+    alert('順序の更新に失敗しました')
+  }
+}
+
+// 一時画像を削除
+const removeTempImage = (imageId) => {
+  const index = tempImages.value.findIndex(img => img.id === imageId)
+  if (index >= 0) {
+    // プレビューURLを解放
+    URL.revokeObjectURL(tempImages.value[index].preview_url)
+    
+    tempImages.value.splice(index, 1)
+    tempImageFiles.value.splice(index, 1)
+    
+    // 順序を再調整
+    tempImages.value.forEach((img, idx) => {
+      img.display_order = idx
+    })
+    
+    // プライマリ画像を再設定
+    updateTempPrimaryImage()
+  }
+}
+
+// 一時画像をプライマリに設定
+const setTempPrimaryImage = (imageId) => {
+  tempImages.value.forEach(img => {
+    img.is_primary = img.id === imageId
+  })
+  
+  // currentProduct.imageを更新
+  const primaryImage = tempImages.value.find(img => img.is_primary)
+  if (primaryImage) {
+    currentProduct.value.image = primaryImage.preview_url
+  }
+}
+
+// プライマリ画像を自動設定（削除後など）
+const updateTempPrimaryImage = () => {
+  const hasPrimary = tempImages.value.some(img => img.is_primary)
+  
+  if (!hasPrimary && tempImages.value.length > 0) {
+    tempImages.value[0].is_primary = true
+    currentProduct.value.image = tempImages.value[0].preview_url
+  } else if (tempImages.value.length === 0) {
     currentProduct.value.image = ''
   }
 }
 
-// 初期読み込み
-onMounted(async () => {
-  await loadProducts()
-  // ストレージバケットの存在確認・作成
-  await ensureBucketExists()
+// 一時画像の順序を変更
+const moveTempImage = (fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return
+  
+  const movedImage = tempImages.value.splice(fromIndex, 1)[0]
+  tempImages.value.splice(toIndex, 0, movedImage)
+  
+  // 順序を再調整
+  tempImages.value.forEach((img, idx) => {
+    img.display_order = idx
+  })
+}
+
+// コンポーネント初期化時に商品一覧を読み込み
+onMounted(() => {
+  loadProducts()
 })
 </script>
 
@@ -988,6 +1332,191 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+/* 複数画像アップロード用スタイル */
+.multiple-image-upload-section {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: #fafafa;
+}
+
+.images-gallery {
+  margin-top: 1.5rem;
+}
+
+.images-gallery h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  min-height: 100px;
+}
+
+.image-item {
+  position: relative;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: move;
+  transition: all 0.3s ease;
+}
+
+.image-item:hover {
+  border-color: #2c5f2d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.image-item.primary {
+  border-color: #ffd700;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+}
+
+.image-item img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background-color: #f8f9fa;
+}
+
+.image-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.primary-btn, .delete-btn {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: rgba(255, 215, 0, 0.9);
+}
+
+.primary-btn.active {
+  background: #ffd700;
+  color: #333;
+}
+
+.delete-btn:hover {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.image-order {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffd700;
+  color: #333;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px;
+}
+
+.manual-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.manual-input input {
+  flex: 1;
+}
+
+.add-url-btn {
+  background: #2c5f2d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.add-url-btn:hover {
+  background: #1e4220;
+}
+
+/* 一時画像用のスタイル */
+.temp-image-item {
+  position: relative;
+}
+
+.temp-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #f0ad4e;
+  color: white;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px;
+}
+
+.temp-images-grid .image-item {
+  border-color: #f0ad4e;
+}
+
+.temp-images-grid .image-item:hover {
+  border-color: #ec971f;
+  box-shadow: 0 4px 12px rgba(240, 173, 78, 0.3);
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+  .images-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .image-item img {
+    height: 100px;
+  }
+  
+  .multiple-image-upload-section {
+    padding: 1rem;
+  }
+}
+
 /* タブレット対応 */
 @media (max-width: 992px) {
   .admin-panel {
@@ -1228,4 +1757,16 @@ onMounted(async () => {
   }
 }
 
+.no-products {
+  text-align: center;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #666;
+  border: 2px dashed #ddd;
+}
+
+.no-products p {
+  margin: 0.5rem 0;
+}
 </style>

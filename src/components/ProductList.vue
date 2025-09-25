@@ -17,14 +17,32 @@
     <div class="product-list" :class="{ 'admin-grid': route.path.startsWith('/admin') }">
       <div v-for="product in sortedProducts" :key="product.id" class="product-card">
         <div class="image-container">
-          <img 
-            :src="product.image" 
-            :alt="product.name" 
-            class="product-image"
-            @error="handleImageError"
-            @load="handleImageLoad"
-            @click="openImageModal(product)"
-          >
+          <div class="image-gallery">
+            <img 
+              :src="product.image" 
+              :alt="product.name" 
+              class="product-image main-image"
+              @error="handleImageError"
+              @load="handleImageLoad"
+              @click="openImageModal(product)"
+            >
+            <!-- 複数画像がある場合のサムネイル表示 -->
+            <div v-if="product.images && product.images.length > 1" class="thumbnail-container">
+              <div class="thumbnail-grid">
+                <img 
+                  v-for="(image, index) in product.images.slice(0, 3)" 
+                  :key="image.id"
+                  :src="image.image_url" 
+                  :alt="`${product.name} ${index + 1}`"
+                  class="thumbnail"
+                  @click="openImageModal(product, index)"
+                >
+                <div v-if="product.images.length > 3" class="more-images">
+                  +{{ product.images.length - 3 }}
+                </div>
+              </div>
+            </div>
+          </div>
           <div v-if="product.is_reserved" class="reserved-overlay"></div>
           <div v-else-if="product.quantity <= 0" class="sold-out-overlay"></div>
         </div>
@@ -74,10 +92,32 @@
     <div v-if="modalImage" class="image-modal" @click="closeImageModal">
       <div class="modal-content" @click.stop>
         <button class="modal-close" @click="closeImageModal">&times;</button>
-        <img :src="modalImage.image" :alt="modalImage.name" class="modal-image">
+        
+        <!-- 複数画像の場合のナビゲーション -->
+        <div v-if="modalImage.images && modalImage.images.length > 1" class="image-navigation">
+          <button class="nav-btn prev-btn" @click="prevImage">‹</button>
+          <button class="nav-btn next-btn" @click="nextImage">›</button>
+        </div>
+        
+        <img :src="getCurrentImage.image" :alt="getCurrentImage.alt_text || getCurrentImage.name" class="modal-image">
+        
+        <!-- 画像インジケーター -->
+        <div v-if="modalImage.images && modalImage.images.length > 1" class="image-indicators">
+          <span 
+            v-for="(image, index) in modalImage.images" 
+            :key="image.id"
+            class="indicator"
+            :class="{ active: index === currentImageIndex }"
+            @click="currentImageIndex = index"
+          ></span>
+        </div>
+        
         <div class="modal-info">
           <h3>{{ modalImage.name }}</h3>
           <p class="modal-price">¥{{ modalImage.price.toLocaleString() }}</p>
+          <div v-if="modalImage.images && modalImage.images.length > 1" class="image-count">
+            {{ currentImageIndex + 1 }} / {{ modalImage.images.length }}
+          </div>
         </div>
       </div>
     </div>
@@ -93,6 +133,7 @@ import { getOrCreateCustomerId } from '../lib/customerUtils'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
 import { useCartStore } from '../stores/cart'
+import { getProductImagesWithFallback } from '../lib/productImages'
 
 const route = useRoute()
 const cart = useCartStore()
@@ -107,6 +148,7 @@ const message = ref('')
 const messageType = ref('success')
 const popupStyle = ref({})
 const modalImage = ref(null)
+const currentImageIndex = ref(0)
 
 onMounted(async () => {
   // 購入者IDを取得
@@ -129,11 +171,24 @@ const fetchProducts = async () => {
 
     if (error) throw error
     
-    // 画像URLを公開URLに変換
-    products.value = data.map(product => ({
-      ...product,
-      image: getPublicImageUrl(product.image)
-    }))
+    // 各商品の画像を取得
+    const productsWithImages = await Promise.all(
+      data.map(async (product) => {
+        const images = await getProductImagesWithFallback(product)
+        const primaryImage = images.find(img => img.is_primary) || images[0]
+        
+        return {
+          ...product,
+          image: primaryImage ? getPublicImageUrl(primaryImage.image_url) : getPublicImageUrl(product.image),
+          images: images.map(img => ({
+            ...img,
+            image_url: getPublicImageUrl(img.image_url)
+          }))
+        }
+      })
+    )
+    
+    products.value = productsWithImages
   } catch (error) {
     console.error('商品データの取得に失敗しました:', error)
   }
@@ -163,15 +218,43 @@ const sortedProducts = computed(() => {
 })
 
 // 画像モーダル関連の関数
-const openImageModal = (product) => {
+const openImageModal = (product, imageIndex = 0) => {
   modalImage.value = product
+  currentImageIndex.value = imageIndex
   document.body.style.overflow = 'hidden' // スクロールを無効化
 }
 
 const closeImageModal = () => {
   modalImage.value = null
+  currentImageIndex.value = 0
   document.body.style.overflow = '' // スクロールを復元
 }
+
+const nextImage = () => {
+  if (modalImage.value && modalImage.value.images && modalImage.value.images.length > 1) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % modalImage.value.images.length
+  }
+}
+
+const prevImage = () => {
+  if (modalImage.value && modalImage.value.images && modalImage.value.images.length > 1) {
+    currentImageIndex.value = currentImageIndex.value === 0 
+      ? modalImage.value.images.length - 1 
+      : currentImageIndex.value - 1
+  }
+}
+
+const getCurrentImage = computed(() => {
+  if (!modalImage.value || !modalImage.value.images || modalImage.value.images.length === 0) {
+    return modalImage.value
+  }
+  const currentImg = modalImage.value.images[currentImageIndex.value]
+  return {
+    ...modalImage.value,
+    image: currentImg.image_url,
+    alt_text: currentImg.alt_text || modalImage.value.name
+  }
+})
 
 // カートに商品を追加
 const addToCart = async (product, event) => {
@@ -616,7 +699,133 @@ div[class~="admin-grid"] {
   border-top-color: #fff5f5;
 }
 
+/* 画像ギャラリー関連のスタイル */
+.image-gallery {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
 
+.main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #f8f9fa;
+}
+
+.thumbnail-container {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.thumbnail-grid {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.thumbnail {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.thumbnail:hover {
+  transform: scale(1.1);
+  border-color: white;
+}
+
+.more-images {
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* モーダル内ナビゲーション */
+.image-navigation {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1rem;
+  pointer-events: none;
+  z-index: 10002;
+}
+
+.nav-btn {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  pointer-events: auto;
+}
+
+.nav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+/* 画像インジケーター */
+.image-indicators {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10002;
+}
+
+.indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.indicator.active {
+  background: white;
+}
+
+.indicator:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.image-count {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+  text-align: center;
+}
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 1400px) {
