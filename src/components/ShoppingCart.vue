@@ -27,11 +27,9 @@
           <div class="item-quantity">
             <button 
               @click="updateQuantity(item.id, item.quantity - 1)"
-              @touchend="updateQuantity(item.id, item.quantity - 1)"
-              @mousedown.prevent
+              @touchstart.passive
               :disabled="item.quantity <= 1"
               class="quantity-btn"
-              type="button"
             >
               -
             </button>
@@ -45,11 +43,9 @@
             />
             <button 
               @click="updateQuantity(item.id, item.quantity + 1)"
-              @touchend="updateQuantity(item.id, item.quantity + 1)"
-              @mousedown.prevent
+              @touchstart.passive
               :disabled="item.quantity >= item.maxQuantity"
               class="quantity-btn"
-              type="button"
             >
               +
             </button>
@@ -58,13 +54,10 @@
             ¥{{ (item.price * item.quantity).toLocaleString() }}
           </div>
           <button 
-            @click="removeItem(item.id, $event)"
-            @touchend="removeItem(item.id, $event)"
-            @mousedown.prevent
-            @contextmenu.prevent
+            @click="removeItem(item.id)"
+            @touchstart.passive
             class="remove-btn"
             title="カートから削除"
-            type="button"
           >
             削除🗑️
           </button>
@@ -74,12 +67,9 @@
       <div class="cart-actions">
         <div class="action-buttons">
           <button 
-            @click="clearAllItems($event)" 
-            @touchend="clearAllItems($event)"
-            @mousedown.prevent
-            @contextmenu.prevent
+            @click="clearAllItems" 
+            @touchstart.passive
             class="clear-cart-btn"
-            type="button"
           >
             カートを空にする
           </button>
@@ -138,13 +128,8 @@ const handleQuantityInput = async (productId, value) => {
   await updateQuantity(productId, quantity)
 }
 
-const removeItem = async (productId, event = null) => {
-  console.log('削除ボタンが押されました:', productId, event?.type)
-  console.log('イベント詳細:', event)
-  if (event) {
-    event.preventDefault()
-    event.stopPropagation()
-  }
+const removeItem = async (productId) => {
+  console.log('削除ボタンが押されました:', productId)
   if (confirm('この商品をカートから削除しますか？')) {
     console.log('削除を確認しました:', productId)
     await cart.removeFromCart(productId)
@@ -154,13 +139,8 @@ const removeItem = async (productId, event = null) => {
   }
 }
 
-const clearAllItems = async (event = null) => {
-  console.log('カートを空にするボタンが押されました', event?.type)
-  console.log('イベント詳細:', event)
-  if (event) {
-    event.preventDefault()
-    event.stopPropagation()
-  }
+const clearAllItems = async () => {
+  console.log('カートを空にするボタンが押されました')
   if (confirm('カート内のすべての商品を削除しますか？')) {
     console.log('カートクリアを確認しました')
     await cart.clearCart()
@@ -258,7 +238,6 @@ const showMessage = (text, type = 'success') => {
   padding: 1rem;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
-  pointer-events: auto;
   margin-bottom: 1rem;
   background: white;
   position: relative;
@@ -318,9 +297,6 @@ const showMessage = (text, type = 'success') => {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
-  position: relative;
-  z-index: 10;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 .quantity-btn:hover:not(:disabled) {
@@ -382,9 +358,6 @@ const showMessage = (text, type = 'success') => {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
-  position: relative;
-  z-index: 10;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 .remove-btn:hover {
@@ -434,9 +407,6 @@ const showMessage = (text, type = 'success') => {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
-  position: relative;
-  z-index: 10;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 .clear-cart-btn {
