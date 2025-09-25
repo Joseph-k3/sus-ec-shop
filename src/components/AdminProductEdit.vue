@@ -246,7 +246,15 @@
             >
               編集
             </button>
-            <button @click="deleteProduct(product.id)" class="btn-delete" type="button">削除</button>
+            <button 
+              @click="deleteProduct(product.id)" 
+              @click.stop
+              @touchstart.passive
+              class="btn-delete" 
+              type="button"
+            >
+              削除
+            </button>
           </div>
         </div>
       </div>
@@ -1249,6 +1257,11 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
+  min-height: 44px; /* タッチターゲット最小サイズ */
+  touch-action: manipulation; /* タッチ操作の最適化 */
+  user-select: none; /* テキスト選択防止 */
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* タッチ時のハイライト */
 }
 
 .btn-edit {
@@ -1261,6 +1274,12 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
+.btn-edit:active {
+  background: #004085;
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .btn-delete {
   background: #dc3545;
   color: white;
@@ -1269,6 +1288,12 @@ onMounted(() => {
 .btn-delete:hover {
   background: #c82333;
   transform: translateY(-1px);
+}
+
+.btn-delete:active {
+  background: #bd2130;
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* フォームボタンのスタイル */
@@ -1744,8 +1769,11 @@ onMounted(() => {
   
   .btn-edit,
   .btn-delete {
-    padding: 0.5rem;
-    font-size: 0.85rem;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    min-height: 44px; /* Appleのタッチターゲット推奨サイズ */
+    touch-action: manipulation; /* タッチ操作の最適化 */
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* タッチ時のハイライト */
   }
   
   .products-list {
