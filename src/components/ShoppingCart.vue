@@ -27,6 +27,7 @@
           <div class="item-quantity">
             <button 
               @click="updateQuantity(item.id, item.quantity - 1)"
+              @touchstart.passive
               :disabled="item.quantity <= 1"
               class="quantity-btn"
             >
@@ -42,6 +43,7 @@
             />
             <button 
               @click="updateQuantity(item.id, item.quantity + 1)"
+              @touchstart.passive
               :disabled="item.quantity >= item.maxQuantity"
               class="quantity-btn"
             >
@@ -53,6 +55,7 @@
           </div>
           <button 
             @click="removeItem(item.id)"
+            @touchstart.passive
             class="remove-btn"
             title="カートから削除"
           >
@@ -63,7 +66,11 @@
 
       <div class="cart-actions">
         <div class="action-buttons">
-          <button @click="clearAllItems" class="clear-cart-btn">
+          <button 
+            @click="clearAllItems" 
+            @touchstart.passive
+            class="clear-cart-btn"
+          >
             カートを空にする
           </button>
           <router-link to="/" class="continue-shopping-btn">
@@ -122,16 +129,24 @@ const handleQuantityInput = async (productId, value) => {
 }
 
 const removeItem = async (productId) => {
+  console.log('削除ボタンが押されました:', productId)
   if (confirm('この商品をカートから削除しますか？')) {
+    console.log('削除を確認しました:', productId)
     await cart.removeFromCart(productId)
     showMessage('商品をカートから削除しました', 'success')
+  } else {
+    console.log('削除をキャンセルしました:', productId)
   }
 }
 
 const clearAllItems = async () => {
+  console.log('カートを空にするボタンが押されました')
   if (confirm('カート内のすべての商品を削除しますか？')) {
+    console.log('カートクリアを確認しました')
     await cart.clearCart()
     showMessage('カートを空にしました', 'success')
+  } else {
+    console.log('カートクリアをキャンセルしました')
   }
 }
 
@@ -271,22 +286,41 @@ const showMessage = (text, type = 'success') => {
   color: white;
   border: none;
   border-radius: 4px;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
   font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 .quantity-btn:hover:not(:disabled) {
   background: #1e4220;
 }
 
+.quantity-btn:active:not(:disabled),
+.quantity-btn:focus:not(:disabled) {
+  background: #1e4220;
+  transform: scale(0.95);
+  outline: none;
+}
+
 .quantity-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+/* タッチデバイス用の追加スタイル */
+@media (hover: none) and (pointer: coarse) {
+  .quantity-btn:active:not(:disabled) {
+    background: #1e4220;
+    transform: scale(0.9);
+  }
 }
 
 .quantity-input {
@@ -309,7 +343,7 @@ const showMessage = (text, type = 'success') => {
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.25rem;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: bold;
@@ -318,18 +352,31 @@ const showMessage = (text, type = 'success') => {
   justify-content: center;
   white-space: nowrap;
   transition: background-color 0.3s ease;
-  min-width: 60px;
+  min-width: 80px;
+  min-height: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 .remove-btn:hover {
   background: #c82333;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.remove-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+.remove-btn:active,
+.remove-btn:focus {
+  background: #c82333;
+  transform: scale(0.98);
+  outline: none;
+}
+
+/* タッチデバイス用の追加スタイル */
+@media (hover: none) and (pointer: coarse) {
+  .remove-btn:active {
+    background: #c82333;
+    transform: scale(0.95);
+  }
 }
 
 .cart-actions {
@@ -355,6 +402,11 @@ const showMessage = (text, type = 'success') => {
   display: inline-block;
   text-align: center;
   transition: background-color 0.3s;
+  min-height: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 .clear-cart-btn {
@@ -364,6 +416,21 @@ const showMessage = (text, type = 'success') => {
 
 .clear-cart-btn:hover {
   background: #5a6268;
+}
+
+.clear-cart-btn:active,
+.clear-cart-btn:focus {
+  background: #5a6268;
+  transform: scale(0.98);
+  outline: none;
+}
+
+/* タッチデバイス用の追加スタイル */
+@media (hover: none) and (pointer: coarse) {
+  .clear-cart-btn:active {
+    background: #5a6268;
+    transform: scale(0.95);
+  }
 }
 
 .continue-shopping-btn {
@@ -492,8 +559,9 @@ const showMessage = (text, type = 'success') => {
     grid-row: 1;
     align-self: flex-start;
     font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
-    min-width: 50px;
+    padding: 0.6rem 1rem;
+    min-width: 60px;
+    min-height: 44px;
   }
 
   .action-buttons {
