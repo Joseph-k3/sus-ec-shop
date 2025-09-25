@@ -885,8 +885,9 @@ onMounted(fetchOrders)
 .product-thumbnail-small {
   width: 50px;
   height: 50px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 4px;
+  background-color: #f8f9fa;
 }
 
 .cart-item-details {
@@ -1007,9 +1008,10 @@ onMounted(fetchOrders)
 .product-image {
   width: 120px;
   height: 120px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 8px;
   flex-shrink: 0;
+  background-color: #f8f9fa;
 }
 
 .details h4 {

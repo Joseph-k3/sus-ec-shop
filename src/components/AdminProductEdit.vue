@@ -630,8 +630,9 @@ onMounted(async () => {
 .image-preview img {
   width: 100%;
   height: 200px;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background-color: #f8f9fa;
 }
 
 .remove-image {
@@ -812,8 +813,8 @@ onMounted(async () => {
 }
 
 .product-thumb:hover {
-  object-fit: cover;
   border: 1px solid #007bff;
+  transform: scale(1.02);
 }
 
 /* 画像のフォールバック表示 */

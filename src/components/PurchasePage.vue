@@ -30,6 +30,7 @@
           class="product-image"
           @error="handleImageError"
           @load="handleImageLoad"
+          @click="openImageModal"
         >
         <div class="product-info">
           <div class="product-details">
@@ -319,7 +320,22 @@
       </div>
       </template>
     </div>
+
   </div>
+
+  <!-- 画像拡大モーダル - ビューポート全体に表示 -->
+  <Teleport to="body">
+    <div v-if="showImageModal" class="image-modal" @click="closeImageModal">
+      <div class="modal-content" @click.stop>
+        <button class="modal-close" @click="closeImageModal">&times;</button>
+        <img :src="product?.image" :alt="product?.name" class="modal-image">
+        <div class="modal-info">
+          <h3>{{ product?.name }}</h3>
+          <p class="modal-price">¥{{ product?.price?.toLocaleString() }}</p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -350,6 +366,7 @@ const loading = ref(true)
 const error = ref(null)
 const product = ref(null)
 const orderData = ref(null)
+const showImageModal = ref(false)
 
 // 送料計算
 const shippingInfo = ref({
@@ -942,6 +959,17 @@ const proceedToPurchase = async () => {
 }
 
 // 商品一覧に戻る処理（確認なしで直接遷移）
+// 画像モーダル関連の関数
+const openImageModal = () => {
+  showImageModal.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+const closeImageModal = () => {
+  showImageModal.value = false
+  document.body.style.overflow = ''
+}
+
 const handleBackToProductList = async () => {
   await router.push('/')
 }
@@ -990,8 +1018,15 @@ const backToForm = () => {
 .product-image {
   width: 200px;
   height: 200px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 8px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.product-image:hover {
+  transform: scale(1.02);
 }
 
 .product-info {
@@ -1270,9 +1305,10 @@ button:disabled {
 .mini-product-image {
   width: 80px;
   height: 80px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+  background-color: #f8f9fa;
 }
 
 .product-name {
@@ -1637,6 +1673,130 @@ button:disabled {
   .apply-suggestion, .ignore-suggestion {
     flex: none;
     width: 100%;
+  }
+}
+
+/* 画像拡大モーダル */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: scaleIn 0.3s ease-out;
+  /* flexboxで中央配置されるため、追加のpositionは不要 */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-image {
+  max-width: 80vw;
+  max-height: 70vh;
+  object-fit: contain;
+  background-color: #f8f9fa;
+}
+
+.modal-info {
+  padding: 1.5rem;
+  text-align: center;
+  background: white;
+}
+
+.modal-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #1a1a1a;
+}
+
+.modal-price {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #2c5f2d;
+}
+
+@media screen and (max-width: 768px) {
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+  
+  .modal-image {
+    max-width: 90vw;
+    max-height: 75vh;
+  }
+  
+  .modal-info {
+    padding: 1rem;
+  }
+  
+  .modal-info h3 {
+    font-size: 1.25rem;
+  }
+  
+  .modal-price {
+    font-size: 1.1rem;
   }
 }
 </style>

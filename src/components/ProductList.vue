@@ -23,6 +23,7 @@
             class="product-image"
             @error="handleImageError"
             @load="handleImageLoad"
+            @click="openImageModal(product)"
           >
           <div v-if="product.is_reserved" class="reserved-overlay"></div>
           <div v-else-if="product.quantity <= 0" class="sold-out-overlay"></div>
@@ -65,7 +66,22 @@
     >
       {{ message }}
     </div>
+
   </div>
+
+  <!-- 画像拡大モーダル - ビューポート全体に表示 -->
+  <Teleport to="body">
+    <div v-if="modalImage" class="image-modal" @click="closeImageModal">
+      <div class="modal-content" @click.stop>
+        <button class="modal-close" @click="closeImageModal">&times;</button>
+        <img :src="modalImage.image" :alt="modalImage.name" class="modal-image">
+        <div class="modal-info">
+          <h3>{{ modalImage.name }}</h3>
+          <p class="modal-price">¥{{ modalImage.price.toLocaleString() }}</p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -90,6 +106,7 @@ const cartLoading = ref(false)
 const message = ref('')
 const messageType = ref('success')
 const popupStyle = ref({})
+const modalImage = ref(null)
 
 onMounted(async () => {
   // 購入者IDを取得
@@ -144,6 +161,17 @@ const sortedProducts = computed(() => {
   }
   return arr
 })
+
+// 画像モーダル関連の関数
+const openImageModal = (product) => {
+  modalImage.value = product
+  document.body.style.overflow = 'hidden' // スクロールを無効化
+}
+
+const closeImageModal = () => {
+  modalImage.value = null
+  document.body.style.overflow = '' // スクロールを復元
+}
 
 // カートに商品を追加
 const addToCart = async (product, event) => {
@@ -387,12 +415,22 @@ div[class~="admin-grid"] {
   position: relative;
   width: 100%;
   height: 200px;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .product-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.product-image:hover {
+  transform: scale(1.02);
 }
 
 .product-info {
@@ -649,6 +687,131 @@ div[class~="admin-grid"] {
   
   .product-card {
     padding: 1rem;
+  }
+}
+
+/* 画像拡大モーダル */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: scaleIn 0.3s ease-out;
+  /* flexboxで中央配置されるため、追加のpositionは不要 */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-image {
+  max-width: 80vw;
+  max-height: 70vh;
+  object-fit: contain;
+  background-color: #f8f9fa;
+}
+
+.modal-info {
+  padding: 1.5rem;
+  text-align: center;
+  background: white;
+}
+
+.modal-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #1a1a1a;
+}
+
+.modal-price {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #2c5f2d;
+}
+
+/* スマートフォン用モーダル調整 */
+@media screen and (max-width: 768px) {
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+  
+  .modal-image {
+    max-width: 90vw;
+    max-height: 75vh;
+  }
+  
+  .modal-info {
+    padding: 1rem;
+  }
+  
+  .modal-info h3 {
+    font-size: 1.25rem;
+  }
+  
+  .modal-price {
+    font-size: 1.1rem;
   }
 }
 </style>
