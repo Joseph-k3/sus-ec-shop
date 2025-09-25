@@ -46,7 +46,7 @@ export async function sendBankTransferEmail(order) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
+    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
     subject: `【新規注文】${order.product_name}が購入されました`,
     html_body: `
       <h2>新規注文がありました</h2>
@@ -163,7 +163,7 @@ export async function sendPaymentConfirmationEmail(order) {
 
   // 管理者向け通知メール
   const adminEmailData = {
-    to: 'ryosk8er1026@yahoo.co.jp',
+    to: 'k3.ns.208_b50@icloud.com',
     subject: `【入金確認】${order.product_name}の入金を確認しました`,
     html_body: `
       <h2>入金が確認されました</h2>
@@ -288,7 +288,7 @@ export async function sendCartOrderEmail(orderData) {
 
   // 管理者向けメール
   const adminEmailData = {
-    to: 'ryosk8er1026@yahoo.co.jp', // 管理者のメールアドレス
+    to: 'k3.ns.208_b50@icloud.com', // 管理者のメールアドレス
     subject: `【カート注文】新規注文が${orderData.items.length}件ありました`,
     html_body: `
       <h2>カート注文がありました</h2>

@@ -32,13 +32,12 @@
       </div>
 
       <div class="form-group description-group">
-        <label for="description">商品説明 <span class="required">*</span></label>
+        <label for="description">商品説明</label>
         <textarea
           id="description"
           v-model="currentProduct.description"
           rows="3"
-          required
-          placeholder="商品の特徴や育て方のポイントなど"
+          placeholder="商品の特徴や育て方のポイントなど（任意）"
         ></textarea>
       </div>
 
