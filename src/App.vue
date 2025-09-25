@@ -31,7 +31,7 @@
           <router-view></router-view>
 
           <!-- ログインモーダル -->
-          <div v-if="showLogin" class="modal-overlay" @click="showLogin = false">
+          <div v-if="showLogin" class="modal-overlay" @click="showLogin = false" ref="loginModal">
             <div class="modal-content" @click.stop>
               <LoginForm @login-success="showLogin = false" />
             </div>
@@ -62,6 +62,7 @@ const { isAuthenticated } = useAuth()
 const showAdmin = ref(false)
 const isAdmin = ref(false)
 const showLogin = ref(false)
+const loginModal = ref(null)
 const siteSettings = ref(null)
 const loading = ref(true)
 const showSplashAfterLogin = ref(false)
@@ -111,6 +112,21 @@ watch(() => route.path, (newPath, oldPath) => {
     if (!showSplashAfterLogin.value && !loading.value) {
       showMainContent.value = true
     }
+  }
+})
+
+// ログインモーダル表示時のスクロール制御
+watch(showLogin, (newVal) => {
+  if (newVal) {
+    // ログインモーダルが表示された時にスクロール
+    nextTick(() => {
+      if (loginModal.value) {
+        loginModal.value.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'center'
+        })
+      }
+    })
   }
 })
 
