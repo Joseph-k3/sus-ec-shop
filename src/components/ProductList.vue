@@ -17,7 +17,34 @@
     <div class="product-list" :class="{ 'admin-grid': route.path.startsWith('/admin') }">
       <div v-for="product in sortedProducts" :key="product.id" class="product-card">
         <div class="image-container">
-          <div class="image-gallery">
+          <!-- 複数画像がある場合はSwiper、単一画像の場合は通常表示 -->
+          <div v-if="product.images && product.images.length > 1" class="product-swiper-container">
+            <div class="swiper product-swiper" :data-product-id="product.id">
+              <div class="swiper-wrapper">
+                <div 
+                  v-for="(image, index) in product.images" 
+                  :key="image.id"
+                  class="swiper-slide"
+                  @click="openImageModal(product, index)"
+                >
+                  <img 
+                    :src="image.image_url" 
+                    :alt="`${product.name} ${index + 1}`"
+                    class="product-image"
+                    @error="handleImageError"
+                    @load="handleImageLoad"
+                  >
+                </div>
+              </div>
+              <!-- PC用の小さな矢印 -->
+              <div class="swiper-button-next product-swiper-next"></div>
+              <div class="swiper-button-prev product-swiper-prev"></div>
+              <!-- ページネーション（ドット） -->
+              <div class="swiper-pagination product-swiper-pagination"></div>
+            </div>
+          </div>
+          <!-- 単一画像の場合 -->
+          <div v-else class="single-image-container">
             <img 
               :src="product.image" 
               :alt="product.name" 
@@ -26,22 +53,6 @@
               @load="handleImageLoad"
               @click="openImageModal(product)"
             >
-            <!-- 複数画像がある場合のサムネイル表示 -->
-            <div v-if="product.images && product.images.length > 1" class="thumbnail-container">
-              <div class="thumbnail-grid">
-                <img 
-                  v-for="(image, index) in product.images.slice(0, 3)" 
-                  :key="image.id"
-                  :src="image.image_url" 
-                  :alt="`${product.name} ${index + 1}`"
-                  class="thumbnail"
-                  @click="openImageModal(product, index)"
-                >
-                <div v-if="product.images.length > 3" class="more-images">
-                  +{{ product.images.length - 3 }}
-                </div>
-              </div>
-            </div>
           </div>
           <div v-if="product.is_reserved" class="reserved-overlay"></div>
           <div v-else-if="product.quantity <= 0" class="sold-out-overlay"></div>
@@ -93,30 +104,36 @@
       <div class="modal-content" @click.stop>
         <button class="modal-close" @click="closeImageModal">&times;</button>
         
-        <!-- 複数画像の場合のナビゲーション -->
-        <div v-if="modalImage.images && modalImage.images.length > 1" class="image-navigation">
-          <button class="nav-btn prev-btn" @click="prevImage">‹</button>
-          <button class="nav-btn next-btn" @click="nextImage">›</button>
-        </div>
-        
-        <img :src="getCurrentImage.image" :alt="getCurrentImage.alt_text || getCurrentImage.name" class="modal-image">
-        
-        <!-- 画像インジケーター -->
-        <div v-if="modalImage.images && modalImage.images.length > 1" class="image-indicators">
-          <span 
-            v-for="(image, index) in modalImage.images" 
-            :key="image.id"
-            class="indicator"
-            :class="{ active: index === currentImageIndex }"
-            @click="currentImageIndex = index"
-          ></span>
+        <!-- Swiper画像ギャラリー -->
+        <div class="swiper-container" ref="swiperContainer">
+          <div class="swiper-wrapper">
+            <div 
+              v-for="(image, index) in modalImage.images" 
+              :key="image.id"
+              class="swiper-slide"
+            >
+              <img 
+                :src="image.image_url" 
+                :alt="image.alt_text || modalImage.name" 
+                class="modal-image"
+                @error="handleImageError"
+              >
+            </div>
+          </div>
+          
+          <!-- PC用ナビゲーション矢印 -->
+          <div class="swiper-button-next swiper-nav-arrow"></div>
+          <div class="swiper-button-prev swiper-nav-arrow"></div>
+          
+          <!-- ページネーション -->
+          <div class="swiper-pagination"></div>
         </div>
         
         <div class="modal-info">
           <h3>{{ modalImage.name }}</h3>
           <p class="modal-price">¥{{ modalImage.price.toLocaleString() }}</p>
           <div v-if="modalImage.images && modalImage.images.length > 1" class="image-count">
-            {{ currentImageIndex + 1 }} / {{ modalImage.images.length }}
+            {{ currentSwiperIndex + 1 }} / {{ modalImage.images.length }}
           </div>
         </div>
       </div>
@@ -125,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import SortSelector from './SortSelector.vue'
 import { supabase } from '../lib/supabase'
@@ -134,6 +151,12 @@ import getPublicImageUrl from '../lib/imageUtils.js'
 import { useImageFallback } from '../composables/useImageFallback.js'
 import { useCartStore } from '../stores/cart'
 import { getProductImagesWithFallback } from '../lib/productImages'
+// Swiperのインポート
+import { Swiper } from 'swiper'
+import { Navigation, Pagination } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 
 const route = useRoute()
 const cart = useCartStore()
@@ -149,6 +172,10 @@ const messageType = ref('success')
 const popupStyle = ref({})
 const modalImage = ref(null)
 const currentImageIndex = ref(0)
+// Swiper関連
+const swiperContainer = ref(null)
+const swiperInstance = ref(null)
+const currentSwiperIndex = ref(0)
 
 onMounted(async () => {
   // 購入者IDを取得
@@ -157,9 +184,41 @@ onMounted(async () => {
   // 商品一覧を取得
   await fetchProducts()
   
+  // DOM更新後に商品カードのSwiperを初期化
+  await nextTick()
+  initProductSwipers()
+  
   // 30秒ごとに在庫情報を更新
   setInterval(fetchProducts, 30000)
 })
+
+// 商品カード内のSwiperを初期化
+const initProductSwipers = () => {
+  products.value.forEach(product => {
+    if (product.images && product.images.length > 1) {
+      const swiperEl = document.querySelector(`.product-swiper[data-product-id="${product.id}"]`)
+      if (swiperEl && !swiperEl.swiper) {
+        new Swiper(swiperEl, {
+          modules: [Navigation, Pagination],
+          slidesPerView: 1,
+          loop: true,
+          navigation: {
+            nextEl: swiperEl.querySelector('.product-swiper-next'),
+            prevEl: swiperEl.querySelector('.product-swiper-prev'),
+          },
+          pagination: {
+            el: swiperEl.querySelector('.product-swiper-pagination'),
+            clickable: true,
+          },
+          // タッチ操作を有効化
+          touchRatio: 1,
+          simulateTouch: true,
+          grabCursor: true,
+        })
+      }
+    }
+  })
+}
 
 // 商品データを取得する関数
 const fetchProducts = async () => {
@@ -189,6 +248,10 @@ const fetchProducts = async () => {
     )
     
     products.value = productsWithImages
+    
+    // DOM更新後にSwiperを初期化
+    await nextTick()
+    initProductSwipers()
   } catch (error) {
     console.error('商品データの取得に失敗しました:', error)
   }
@@ -218,43 +281,66 @@ const sortedProducts = computed(() => {
 })
 
 // 画像モーダル関連の関数
-const openImageModal = (product, imageIndex = 0) => {
+const openImageModal = async (product, imageIndex = 0) => {
   modalImage.value = product
   currentImageIndex.value = imageIndex
+  currentSwiperIndex.value = imageIndex
   document.body.style.overflow = 'hidden' // スクロールを無効化
+  
+  // DOM更新を待ってからSwiperを初期化
+  await nextTick()
+  initSwiper()
 }
 
 const closeImageModal = () => {
+  // Swiperインスタンスを破棄
+  if (swiperInstance.value) {
+    swiperInstance.value.destroy(true, true)
+    swiperInstance.value = null
+  }
+  
   modalImage.value = null
   currentImageIndex.value = 0
+  currentSwiperIndex.value = 0
   document.body.style.overflow = '' // スクロールを復元
 }
 
-const nextImage = () => {
-  if (modalImage.value && modalImage.value.images && modalImage.value.images.length > 1) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % modalImage.value.images.length
+// Swiperを初期化
+const initSwiper = () => {
+  if (!swiperContainer.value || !modalImage.value?.images?.length) return
+  
+  // 既存のSwiperインスタンスがあれば破棄
+  if (swiperInstance.value) {
+    swiperInstance.value.destroy(true, true)
   }
+  
+  swiperInstance.value = new Swiper(swiperContainer.value, {
+    modules: [Navigation, Pagination],
+    initialSlide: currentSwiperIndex.value,
+    loop: modalImage.value.images.length > 1,
+    navigation: {
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev',
+    },
+    pagination: {
+      el: '.swiper-pagination',
+      clickable: true,
+      type: 'bullets',
+    },
+    // スマホではスワイプを有効化、PCでは矢印メインに
+    touchRatio: 1,
+    simulateTouch: true,
+    grabCursor: true,
+    // スライド変更時のコールバック
+    on: {
+      slideChange: function () {
+        currentSwiperIndex.value = this.realIndex
+      }
+    }
+  })
 }
 
-const prevImage = () => {
-  if (modalImage.value && modalImage.value.images && modalImage.value.images.length > 1) {
-    currentImageIndex.value = currentImageIndex.value === 0 
-      ? modalImage.value.images.length - 1 
-      : currentImageIndex.value - 1
-  }
-}
 
-const getCurrentImage = computed(() => {
-  if (!modalImage.value || !modalImage.value.images || modalImage.value.images.length === 0) {
-    return modalImage.value
-  }
-  const currentImg = modalImage.value.images[currentImageIndex.value]
-  return {
-    ...modalImage.value,
-    image: currentImg.image_url,
-    alt_text: currentImg.alt_text || modalImage.value.name
-  }
-})
 
 // カートに商品を追加
 const addToCart = async (product, event) => {
@@ -827,6 +913,88 @@ div[class~="admin-grid"] {
   text-align: center;
 }
 
+/* 商品カード内のSwiper */
+.product-swiper-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+.product-swiper {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-swiper .swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.product-swiper .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #f8f9fa;
+}
+
+/* 商品カード用矢印ボタン */
+.product-swiper-next,
+.product-swiper-prev {
+  color: white !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  margin-top: -15px !important;
+  opacity: 0 !important;
+  transition: all 0.3s ease !important;
+}
+
+.product-swiper-container:hover .product-swiper-next,
+.product-swiper-container:hover .product-swiper-prev {
+  opacity: 1 !important;
+}
+
+.product-swiper-next:after,
+.product-swiper-prev:after {
+  font-size: 12px !important;
+  font-weight: bold !important;
+}
+
+/* 商品カード用ページネーション */
+.product-swiper-pagination {
+  bottom: 8px !important;
+}
+
+.product-swiper-pagination .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1 !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.product-swiper-pagination .swiper-pagination-bullet-active {
+  background: white !important;
+  transform: scale(1.2);
+}
+
+/* 単一画像コンテナ */
+.single-image-container {
+  width: 100%;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+}
+
 /* レスポンシブ対応 */
 @media screen and (max-width: 1400px) {
   div[class~="admin-grid"] {
@@ -897,6 +1065,17 @@ div[class~="admin-grid"] {
   .product-card {
     padding: 1rem;
   }
+  
+  /* スマホでは商品カードの矢印を非表示に（スワイプメイン） */
+  .product-swiper-next,
+  .product-swiper-prev {
+    display: none !important;
+  }
+  
+  .product-swiper-container,
+  .single-image-container {
+    height: 200px;
+  }
 }
 
 /* 画像拡大モーダル */
@@ -921,13 +1100,14 @@ div[class~="admin-grid"] {
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 90vw;
+  height: 90vh;
+  max-width: 1000px;
+  max-height: 800px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   animation: scaleIn 0.3s ease-out;
-  /* flexboxで中央配置されるため、追加のpositionは不要 */
 }
 
 @keyframes fadeIn {
@@ -973,11 +1153,67 @@ div[class~="admin-grid"] {
   background: rgba(0, 0, 0, 0.8);
 }
 
+/* Swiperコンテナ */
+.swiper-container {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  width: 100%;
+  height: 100%;
+}
+
 .modal-image {
-  max-width: 80vw;
-  max-height: 70vh;
+  max-width: 90%;
+  max-height: 90%;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  background-color: #f8f9fa;
+  background-color: transparent;
+}
+
+/* Swiper矢印ボタンのカスタマイズ */
+.swiper-nav-arrow {
+  color: white !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-radius: 50% !important;
+  width: 50px !important;
+  height: 50px !important;
+  margin-top: -25px !important;
+  transition: all 0.3s ease !important;
+}
+
+.swiper-nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.1) !important;
+}
+
+.swiper-nav-arrow:after {
+  font-size: 20px !important;
+  font-weight: bold !important;
+}
+
+/* ページネーション */
+.swiper-pagination {
+  bottom: 10px !important;
+}
+
+.swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: white !important;
 }
 
 .modal-info {
@@ -1002,17 +1238,31 @@ div[class~="admin-grid"] {
 /* スマートフォン用モーダル調整 */
 @media screen and (max-width: 768px) {
   .modal-content {
-    max-width: 95vw;
-    max-height: 95vh;
+    width: 95vw;
+    height: 95vh;
+    max-width: none;
+    max-height: none;
   }
   
   .modal-image {
-    max-width: 90vw;
-    max-height: 75vh;
+    max-width: 95%;
+    max-height: 85%;
+  }
+  
+  /* スマホでは矢印を少し小さく */
+  .swiper-nav-arrow {
+    width: 40px !important;
+    height: 40px !important;
+    margin-top: -20px !important;
+  }
+  
+  .swiper-nav-arrow:after {
+    font-size: 16px !important;
   }
   
   .modal-info {
     padding: 1rem;
+    flex-shrink: 0;
   }
   
   .modal-info h3 {
@@ -1021,6 +1271,27 @@ div[class~="admin-grid"] {
   
   .modal-price {
     font-size: 1.1rem;
+  }
+}
+
+/* 非常に小さな画面では矢印を非表示にしてスワイプメインに */
+@media screen and (max-width: 480px) {
+  .swiper-nav-arrow {
+    display: none !important;
+  }
+  
+  .modal-content {
+    width: 98vw;
+    height: 98vh;
+  }
+  
+  .modal-image {
+    max-width: 98%;
+    max-height: 80%;
+  }
+  
+  .modal-info {
+    padding: 0.75rem;
   }
 }
 </style>
