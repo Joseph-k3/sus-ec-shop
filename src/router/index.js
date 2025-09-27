@@ -14,14 +14,9 @@ import { useAuth } from '../composables/useAuth'
 
 // サイト認証ガード
 const siteAuthGuard = (to, from, next) => {
-  console.log('siteAuthGuard called for route:', to.path, 'from:', from.path)
-  
   // 認証状態を直接チェック
   const authFlag = localStorage.getItem('site-authenticated')
   const authTime = localStorage.getItem('site-auth-time')
-  const splashFlag = sessionStorage.getItem('show-splash-after-login')
-  
-  console.log('Auth check:', { authFlag, authTime, splashFlag })
   
   let isAuth = false
   if (authFlag === 'true' && authTime) {
@@ -29,14 +24,11 @@ const siteAuthGuard = (to, from, next) => {
     const now = Date.now()
     const hoursPassed = (now - loginTime) / (1000 * 60 * 60)
     isAuth = hoursPassed < 24 // 24時間以内
-    console.log('Hours passed:', hoursPassed, 'Is authenticated:', isAuth)
   }
   
   if (isAuth) {
-    console.log('User is authenticated, proceeding to:', to.path)
     next()
   } else {
-    console.log('User not authenticated, redirecting to login')
     next('/login')
   }
 }

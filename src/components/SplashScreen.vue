@@ -28,11 +28,8 @@ const emit = defineEmits(['finished'])
 const isAnimating = ref(false)
 
 onMounted(() => {
-  console.log('SplashScreen mounted - duration:', props.duration, 'animation delay:', props.animationDelay)
-  
   // アニメーションの開始
   setTimeout(() => {
-    console.log('Starting fade out animation')
     isAnimating.value = true
   }, props.animationDelay)
 

@@ -16,7 +16,6 @@ export async function getProductImages(productId) {
     if (error) throw error
     return data || []
   } catch (error) {
-    console.error('商品画像の取得に失敗しました:', error)
     return []
   }
 }
@@ -38,7 +37,6 @@ export async function getPrimaryProductImage(productId) {
     if (error && error.code !== 'PGRST116') throw error
     return data || null
   } catch (error) {
-    console.error('メイン画像の取得に失敗しました:', error)
     return null
   }
 }
@@ -82,13 +80,6 @@ export async function addProductImage(productId, imageUrl, options = {}) {
     if (error) throw error
     return data
   } catch (error) {
-    console.error('商品画像の追加に失敗しました:', error)
-    console.error('エラー詳細:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint
-    })
     throw error
   }
 }
@@ -129,7 +120,6 @@ export async function updateProductImage(imageId, updates) {
     if (error) throw error
     return data
   } catch (error) {
-    console.error('商品画像の更新に失敗しました:', error)
     throw error
   }
 }
@@ -149,7 +139,6 @@ export async function deleteProductImage(imageId) {
     if (error) throw error
     return true
   } catch (error) {
-    console.error('商品画像の削除に失敗しました:', error)
     throw error
   }
 }

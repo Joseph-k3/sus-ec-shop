@@ -256,15 +256,6 @@ const calculateShippingFee = (address, order = null, totalPrice = null) => {
       const shippingInfo = extractShippingInfoFromAddress(address, priceForExtraction)
       
       if (shippingInfo.shippingFee > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('送料情報を住所から抽出:', {
-            orderType: order && isDirectPurchaseOrder(order) ? '即購入' : 'カート注文',
-            orderNumber: order?.order_number,
-            address: address.substring(0, 50) + '...',
-            extractedShippingFee: shippingInfo.shippingFee,
-            region: shippingInfo.region
-          })
-        }
         return shippingInfo.shippingFee
       }
     }
@@ -281,17 +272,6 @@ const calculateShippingFee = (address, order = null, totalPrice = null) => {
       // shipping.jsの関数を直接使用して一貫性を保つ
       const shippingFee = getShippingFee(zipCode)
       
-      // デバッグ: 送料計算の詳細をログ出力（開発時のみ）
-      if (process.env.NODE_ENV === 'development') {
-        const region = getShippingRegion(zipCode)
-        console.log('送料計算詳細（郵便番号から）:', {
-          address: address.substring(0, 50) + '...',
-          extractedZipCode: zipCode,
-          region,
-          shippingFee
-        })
-      }
-      
       return shippingFee
     } else {
       // 郵便番号が抽出できない場合、別のパターンを試す
@@ -300,27 +280,11 @@ const calculateShippingFee = (address, order = null, totalPrice = null) => {
         const zipCode = altMatch[1] + '-' + altMatch[2]
         const shippingFee = getShippingFee(zipCode)
         
-        if (process.env.NODE_ENV === 'development') {
-          const region = getShippingRegion(zipCode)
-          console.log('代替パターンで郵便番号抽出成功:', {
-            address: address.substring(0, 50) + '...',
-            extractedZipCode: zipCode,
-            region,
-            shippingFee
-          })
-        }
-        
         return shippingFee
-      } else {
-        // 郵便番号が抽出できない場合のデバッグ
-        if (process.env.NODE_ENV === 'development') {
-          console.log('郵便番号抽出失敗:', address.substring(0, 100))
-        }
       }
     }
   } catch (error) {
     // エラーの場合はデフォルト送料
-    console.error('送料計算エラー:', error)
   }
   
   return 1000 // 本州・四国・九州のデフォルト送料

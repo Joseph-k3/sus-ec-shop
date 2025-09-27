@@ -60,7 +60,6 @@ const handleLogin = async () => {
     if (password.value === SITE_PASSWORD) {
       // ログイン成功
       login()
-      console.log('Login successful, setting splash flag')
       
       // スプラッシュ画面フラグを設定
       sessionStorage.setItem('show-splash-after-login', 'true')
@@ -75,7 +74,6 @@ const handleLogin = async () => {
     }
   } catch (e) {
     error.value = 'ログインに失敗しました'
-    console.error('ログインエラー:', e)
   } finally {
     loading.value = false
   }

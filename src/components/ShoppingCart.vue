@@ -129,24 +129,16 @@ const handleQuantityInput = async (productId, value) => {
 }
 
 const removeItem = async (productId) => {
-  console.log('削除ボタンが押されました:', productId)
   if (confirm('この商品をカートから削除しますか？')) {
-    console.log('削除を確認しました:', productId)
     await cart.removeFromCart(productId)
     showMessage('商品をカートから削除しました', 'success')
-  } else {
-    console.log('削除をキャンセルしました:', productId)
   }
 }
 
 const clearAllItems = async () => {
-  console.log('カートを空にするボタンが押されました')
   if (confirm('カート内のすべての商品を削除しますか？')) {
-    console.log('カートクリアを確認しました')
     await cart.clearCart()
     showMessage('カートを空にしました', 'success')
-  } else {
-    console.log('カートクリアをキャンセルしました')
   }
 }
 

@@ -253,7 +253,7 @@ const fetchProducts = async () => {
     await nextTick()
     initProductSwipers()
   } catch (error) {
-    console.error('商品データの取得に失敗しました:', error)
+    // エラーハンドリング
   }
 }
 
@@ -355,7 +355,6 @@ const addToCart = async (product, event) => {
       showMessage(result.message, 'error', event)
     }
   } catch (error) {
-    console.error('カート追加エラー:', error)
     showMessage('カートへの追加に失敗しました', 'error', event)
   } finally {
     cartLoading.value = false

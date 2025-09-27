@@ -88,7 +88,6 @@ const checkAdmin = async () => {
 
 // スプラッシュ完了時の処理
 const handleSplashFinished = () => {
-  console.log('Splash finished, hiding splash screen')
   showSplashAfterLogin.value = false
   
   // 少し遅延してからメインコンテンツを表示（優しいフェードイン効果）
@@ -99,11 +98,8 @@ const handleSplashFinished = () => {
 
 // ルートの変更を監視してスプラッシュ表示を制御
 watch(() => route.path, (newPath, oldPath) => {
-  console.log('Route changed from', oldPath, 'to', newPath)
-  
   // ログインページから他のページに遷移した時にスプラッシュをチェック
   if (oldPath === '/login' && newPath === '/' && sessionStorage.getItem('show-splash-after-login') === 'true') {
-    console.log('Showing splash after login navigation')
     showSplashAfterLogin.value = true
     showMainContent.value = false // メインコンテンツを一旦隠す
     sessionStorage.removeItem('show-splash-after-login')
@@ -136,7 +132,6 @@ onMounted(async () => {
   // 初回ロード時にもスプラッシュチェック
   await nextTick()
   if (route.path === '/' && sessionStorage.getItem('show-splash-after-login') === 'true') {
-    console.log('Showing splash after login on mount')
     showSplashAfterLogin.value = true
     sessionStorage.removeItem('show-splash-after-login')
   }
