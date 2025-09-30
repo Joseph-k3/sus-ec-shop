@@ -1,6 +1,12 @@
 <template>
-  <div class="coming-soon">
-    <h1>Coming Soon</h1>
+  <!-- スプラッシュスクリーン -->
+  <div v-if="showSplash" class="splash-screen">
+    <img src="/logo.jpg" alt="Logo" class="splash-logo" />
+  </div>
+  
+  <!-- メインコンテンツ -->
+  <div v-else class="coming-soon" :class="{ 'fade-in': showContent }">
+    <h1>Coming Soon...</h1>
     <p class="message">販売開始日までお待ちください🙇</p>
     <div class="period" v-if="siteSettings">
       <p>販売期間：</p>
@@ -40,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginForm from './LoginForm.vue'
 
@@ -51,6 +57,8 @@ const props = defineProps({
 })
 
 const showLogin = ref(false)
+const showSplash = ref(true)
+const showContent = ref(false)
 
 const formatDateTime = (dateStr) => {
   const date = new Date(dateStr)
@@ -63,6 +71,17 @@ const formatDateTime = (dateStr) => {
   }).format(date)
 }
 
+onMounted(() => {
+  // スプラッシュアニメーション開始
+  setTimeout(() => {
+    showSplash.value = false
+    // 少し遅延してからコンテンツを表示
+    setTimeout(() => {
+      showContent.value = true
+    }, 300)
+  }, 2000) // 2秒間スプラッシュ表示
+})
+
 const handleLoginSuccess = () => {
   showLogin.value = false
   // ログイン成功後にスプラッシュを表示するフラグを設定
@@ -73,6 +92,55 @@ const handleLoginSuccess = () => {
 </script>
 
 <style scoped>
+/* スプラッシュスクリーン */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeOut 0.8s ease-in-out 1.5s forwards;
+}
+
+.splash-logo {
+  width: 60vmin;
+  height: 60vmin;
+  object-fit: cover;
+  border-radius: 50%;
+  animation: logoAnimation 2s ease-in-out;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes logoAnimation {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* メインコンテンツ */
 .coming-soon {
   height: 100vh;
   display: flex;
@@ -82,6 +150,14 @@ const handleLoginSuccess = () => {
   text-align: center;
   background-color: #f5f5f5;
   padding: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 1s ease-out;
+}
+
+.coming-soon.fade-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 h1 {
@@ -148,6 +224,11 @@ h1 {
 }
 
 @media (max-width: 768px) {
+  .splash-logo {
+    width: 70vmin;
+    height: 70vmin;
+  }
+  
   h1 {
     font-size: 2rem;
   }

@@ -7,30 +7,15 @@ import AdminProductEdit from '../components/AdminProductEdit.vue'
 import OrderManagement from '../components/admin/OrderManagement.vue'
 import BankTransferForm from '../components/BankTransferForm.vue'
 import SquarePaymentForm from '../components/SquarePaymentForm.vue'
-import SimpleLogin from '../components/SimpleLogin.vue'
+
 import ShoppingCart from '../components/ShoppingCart.vue'
 import CartCheckout from '../components/CartCheckout.vue'
 import { useAuth } from '../composables/useAuth'
 
-// サイト認証ガード
+// サイト認証ガード（現在は無効化 - Coming Soon画面で管理）
 const siteAuthGuard = (to, from, next) => {
-  // 認証状態を直接チェック
-  const authFlag = localStorage.getItem('site-authenticated')
-  const authTime = localStorage.getItem('site-auth-time')
-  
-  let isAuth = false
-  if (authFlag === 'true' && authTime) {
-    const loginTime = parseInt(authTime)
-    const now = Date.now()
-    const hoursPassed = (now - loginTime) / (1000 * 60 * 60)
-    isAuth = hoursPassed < 24 // 24時間以内
-  }
-  
-  if (isAuth) {
-    next()
-  } else {
-    next('/login')
-  }
+  // 認証処理は App.vue で管理されるため常に通す
+  next()
 }
 
 // 管理者認証ガード
@@ -46,11 +31,6 @@ const adminAuthGuard = async (to, from, next) => {
 }
 
 const routes = [
-  {
-    path: '/login',
-    name: 'login',
-    component: SimpleLogin
-  },
   {
     path: '/',
     name: 'home',
@@ -126,13 +106,7 @@ const router = createRouter({
 
 // グローバルナビゲーションガード
 router.beforeEach((to, from, next) => {
-  // ログインページへのアクセスは常に許可
-  if (to.path === '/login') {
-    next()
-    return
-  }
-  
-  // その他のルートは個別のガードで処理
+  // 通常のルーティング処理
   next()
 })
 

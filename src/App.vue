@@ -8,25 +8,12 @@
   </div>
   
   <div v-else>
-    <!-- ログインページの場合は直接表示 -->
-    <template v-if="$route.name === 'login'">
-      <router-view></router-view>
-    </template>
-    <!-- その他のページの場合は公開期間チェック -->
-    <template v-else-if="isWithinPublishPeriod || isAdmin">
+    <!-- 公開期間チェック -->
+    <template v-if="isWithinPublishPeriod || isAdmin">
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
         <main class="main-content">
-          <div class="admin-controls" v-if="isAdmin">
-            <router-link to="/admin" custom v-slot="{ navigate }">
-              <button @click="navigate">管理画面へ</button>
-            </router-link>
-            <router-link to="/" custom v-slot="{ navigate }">
-              <button @click="navigate">商品一覧に戻る</button>
-            </router-link>
-            <button @click="handleLogout" class="logout">ログアウト</button>
-          </div>
-          <button v-else-if="$route.name === 'home'" @click="showLogin = true" class="login-button">管理者ログイン</button>
+          <button v-if="!isAdmin && $route.name === 'home'" @click="showLogin = true" class="login-button">管理者ログイン</button>
 
           <router-view></router-view>
 
@@ -37,6 +24,34 @@
             </div>
           </div>
         </main>
+      </div>
+      
+      <!-- 管理者用右端固定ボタン -->
+      <div v-if="isAdmin" class="admin-fixed-controls">
+        <router-link to="/admin" custom v-slot="{ navigate }" v-if="$route.name === 'home'">
+          <button @click="navigate" class="admin-link" title="管理画面">
+            <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V7.5C15 8.3 14.3 9 13.5 9S12 8.3 12 7.5V6L6 7V9C6 10.1 6.9 11 8 11V16.5C8 17.3 8.7 18 9.5 18S11 17.3 11 16.5V13H13V16.5C13 17.3 13.7 18 14.5 18S16 17.3 16 16.5V11C17.1 11 18 10.1 18 9H21Z"/>
+            </svg>
+          </button>
+        </router-link>
+        <router-link to="/" custom v-slot="{ navigate }" v-if="$route.name === 'admin'">
+          <button @click="navigate" class="admin-link" title="商品一覧に戻る">
+            <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+          </button>
+        </router-link>
+        <button @click="showLogoutMenu = !showLogoutMenu" class="admin-link logout-toggle" title="ログアウト">
+          <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 0 1 2 2v2h-2V4H4v16h10v-2h2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10Z"/>
+          </svg>
+        </button>
+        <!-- ログアウト確認ミニメニュー -->
+        <div v-if="showLogoutMenu" class="logout-menu">
+          <button @click="handleLogout" class="logout-confirm">ログアウト</button>
+          <button @click="showLogoutMenu = false" class="logout-cancel">キャンセル</button>
+        </div>
       </div>
     </template>
     <ComingSoon v-else :siteSettings="siteSettings" />
@@ -63,6 +78,7 @@ const showAdmin = ref(false)
 const isAdmin = ref(false)
 const showLogin = ref(false)
 const loginModal = ref(null)
+const showLogoutMenu = ref(false)
 const siteSettings = ref(null)
 const loading = ref(true)
 const showSplashAfterLogin = ref(false)
@@ -172,6 +188,7 @@ const handleLogout = async () => {
   try {
     await supabase.auth.signOut()
     isAdmin.value = false
+    showLogoutMenu.value = false
     await router.push('/')
   } catch (error) {
     console.error('ログアウト中にエラーが発生しました:', error)
@@ -179,6 +196,8 @@ const handleLogout = async () => {
   showAdmin.value = false
   showLogin.value = false
 }
+
+
 </script>
 
 <style>
@@ -225,11 +244,89 @@ body {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.admin-controls {
+/* 管理者用右端固定ボタン */
+.admin-fixed-controls {
+  position: fixed;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
   display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.admin-link {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-decoration: none;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.admin-link:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.admin-link.logout-toggle {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.admin-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.logout-menu {
+  position: absolute;
+  right: 60px;
+  bottom: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 120px;
+}
+
+.logout-confirm, .logout-cancel {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.logout-confirm {
+  background: #e74c3c;
+  color: white;
+}
+
+.logout-confirm:hover {
+  background: #c0392b;
+}
+
+.logout-cancel {
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.logout-cancel:hover {
+  background: #e9ecef;
 }
 
 button {
@@ -304,13 +401,23 @@ button.logout:hover {
     margin-right: 0.5rem;
   }
 
-  .admin-controls {
-    flex-direction: column;
-    gap: 0.5rem;
+  .admin-fixed-controls {
+    right: 8px;
+    gap: 8px;
   }
 
-  button {
-    width: 100%;
+  .admin-link {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .admin-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .logout-menu {
+    right: 50px;
   }
 }
 </style>
