@@ -1,5 +1,11 @@
 <template>
-  <div class="product-list-container">   
+  <!-- スプラッシュスクリーン -->
+  <div v-show="showSplash" class="splash-screen">
+    <img src="/logo.jpg" alt="SUS Plants Logo" class="splash-logo" />
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div v-show="!showSplash" class="product-list-container" :class="{ 'fade-in': showContent }">   
     <div class="controls-section">
       <SortSelector v-model:sort="sortKey" />
       <div class="user-actions">
@@ -176,8 +182,33 @@ const currentImageIndex = ref(0)
 const swiperContainer = ref(null)
 const swiperInstance = ref(null)
 const currentSwiperIndex = ref(0)
+// スプラッシュ関連
+const showSplash = ref(true)
+const showContent = ref(false)
 
 onMounted(async () => {
+  // 本番運用時は常にスプラッシュを表示、開発時はComingSoon画面からの遷移の場合のみ表示
+  const shouldShowSplash = sessionStorage.getItem('show-splash-after-login') === 'true'
+  const isProduction = import.meta.env.PROD || import.meta.env.VITE_FORCE_SPLASH === 'true' // 本番ビルドまたは環境変数で強制スプラッシュ
+  
+  if (isProduction || shouldShowSplash) {
+    // 本番運用時またはComingSoon画面からの遷移の場合はスプラッシュアニメーション開始
+    if (shouldShowSplash) {
+      sessionStorage.removeItem('show-splash-after-login') // フラグをクリア
+    }
+    setTimeout(() => {
+      showSplash.value = false
+      // 少し遅延してからコンテンツを表示
+      setTimeout(() => {
+        showContent.value = true
+      }, 300)
+    }, 2000) // 2秒間スプラッシュ表示
+  } else {
+    // 開発時の通常のアクセスの場合はスプラッシュをスキップ
+    showSplash.value = false
+    showContent.value = true
+  }
+
   // 購入者IDを取得
   customerId.value = getOrCreateCustomerId()
   
@@ -1292,5 +1323,69 @@ div[class~="admin-grid"] {
   .modal-info {
     padding: 0.75rem;
   }
+}
+
+/* スプラッシュスクリーン */
+.splash-screen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: #f5f5f5 !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  animation: fadeOut 0.8s ease-in-out 1.5s forwards;
+}
+
+.splash-logo {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 60vmin !important;
+  height: 60vmin !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  animation: logoAnimation 2s ease-in-out;
+  display: block !important;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes logoAnimation {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* メインコンテンツのフェードイン */
+.product-list-container {
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.product-list-container.fade-in {
+  opacity: 1;
 }
 </style>

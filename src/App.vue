@@ -9,6 +9,7 @@
   
   <div v-else>
     <!-- 公開期間チェック -->
+    <!-- 本番運用時: 公開期間内であればComingSoon.vueは表示されず、ProductList.vueで直接スプラッシュ→商品一覧を表示 -->
     <template v-if="isWithinPublishPeriod || isAdmin">
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
