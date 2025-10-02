@@ -1,8 +1,10 @@
 <template>
-  <!-- スプラッシュスクリーン -->
-  <div v-show="showSplash" class="splash-screen">
-    <img src="/logo.jpg" alt="SUS Plants Logo" class="splash-logo" />
-  </div>
+  <!-- スプラッシュスクリーン - bodyに直接挿入 -->
+  <Teleport to="body">
+    <div v-show="showSplash" class="splash-screen">
+      <img src="/logo.jpg" alt="SUS Plants Logo" class="splash-logo" />
+    </div>
+  </Teleport>
 
   <!-- メインコンテンツ -->
   <div v-show="!showSplash" class="product-list-container" :class="{ 'fade-in': showContent }">   
@@ -148,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import SortSelector from './SortSelector.vue'
 import { supabase } from '../lib/supabase'
@@ -192,12 +194,23 @@ onMounted(async () => {
   const isProduction = import.meta.env.PROD || import.meta.env.VITE_FORCE_SPLASH === 'true' // 本番ビルドまたは環境変数で強制スプラッシュ
   
   if (isProduction || shouldShowSplash) {
+    // スプラッシュ表示時にbodyのスクロールを無効化
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
+    
     // 本番運用時またはComingSoon画面からの遷移の場合はスプラッシュアニメーション開始
     if (shouldShowSplash) {
       sessionStorage.removeItem('show-splash-after-login') // フラグをクリア
     }
     setTimeout(() => {
       showSplash.value = false
+      // bodyのスタイルを復元
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
       // 少し遅延してからコンテンツを表示
       setTimeout(() => {
         showContent.value = true
@@ -221,6 +234,15 @@ onMounted(async () => {
   
   // 30秒ごとに在庫情報を更新
   setInterval(fetchProducts, 30000)
+})
+
+// クリーンアップ処理
+onUnmounted(() => {
+  // bodyのスタイルを確実に復元
+  document.body.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.width = ''
+  document.body.style.height = ''
 })
 
 // 商品カード内のSwiperを初期化
@@ -1325,8 +1347,9 @@ div[class~="admin-grid"] {
   }
 }
 
-/* スプラッシュスクリーン */
+/* スプラッシュスクリーン - CSS Grid による完全な中央配置 */
 .splash-screen {
+  /* 完全な画面占有 */
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -1334,24 +1357,79 @@ div[class~="admin-grid"] {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  min-width: 100vw !important;
+  min-height: 100vh !important;
+  
+  /* 背景とz-index */
   background-color: #f5f5f5 !important;
-  z-index: 99999 !important;
+  z-index: 999999 !important;
+  
+  /* レイアウトリセット */
   margin: 0 !important;
   padding: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  
+  /* CSS Grid による中央配置 */
+  display: grid !important;
+  place-items: center !important;
+  place-content: center !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  justify-items: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+  
+  /* アニメーションと制約 */
   animation: fadeOut 0.8s ease-in-out 1.5s forwards;
+  overflow: hidden !important;
+  transform: none !important;
+  
+  /* 完全なリセット */
+  inset: 0 !important;
+  float: none !important;
+  clear: both !important;
+  contain: layout style paint !important;
+  text-align: center !important;
 }
 
 .splash-logo {
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  width: 60vmin !important;
-  height: 60vmin !important;
+  /* サイズ設定 */
+  width: 75vmin !important;
+  height: 75vmin !important;
+  max-width: 400px !important;
+  max-height: 400px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  
+  /* 画像表示 */
   object-fit: cover !important;
   border-radius: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  animation: logoAnimation 2s ease-in-out;
+  
+  /* レイアウト */
   display: block !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  
+  /* Grid子要素としての中央配置 */
+  justify-self: center !important;
+  align-self: center !important;
+  place-self: center !important;
+  
+  /* アニメーション */
+  animation: logoAnimation 2s ease-in-out;
+  
+  /* 完全なリセット */
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  float: none !important;
+  clear: both !important;
+  vertical-align: middle !important;
 }
 
 @keyframes fadeOut {
@@ -1367,15 +1445,15 @@ div[class~="admin-grid"] {
 @keyframes logoAnimation {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.8);
+    transform: scale(0.8);
   }
   50% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.05);
+    transform: scale(1.05);
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 

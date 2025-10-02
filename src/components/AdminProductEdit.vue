@@ -313,7 +313,6 @@ const currentProduct = ref({
 
 // 商品一覧を取得
 const loadProducts = async () => {
-  console.log('商品一覧を読み込み中...')
   
   try {
     const { data, error } = await supabase
@@ -326,7 +325,6 @@ const loadProducts = async () => {
       return
     }
     
-    console.log('読み込まれた商品:', data)
     products.value = data || []
   } catch (error) {
     console.error('商品読み込み時にエラーが発生しました:', error)
@@ -357,7 +355,6 @@ const handleSubmit = async () => {
         .eq('id', editingId.value)
       
       if (error) throw error
-      console.log('商品を更新しました')
     } else {
       // 新規追加
       const { data, error } = await supabase
@@ -368,7 +365,6 @@ const handleSubmit = async () => {
       
       if (error) throw error
       savedProductId = data.id
-      console.log('商品を追加しました:', savedProductId)
       
       // 新規商品の場合、一時画像をアップロード
       if (tempImages.value.length > 0) {
@@ -567,12 +563,10 @@ const handleTempImageSelect = (files) => {
     currentProduct.value.image = primaryImage.preview_url
   }
   
-  console.log('一時画像を追加しました:', tempImages.value.length, '枚')
 }
 
 // 単一画像のアップロード
 const uploadSingleImage = async (file, isPrimary = false) => {
-  console.log('画像アップロード開始:', file.name)
   
   try {
     // ファイル名を生成（タイムスタンプ + ランダム文字列）
@@ -581,7 +575,6 @@ const uploadSingleImage = async (file, isPrimary = false) => {
     const fileExtension = file.name.split('.').pop()
     const fileName = `${timestamp}_${randomId}.${fileExtension}`
     
-    console.log('ストレージにアップロード中:', fileName)
     
     // Supabaseストレージにアップロード
     const { data, error } = await supabase.storage
@@ -593,24 +586,20 @@ const uploadSingleImage = async (file, isPrimary = false) => {
       throw error
     }
     
-    console.log('ストレージアップロード成功:', data)
     
     // 公開URLを取得
     const { data: { publicUrl } } = supabase.storage
       .from('succulents-images')
       .getPublicUrl(fileName)
     
-    console.log('公開URL取得:', publicUrl)
     
     // データベースに画像情報を保存
-    console.log('データベースに画像情報を保存中...')
     await addProductImage(editingId.value, publicUrl, {
       displayOrder: productImages.value.length,
       altText: file.name,
       isPrimary: isPrimary
     })
     
-    console.log('画像アップロード完了')
   } catch (error) {
     console.error('uploadSingleImageでエラー:', error)
     throw error
@@ -619,7 +608,6 @@ const uploadSingleImage = async (file, isPrimary = false) => {
 
 // 一時画像を実際にアップロード
 const uploadTempImages = async (productId) => {
-  console.log('一時画像をアップロード中...', tempImages.value.length, '枚')
   
   try {
     uploadProgress.value = 0
@@ -627,7 +615,6 @@ const uploadTempImages = async (productId) => {
     
     for (let i = 0; i < tempImages.value.length; i++) {
       const tempImage = tempImages.value[i]
-      console.log(`画像 ${i + 1}/${totalImages} をアップロード中:`, tempImage.alt_text)
       
       // ファイル名を生成
       const timestamp = Date.now()
@@ -644,7 +631,6 @@ const uploadTempImages = async (productId) => {
         console.error('ストレージアップロードエラー:', uploadError)
         // ストレージエラーの場合はフォールバック（単一画像フィールドに最初の画像を保存）
         if (i === 0) {
-          console.log('フォールバック: 単一画像フィールドを使用')
           const { data: { publicUrl } } = supabase.storage
             .from('succulents-images')
             .getPublicUrl(fileName)
@@ -669,13 +655,11 @@ const uploadTempImages = async (productId) => {
           altText: tempImage.alt_text,
           isPrimary: tempImage.is_primary
         })
-        console.log(`画像 ${i + 1} をproduct_imagesテーブルに保存完了`)
       } catch (dbError) {
         console.error('product_imagesテーブルへの保存に失敗:', dbError)
         
         // フォールバック: 最初の画像のみsucculents.imageフィールドに保存
         if (i === 0) {
-          console.log('フォールバック: succulents.imageフィールドに保存')
           await supabase
             .from('succulents')
             .update({ image: publicUrl })
@@ -686,7 +670,6 @@ const uploadTempImages = async (productId) => {
       uploadProgress.value = Math.round(((i + 1) / totalImages) * 100)
     }
     
-    console.log('すべての一時画像のアップロードが完了しました')
     uploadProgress.value = 0
     
   } catch (error) {

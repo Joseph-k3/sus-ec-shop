@@ -208,29 +208,21 @@ const proceedToPayment = async () => {
 // Square決済フォームの初期化
 const initializeSquareForm = async () => {
   try {
-    console.log('=== Square決済フォーム初期化開始 ===')
     
     // カードコンテナが存在するかチェック
     const cardContainer = document.getElementById('card-container')
     if (!cardContainer) {
       throw new Error('カードコンテナ要素が見つかりません')
     }
-    console.log('✅ カードコンテナ要素が見つかりました')
     
     // 郵便番号をdata属性として設定（CSS content表示用）
     cardContainer.setAttribute('data-zip-code', props.order.zip_code || '未設定')
 
-    console.log('Square SDKを初期化中...')
     const payments = await initializeSquare()
-    console.log('✅ Square SDK初期化完了')
     
-    console.log('カード支払いフォームを作成中...')
-    console.log('📮 渡す郵便番号:', props.order.zip_code)
     card = await createCardPaymentForm(payments, props.order.zip_code)
-    console.log('✅ カード支払いフォーム作成完了')
     
     paymentFormLoaded.value = true
-    console.log('✅ Square決済フォーム初期化完了')
     
   } catch (err) {
     console.error('❌ Square決済フォームの初期化に失敗しました:', err)
@@ -271,9 +263,6 @@ const handlePayment = async () => {
 
   try {
     // デバッグ: 注文データを確認
-    console.log('注文データ:', props.order)
-    console.log('郵便番号:', props.order.zip_code)
-    console.log('住所:', props.order.address)
     
     // 事前バリデーション（郵便番号）- 簡素化版
     if (!props.order.zip_code) {
@@ -282,15 +271,12 @@ const handlePayment = async () => {
     
     // 郵便番号のフォーマット（前画面で検証済みなので最小限のチェック）
     let formattedZipCode = props.order.zip_code.trim()
-    console.log('受信した郵便番号:', formattedZipCode)
     
     // ハイフンが無い場合のみ自動追加（エラーにはしない）
     if (/^\d{7}$/.test(formattedZipCode)) {
       formattedZipCode = formattedZipCode.slice(0, 3) + '-' + formattedZipCode.slice(3)
-      console.log('郵便番号を自動フォーマット:', props.order.zip_code, '->', formattedZipCode)
     }
     
-    console.log('使用する郵便番号:', formattedZipCode)
 
     // 1. 在庫チェック
     const { data: stockCheck, error: stockError } = await supabase
@@ -304,11 +290,9 @@ const handlePayment = async () => {
     }
 
     // 2. カードのトークン化
-    console.log('=== カードトークン化開始 ===')
     let result
     try {
       result = await card.tokenize()
-      console.log('カードトークン化完了:', result)
     } catch (tokenizeError) {
       console.error('カードトークン化でエラー発生:', tokenizeError)
       throw tokenizeError
@@ -319,24 +303,18 @@ const handlePayment = async () => {
       throw new Error(result.errors[0]?.message || 'カード情報の処理に失敗しました')
     }
 
-    console.log('✅ テスト環境：カードトークン化成功', result.token)
 
     // 3. Square APIで決済処理（テスト環境での模擬決済）
-    console.log('=== 決済処理開始 ===')
     
     let paymentResult = null
     try {
-      console.log('processPayment関数を呼び出します...')
-      console.log('決済時の郵便番号:', formattedZipCode)
       // processPayment関数を使用してテスト決済を実行（郵便番号付き）
       paymentResult = await processPayment(card, props.order.price, formattedZipCode)
-      console.log('✅ 決済結果:', paymentResult)
       
       if (paymentResult.status !== 'success') {
         throw new Error('テスト決済に失敗しました')
       }
 
-      console.log('✅ テスト決済が成功しました:', paymentResult.paymentId)
       
     } catch (paymentError) {
       console.error('❌ 決済処理エラー:', paymentError)
@@ -345,7 +323,6 @@ const handlePayment = async () => {
     }
 
     // 4. 決済成功後に注文をDBに保存（30秒重複チェックのトリガーが作動）
-    console.log('決済成功のため注文データをDBに保存します...')
     
     // 注文データを準備（zip_codeカラムの有無に対応）
     let orderData = {
@@ -375,15 +352,11 @@ const handlePayment = async () => {
         // zip_codeカラムが存在する場合
         orderData.zip_code = formattedZipCode // フォーマットされた郵便番号を使用
         orderData.address = props.order.address // 住所も元の形式に戻す
-        console.log('zip_codeカラムが利用可能です')
       } else {
-        console.log('zip_codeカラムが存在しないため、住所に統合します')
       }
     } catch (e) {
-      console.log('スキーマ確認エラー、住所統合モードで続行:', e.message)
     }
 
-    console.log('保存する注文データ:', orderData)
     
     const { data: newOrderData, error: orderError } = await supabase
       .from('orders')
@@ -414,10 +387,8 @@ const handlePayment = async () => {
     }
 
     orderData = newOrderData
-    console.log('注文が正常に保存されました。注文ID:', orderData.id)
 
     // 5. 注文ステータスを完了に更新
-    console.log('注文ステータスを更新します...')
     const { error: statusUpdateError } = await supabase
       .from('orders')
       .update({ 
@@ -431,7 +402,6 @@ const handlePayment = async () => {
       throw new Error('注文ステータスの更新に失敗しました')
     }
 
-    console.log('注文ステータスが正常に更新されました')
 
     // 7. 成功メッセージ表示とリダイレクト
     alert(
@@ -459,13 +429,11 @@ const handlePayment = async () => {
     
     // エラー時のクリーンアップと在庫復元
     if (orderData && orderData.id && !err.message.includes('決済処理中に在庫が不足')) {
-      console.log('エラー時のクリーンアップを実行します:', orderData.id)
       try {
         await supabase
           .from('orders')
           .delete()
           .eq('id', orderData.id)
-        console.log('エラー時のクリーンアップが完了しました')
       } catch (cleanupError) {
         console.error('クリーンアップエラー:', cleanupError)
       }
@@ -486,7 +454,6 @@ const handlePayment = async () => {
             quantity: currentStock.quantity + 1 
           })
           .eq('id', props.order.product_id)
-        console.log(`決済失敗時に商品ID ${props.order.product_id} の在庫を復元しました`)
       }
     } catch (stockRestoreError) {
       console.error('在庫復元エラー:', stockRestoreError)
@@ -497,7 +464,6 @@ const handlePayment = async () => {
     // フラグを必ずリセット
     isProcessing.value = false
     isPaymentInProgress = false
-    console.log('決済処理が終了しました')
   }
 }
 </script>

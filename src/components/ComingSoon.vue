@@ -1,11 +1,13 @@
 <template>
-  <!-- スプラッシュスクリーン -->
-  <div v-if="showSplash" class="splash-screen">
-    <img src="/logo.jpg" alt="Logo" class="splash-logo" />
-  </div>
+  <!-- スプラッシュスクリーン - bodyに直接挿入 -->
+  <Teleport to="body">
+    <div v-if="showSplash" class="splash-screen">
+      <img src="/logo.jpg" alt="Logo" class="splash-logo" />
+    </div>
+  </Teleport>
   
   <!-- メインコンテンツ -->
-  <div v-else class="coming-soon" :class="{ 'fade-in': showContent }">
+  <div v-if="!showSplash" class="coming-soon" :class="{ 'fade-in': showContent }">
     <h1>Coming Soon...</h1>
     <p class="message">販売開始日までお待ちください🙇</p>
     <div class="period" v-if="siteSettings">
@@ -92,27 +94,89 @@ const handleLoginSuccess = () => {
 </script>
 
 <style scoped>
-/* スプラッシュスクリーン */
+/* スプラッシュスクリーン - CSS Grid による完全な中央配置 */
 .splash-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #f5f5f5;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+  /* 完全な画面占有 */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  min-width: 100vw !important;
+  min-height: 100vh !important;
+  
+  /* 背景とz-index */
+  background-color: #f5f5f5 !important;
+  z-index: 999999 !important;
+  
+  /* レイアウトリセット */
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  
+  /* CSS Grid による中央配置 */
+  display: grid !important;
+  place-items: center !important;
+  place-content: center !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  justify-items: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+  
+  /* アニメーションと制約 */
   animation: fadeOut 0.8s ease-in-out 1.5s forwards;
+  overflow: hidden !important;
+  transform: none !important;
+  
+  /* 完全なリセット */
+  inset: 0 !important;
+  float: none !important;
+  clear: both !important;
+  contain: layout style paint !important;
+  text-align: center !important;
 }
 
 .splash-logo {
-  width: 60vmin;
-  height: 60vmin;
-  object-fit: cover;
-  border-radius: 50%;
+  /* サイズ設定 */
+  width: 75vmin !important;
+  height: 75vmin !important;
+  max-width: 400px !important;
+  max-height: 400px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  
+  /* 画像表示 */
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  
+  /* レイアウト */
+  display: block !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  
+  /* Grid子要素としての中央配置 */
+  justify-self: center !important;
+  align-self: center !important;
+  place-self: center !important;
+  
+  /* アニメーション */
   animation: logoAnimation 2s ease-in-out;
+  
+  /* 完全なリセット */
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  float: none !important;
+  clear: both !important;
+  vertical-align: middle !important;
 }
 
 @keyframes fadeOut {
@@ -225,8 +289,8 @@ h1 {
 
 @media (max-width: 768px) {
   .splash-logo {
-    width: 70vmin;
-    height: 70vmin;
+    width: 80vmin;
+    height: 80vmin;
   }
   
   h1 {

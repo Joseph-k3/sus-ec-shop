@@ -35,7 +35,6 @@ onMounted(() => {
 
   // アニメーション完了後にイベントを発行
   setTimeout(() => {
-    console.log('SplashScreen finished')
     emit('finished')
   }, props.duration)
 })
