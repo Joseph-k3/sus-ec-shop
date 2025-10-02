@@ -7,7 +7,7 @@
   </Teleport>
   
   <!-- メインコンテンツ -->
-  <div v-if="!showSplash" class="coming-soon" :class="{ 'fade-in': showContent }">
+  <div v-if="!showSplash && showContent" class="coming-soon fade-in">
     <h1>Coming Soon...</h1>
     <p class="message">販売開始日までお待ちください🙇</p>
     <div class="period" v-if="siteSettings">
@@ -77,10 +77,10 @@ onMounted(() => {
   // スプラッシュアニメーション開始
   setTimeout(() => {
     showSplash.value = false
-    // 少し遅延してからコンテンツを表示
+    // スプラッシュが完全に消えてからコンテンツを表示（間隔をなくす）
     setTimeout(() => {
       showContent.value = true
-    }, 300)
+    }, 50) // 50msの短い遅延でよりスムーズに
   }, 2000) // 2秒間スプラッシュ表示
 })
 

@@ -7,7 +7,7 @@
   </Teleport>
 
   <!-- メインコンテンツ -->
-  <div v-show="!showSplash" class="product-list-container" :class="{ 'fade-in': showContent }">   
+  <div v-show="!showSplash && showContent" class="product-list-container fade-in">   
     <div class="controls-section">
       <SortSelector v-model:sort="sortKey" />
       <div class="user-actions">
@@ -211,10 +211,10 @@ onMounted(async () => {
       document.body.style.position = ''
       document.body.style.width = ''
       document.body.style.height = ''
-      // 少し遅延してからコンテンツを表示
+      // スプラッシュが完全に消えてからコンテンツを表示（間隔をなくす）
       setTimeout(() => {
         showContent.value = true
-      }, 300)
+      }, 50) // 50msの短い遅延でよりスムーズに
     }, 2000) // 2秒間スプラッシュ表示
   } else {
     // 開発時の通常のアクセスの場合はスプラッシュをスキップ
