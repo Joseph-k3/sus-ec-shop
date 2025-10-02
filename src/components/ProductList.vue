@@ -194,11 +194,17 @@ onMounted(async () => {
   const isProduction = import.meta.env.PROD || import.meta.env.VITE_FORCE_SPLASH === 'true' // 本番ビルドまたは環境変数で強制スプラッシュ
   
   if (isProduction || shouldShowSplash) {
-    // スプラッシュ表示時にbodyのスクロールを無効化
+    // スプラッシュ表示時にbodyのスクロールを無効化と背景色を統一
     document.body.style.overflow = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
     document.body.style.height = '100%'
+    document.body.style.backgroundColor = '#f5f5f5'
+    // #app要素を完全に非表示にして白いバーを防ぐ
+    const appElement = document.getElementById('app')
+    if (appElement) {
+      appElement.style.visibility = 'hidden'
+    }
     
     // 本番運用時またはComingSoon画面からの遷移の場合はスプラッシュアニメーション開始
     if (shouldShowSplash) {
@@ -211,6 +217,12 @@ onMounted(async () => {
       document.body.style.position = ''
       document.body.style.width = ''
       document.body.style.height = ''
+      document.body.style.backgroundColor = ''
+      // #app要素を表示復元
+      const appElement = document.getElementById('app')
+      if (appElement) {
+        appElement.style.visibility = 'visible'
+      }
       // スプラッシュが完全に消えてからコンテンツを表示（間隔をなくす）
       setTimeout(() => {
         showContent.value = true
@@ -243,6 +255,12 @@ onUnmounted(() => {
   document.body.style.position = ''
   document.body.style.width = ''
   document.body.style.height = ''
+  document.body.style.backgroundColor = ''
+  // #app要素も復元
+  const appElement = document.getElementById('app')
+  if (appElement) {
+    appElement.style.visibility = 'visible'
+  }
 })
 
 // 商品カード内のSwiperを初期化

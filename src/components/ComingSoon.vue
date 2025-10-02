@@ -74,9 +74,21 @@ const formatDateTime = (dateStr) => {
 }
 
 onMounted(() => {
+  // スプラッシュ表示時の背景色を統一と#app要素を非表示
+  document.body.style.backgroundColor = '#f5f5f5'
+  const appElement = document.getElementById('app')
+  if (appElement) {
+    appElement.style.visibility = 'hidden'
+  }
+  
   // スプラッシュアニメーション開始
   setTimeout(() => {
     showSplash.value = false
+    // スタイルを復元
+    document.body.style.backgroundColor = ''
+    if (appElement) {
+      appElement.style.visibility = 'visible'
+    }
     // スプラッシュが完全に消えてからコンテンツを表示（間隔をなくす）
     setTimeout(() => {
       showContent.value = true
