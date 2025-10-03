@@ -23,7 +23,7 @@
       </div>
     </div>
     <div class="product-list" :class="{ 'admin-grid': route.path.startsWith('/admin') }">
-      <div v-for="product in sortedProducts" :key="product.id" class="product-card">
+      <div v-for="product in sortedProducts" :key="product.id" class="product-card" :class="{ 'sold-out': product.quantity <= 0, 'reserved': product.is_reserved }">
         <div class="image-container">
           <!-- 複数画像がある場合はSwiper、単一画像の場合は通常表示 -->
           <div v-if="product.images && product.images.length > 1" class="product-swiper-container">
@@ -62,8 +62,8 @@
               @click="openImageModal(product)"
             >
           </div>
-          <div v-if="product.is_reserved" class="reserved-overlay"></div>
-          <div v-else-if="product.quantity <= 0" class="sold-out-overlay"></div>
+          <div v-if="product.is_reserved" class="reserved-overlay">取引中</div>
+          <div v-else-if="product.quantity <= 0" class="sold-out-overlay">売約済み</div>
         </div>
         <div class="product-info">
           <h3 class="product-name">{{ product.name }}</h3>
@@ -653,7 +653,7 @@ div[class~="admin-grid"] {
 .image-container {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 269px;
   background-color: #f8f9fa;
   display: flex;
   align-items: center;
@@ -760,6 +760,33 @@ div[class~="admin-grid"] {
 }
 
 
+/* 売約済み・取引中の商品カード全体のスタイル */
+.product-card.sold-out {
+  pointer-events: none;
+  transform: none !important;
+}
+
+.product-card.reserved {
+  pointer-events: none;
+  transform: none !important;
+}
+
+.product-card.sold-out:hover,
+.product-card.reserved:hover {
+  transform: none !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 売約済み・取引中商品の画像のみにフィルター適用 */
+.product-card.sold-out .product-image {
+  filter: grayscale(100%) brightness(0.7) contrast(0.8);
+}
+
+.product-card.reserved .product-image {
+  filter: brightness(0.7) saturate(0.6);
+}
+
+/* オーバーレイのスタイル */
 .reserved-overlay,
 .sold-out-overlay {
   position: absolute;
@@ -773,15 +800,16 @@ div[class~="admin-grid"] {
   font-size: 1.2rem;
   font-weight: bold;
   color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  z-index: 10;
 }
 
 .reserved-overlay {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .sold-out-overlay {
-  background: rgba(128, 128, 128, 0.8);  /* よりグレーっぽい半透明 */
-  backdrop-filter: grayscale(100%);  /* 下の画像をグレースケールに */
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .status-text {
@@ -987,7 +1015,7 @@ div[class~="admin-grid"] {
 .product-swiper-container {
   position: relative;
   width: 100%;
-  height: 250px;
+  height: 290px;
 }
 
 .product-swiper {
@@ -1055,7 +1083,7 @@ div[class~="admin-grid"] {
 /* 単一画像コンテナ */
 .single-image-container {
   width: 100%;
-  height: 250px;
+  height: 269px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1115,9 +1143,15 @@ div[class~="admin-grid"] {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
+  
+  /* モバイルでの売約済み・取引中商品の調整 */
+  .reserved-overlay,
+  .sold-out-overlay {
+    font-size: 1rem;
+    font-weight: bold;
+  }
 }
 
-/* 非常に小さなスマートフォン用 */
 @media screen and (max-width: 480px) {
   .product-list {
     padding: 0.25rem;
@@ -1142,9 +1176,19 @@ div[class~="admin-grid"] {
     display: none !important;
   }
   
+  .image-container {
+    height: 200px; /* モバイルでは元のサイズに戻す */
+  }
+  
   .product-swiper-container,
   .single-image-container {
-    height: 200px;
+    height: 200px; /* モバイルでは元のサイズに戻す */
+  }
+  
+  /* 非常に小さな画面での売約済み表示調整 */
+  .reserved-overlay,
+  .sold-out-overlay {
+    font-size: 0.9rem;
   }
 }
 
