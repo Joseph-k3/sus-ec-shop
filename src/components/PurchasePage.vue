@@ -826,9 +826,9 @@ const proceedToPurchase = async () => {
   isSubmitting.value = true
 
   try {
-    // クレジットカード決済の場合も在庫を減らしてから決済画面へ移行
+    // クレジットカード決済の場合は在庫チェックのみ（実際の減少はSquare決済完了後）
     if (selectedPaymentMethod.value === 'square') {
-      // Optimistic locking による原子的在庫減少操作
+      // 在庫チェックのみ実行
       const { data: currentStock } = await supabase
         .from('succulents')
         .select('quantity')
@@ -837,29 +837,6 @@ const proceedToPurchase = async () => {
 
       if (!currentStock || currentStock.quantity < 1) {
         throw new Error('申し訳ありません。在庫が不足しています')
-      }
-
-      // 現在の在庫数を条件にして在庫を減らす（競合状態を防ぐ）
-      const { data: stockUpdateResult, error: stockUpdateError } = await supabase
-        .from('succulents')
-        .update({ quantity: currentStock.quantity - 1 })
-        .eq('id', product.value.id)
-        .eq('quantity', currentStock.quantity)  // optimistic locking
-        .select('quantity')
-        .single()
-
-      if (stockUpdateError) {
-        throw new Error('在庫の更新に失敗しました')
-      }
-
-      // 更新された行がない場合（別のユーザーが先に購入した）
-      if (!stockUpdateResult) {
-        throw new Error('申し訳ありません。在庫が不足しています')
-      }
-
-      if (stockUpdateError) {
-        console.error('在庫更新エラー:', stockUpdateError)
-        throw new Error('在庫の更新に失敗しました')
       }
       
       // 郵便番号をフォーマット（ハイフンが無い場合は自動追加）

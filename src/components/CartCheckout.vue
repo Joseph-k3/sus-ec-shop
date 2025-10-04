@@ -380,9 +380,9 @@ const submitOrder = async () => {
   try {
     const customerId = getOrCreateCustomerId()
     
-    // 1. 全商品の在庫チェックと確保（Optimistic locking）
+    // 1. 在庫チェックのみ実行（実際の減少はデータベーストリガーに任せる）
     for (const item of cart.items) {
-      // 現在の在庫を取得
+      // 現在の在庫を取得して事前チェック
       const { data: currentStock } = await supabase
         .from('succulents')
         .select('quantity, name')
@@ -390,32 +390,7 @@ const submitOrder = async () => {
         .single()
 
       if (!currentStock || currentStock.quantity < item.quantity) {
-        throw new Error(`商品「${item.name}」の在庫が不足しています`)
-      }
-
-      // 現在の在庫数を条件にして在庫を減らす（競合状態を防ぐ）
-      const { data: stockUpdateResult, error: updateError } = await supabase
-        .from('succulents')
-        .update({ quantity: currentStock.quantity - item.quantity })
-        .eq('id', item.id)
-        .eq('quantity', currentStock.quantity)  // optimistic locking
-        .select('quantity, name')
-        .single()
-
-      if (updateError) {
-        throw new Error(`商品「${item.name}」の在庫更新に失敗しました`)
-      }
-
-      // 更新された行がない場合（別のユーザーが先に購入した）
-      if (!stockUpdateResult) {
-        // 在庫数を確認して詳細なエラーメッセージを表示
-        const { data: currentStock } = await supabase
-          .from('succulents')
-          .select('quantity')
-          .eq('id', item.id)
-          .single()
-        
-        throw new Error(`申し訳ありません。商品「${item.name}」の在庫が不足しています（在庫: ${currentStock?.quantity || 0}個、必要: ${item.quantity}個）`)
+        throw new Error(`商品「${item.name}」の在庫が不足しています（在庫: ${currentStock?.quantity || 0}個、必要: ${item.quantity}個）`)
       }
     }
     
@@ -534,28 +509,7 @@ const submitOrder = async () => {
       name: error.name
     })
     
-    // エラーが発生した場合、在庫を元に戻す（Optimistic locking）
-    for (const item of cart.items) {
-      try {
-        // 現在の在庫を取得
-        const { data: currentStock } = await supabase
-          .from('succulents')
-          .select('quantity')
-          .eq('id', item.id)
-          .single()
-        
-        if (currentStock) {
-          // optimistic locking: 現在の在庫数を条件に在庫を戻す
-          await supabase
-            .from('succulents')
-            .update({ quantity: currentStock.quantity + item.quantity })
-            .eq('id', item.id)
-            .eq('quantity', currentStock.quantity)
-        }
-      } catch (rollbackError) {
-        console.error('在庫復元エラー:', rollbackError)
-      }
-    }
+    // エラーが発生した場合、在庫復元は不要（事前に減少していないため）
     
     // 在庫不足エラーの場合の特別処理
     if (error.message && error.message.includes('在庫が不足しています')) {
