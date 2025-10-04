@@ -638,13 +638,25 @@ const saveOrder = async (paymentMethod) => {
   
   try {
     // 1. 原子的在庫減少操作（競合状態を防ぐ）
+    // まず現在の在庫を取得して排他ロック
+    const { data: currentStock, error: lockError } = await supabase
+      .from('succulents')
+      .select('quantity')
+      .eq('id', product.value.id)
+      .single()
+
+    if (lockError || !currentStock || currentStock.quantity < 1) {
+      throw new Error('在庫が不足しています')
+    }
+
+    // 原子的な在庫減少操作
     const { data: stockUpdateResult, error: stockUpdateError } = await supabase
       .from('succulents')
       .update({ 
-        quantity: supabase.sql`quantity - 1`  // SQLレベルでの原子的減算
+        quantity: currentStock.quantity - 1
       })
       .eq('id', product.value.id)
-      .gte('quantity', 1)  // 在庫が1以上の場合のみ更新
+      .eq('quantity', currentStock.quantity)  // 楽観的ロック：取得時と同じ在庫数の場合のみ更新
       .select('quantity')
       .single()
 
@@ -789,12 +801,21 @@ const saveOrder = async (paymentMethod) => {
     // エラーが発生した場合、在庫を元に戻す（原子的操作）
     if (stockData) {
       try {
-        await supabase
+        // 現在の在庫を取得
+        const { data: currentStock } = await supabase
           .from('succulents')
-          .update({ 
-            quantity: supabase.sql`quantity + 1`  // 原子的な加算
-          })
+          .select('quantity')
           .eq('id', product.value.id)
+          .single()
+        
+        if (currentStock) {
+          // optimistic locking: 現在の在庫数を条件に在庫を戻す
+          await supabase
+            .from('succulents')
+            .update({ quantity: currentStock.quantity + 1 })
+            .eq('id', product.value.id)
+            .eq('quantity', currentStock.quantity)
+        }
       } catch (rollbackError) {
         console.error('在庫復元エラー:', rollbackError)
       }
@@ -866,23 +887,31 @@ const proceedToPurchase = async () => {
   try {
     // クレジットカード決済の場合も在庫を減らしてから決済画面へ移行
     if (selectedPaymentMethod.value === 'square') {
-      // 原子的在庫減少操作（競合状態を防ぐ）
+      // Optimistic locking による原子的在庫減少操作
+      const { data: currentStock } = await supabase
+        .from('succulents')
+        .select('quantity')
+        .eq('id', product.value.id)
+        .single()
+
+      if (!currentStock || currentStock.quantity < 1) {
+        throw new Error('申し訳ありません。在庫が不足しています')
+      }
+
+      // 現在の在庫数を条件にして在庫を減らす（競合状態を防ぐ）
       const { data: stockUpdateResult, error: stockUpdateError } = await supabase
         .from('succulents')
-        .update({ 
-          quantity: supabase.sql`quantity - 1`  // SQLレベルでの原子的減算
-        })
+        .update({ quantity: currentStock.quantity - 1 })
         .eq('id', product.value.id)
-        .gte('quantity', 1)  // 在庫が1以上の場合のみ更新
+        .eq('quantity', currentStock.quantity)  // optimistic locking
         .select('quantity')
         .single()
 
       if (stockUpdateError) {
-        console.error('在庫更新エラー:', stockUpdateError)
         throw new Error('在庫の更新に失敗しました')
       }
 
-      // 更新された行がない場合（在庫不足）
+      // 更新された行がない場合（別のユーザーが先に購入した）
       if (!stockUpdateResult) {
         throw new Error('申し訳ありません。在庫が不足しています')
       }
