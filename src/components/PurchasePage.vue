@@ -698,21 +698,17 @@ const saveOrder = async (paymentMethod) => {
       console.error('エラーメッセージ:', orderError.message)
       console.error('エラーデータ:', orderError.details)
       
-      // 注文保存に失敗した場合、在庫を元に戻す
-      try {
-        await supabase
-          .from('succulents')
-          .update({ 
-            quantity: stockData.quantity 
-          })
-          .eq('id', product.value.id)
-      } catch (rollbackError) {
-        console.error('在庫復元エラー:', rollbackError)
-      }
+
       
       // データベースカラムエラーの処理
-      if (orderError.code === '42703' || (orderError.message && orderError.message.includes('zip_code'))) {
-        throw new Error('システムのアップデート中です。管理者にお問い合わせください。\n（郵便番号カラムが見つかりません）')
+      if (orderError.code === '42703') {
+        if (orderError.message && orderError.message.includes('zip_code')) {
+          throw new Error('システムのアップデート中です。管理者にお問い合わせください。\n（郵便番号カラムが見つかりません）')
+        } else if (orderError.message && orderError.message.includes('updated_at')) {
+          throw new Error('システムのアップデート中です。管理者にお問い合わせください。\n（データベーススキーマの更新が必要です）')
+        } else {
+          throw new Error('データベースのスキーマエラーが発生しました。管理者にお問い合わせください。')
+        }
       }
       
       // 在庫不足エラーの処理
