@@ -557,7 +557,12 @@ const submitOrder = async () => {
       }
     }
     
-    showMessage(`注文処理中にエラーが発生しました: ${error.message}`, 'error')
+    // 在庫不足エラーの場合の特別処理
+    if (error.message && error.message.includes('在庫が不足しています')) {
+      showMessage('🚫 申し訳ありません。カート内の一部商品が在庫切れになりました。\n\n他のお客様が先にご購入されたため、現在在庫がございません。\nカートを確認して商品を調整してください。', 'error')
+    } else {
+      showMessage(`注文処理中にエラーが発生しました: ${error.message}`, 'error')
+    }
   } finally {
     isSubmitting.value = false
   }

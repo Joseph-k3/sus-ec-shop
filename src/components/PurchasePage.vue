@@ -752,6 +752,11 @@ const saveOrder = async (paymentMethod) => {
         throw new Error('システムのアップデート中です。管理者にお問い合わせください。\n（郵便番号カラムが見つかりません）')
       }
       
+      // 在庫不足エラーの処理
+      if (orderError.code === 'P0001' && orderError.message.includes('在庫が不足しています')) {
+        throw new Error('🚫 申し訳ありません。この商品は在庫切れです。\n\n他のお客様が先にご購入されたため、現在在庫がございません。\n商品一覧に戻って他の商品をご検討ください。')
+      }
+
       // 重複注文防止トリガーエラーの処理
       if (orderError.code === 'P0001' && 
           (orderError.message.includes('同じ商品の注文が既に存在します') ||
