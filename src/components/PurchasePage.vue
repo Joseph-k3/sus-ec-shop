@@ -637,36 +637,28 @@ const saveOrder = async (paymentMethod) => {
   let stockData = null // エラーハンドリングでも参照できるようにスコープを拡張
   
   try {
-    // 1. 在庫確認と在庫減少
-    const { data: fetchedStockData, error: stockError } = await supabase
-      .from('succulents')
-      .select('quantity')
-      .eq('id', product.value.id)
-      .single()
-
-    if (stockError) {
-      console.error('在庫確認エラー:', stockError)
-      throw new Error('商品情報の取得に失敗しました')
-    }
-
-    stockData = fetchedStockData // 外部スコープの変数に代入
-    
-    if (!stockData || stockData.quantity < 1) {
-      throw new Error('申し訳ありません。在庫が不足しています')
-    }
-
-    // 在庫を減らす（注文時点で在庫を確保）
-    const { error: stockUpdateError } = await supabase
+    // 1. 原子的在庫減少操作（競合状態を防ぐ）
+    const { data: stockUpdateResult, error: stockUpdateError } = await supabase
       .from('succulents')
       .update({ 
-        quantity: stockData.quantity - 1 
+        quantity: supabase.sql`quantity - 1`  // SQLレベルでの原子的減算
       })
       .eq('id', product.value.id)
+      .gte('quantity', 1)  // 在庫が1以上の場合のみ更新
+      .select('quantity')
+      .single()
 
     if (stockUpdateError) {
       console.error('在庫更新エラー:', stockUpdateError)
       throw new Error('在庫の更新に失敗しました')
     }
+
+    // 更新された行がない場合（在庫不足）
+    if (!stockUpdateResult) {
+      throw new Error('申し訳ありません。在庫が不足しています')
+    }
+
+    stockData = stockUpdateResult // エラーハンドリング用に保存
 
     // 2. 注文データの準備
     const now = new Date().toISOString()
@@ -794,16 +786,18 @@ const saveOrder = async (paymentMethod) => {
   } catch (error) {
     console.error('Error saving order:', error)
     
-    // エラーが発生した場合、在庫を元に戻す
-    try {
-      await supabase
-        .from('succulents')
-        .update({ 
-          quantity: stockData.quantity 
-        })
-        .eq('id', product.value.id)
-    } catch (rollbackError) {
-      console.error('在庫復元エラー:', rollbackError)
+    // エラーが発生した場合、在庫を元に戻す（原子的操作）
+    if (stockData) {
+      try {
+        await supabase
+          .from('succulents')
+          .update({ 
+            quantity: supabase.sql`quantity + 1`  // 原子的な加算
+          })
+          .eq('id', product.value.id)
+      } catch (rollbackError) {
+        console.error('在庫復元エラー:', rollbackError)
+      }
     }
     
     throw error
@@ -872,29 +866,26 @@ const proceedToPurchase = async () => {
   try {
     // クレジットカード決済の場合も在庫を減らしてから決済画面へ移行
     if (selectedPaymentMethod.value === 'square') {
-      // 在庫確認と在庫減少
-      const { data: stockData, error: stockError } = await supabase
-        .from('succulents')
-        .select('quantity')
-        .eq('id', product.value.id)
-        .single()
-
-      if (stockError) {
-        console.error('在庫確認エラー:', stockError)
-        throw new Error('商品情報の取得に失敗しました')
-      }
-
-      if (!stockData || stockData.quantity < 1) {
-        throw new Error('申し訳ありません。在庫が不足しています')
-      }
-
-      // 在庫を減らす
-      const { error: stockUpdateError } = await supabase
+      // 原子的在庫減少操作（競合状態を防ぐ）
+      const { data: stockUpdateResult, error: stockUpdateError } = await supabase
         .from('succulents')
         .update({ 
-          quantity: stockData.quantity - 1 
+          quantity: supabase.sql`quantity - 1`  // SQLレベルでの原子的減算
         })
         .eq('id', product.value.id)
+        .gte('quantity', 1)  // 在庫が1以上の場合のみ更新
+        .select('quantity')
+        .single()
+
+      if (stockUpdateError) {
+        console.error('在庫更新エラー:', stockUpdateError)
+        throw new Error('在庫の更新に失敗しました')
+      }
+
+      // 更新された行がない場合（在庫不足）
+      if (!stockUpdateResult) {
+        throw new Error('申し訳ありません。在庫が不足しています')
+      }
 
       if (stockUpdateError) {
         console.error('在庫更新エラー:', stockUpdateError)

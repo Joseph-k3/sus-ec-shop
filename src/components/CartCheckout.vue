@@ -380,30 +380,33 @@ const submitOrder = async () => {
   try {
     const customerId = getOrCreateCustomerId()
     
-    // 1. 全商品の在庫チェックと確保
+    // 1. 全商品の在庫チェックと確保（原子的操作）
     for (const item of cart.items) {
-      const { data: stockData, error: stockError } = await supabase
+      // 原子的在庫減少操作（競合状態を防ぐ）
+      const { data: stockUpdateResult, error: updateError } = await supabase
         .from('succulents')
-        .select('quantity')
+        .update({ 
+          quantity: supabase.sql`quantity - ${item.quantity}`  // SQLレベルでの原子的減算
+        })
         .eq('id', item.id)
+        .gte('quantity', item.quantity)  // 必要な在庫数以上の場合のみ更新
+        .select('quantity, name')
         .single()
-
-      if (stockError) {
-        throw new Error(`商品「${item.name}」の在庫確認に失敗しました`)
-      }
-
-      if (!stockData || stockData.quantity < item.quantity) {
-        throw new Error(`申し訳ありません。商品「${item.name}」の在庫が不足しています（在庫: ${stockData?.quantity || 0}個）`)
-      }
-
-      // 在庫を減らす
-      const { error: updateError } = await supabase
-        .from('succulents')
-        .update({ quantity: stockData.quantity - item.quantity })
-        .eq('id', item.id)
 
       if (updateError) {
         throw new Error(`商品「${item.name}」の在庫更新に失敗しました`)
+      }
+
+      // 更新された行がない場合（在庫不足）
+      if (!stockUpdateResult) {
+        // 在庫数を確認して詳細なエラーメッセージを表示
+        const { data: currentStock } = await supabase
+          .from('succulents')
+          .select('quantity')
+          .eq('id', item.id)
+          .single()
+        
+        throw new Error(`申し訳ありません。商品「${item.name}」の在庫が不足しています（在庫: ${currentStock?.quantity || 0}個、必要: ${item.quantity}個）`)
       }
     }
     
@@ -522,21 +525,15 @@ const submitOrder = async () => {
       name: error.name
     })
     
-    // エラーが発生した場合、在庫を元に戻す
+    // エラーが発生した場合、在庫を元に戻す（原子的操作）
     for (const item of cart.items) {
       try {
-        const { data: currentStock } = await supabase
+        await supabase
           .from('succulents')
-          .select('quantity')
+          .update({ 
+            quantity: supabase.sql`quantity + ${item.quantity}`  // 原子的な加算
+          })
           .eq('id', item.id)
-          .single()
-        
-        if (currentStock) {
-          await supabase
-            .from('succulents')
-            .update({ quantity: currentStock.quantity + item.quantity })
-            .eq('id', item.id)
-        }
       } catch (rollbackError) {
         console.error('在庫復元エラー:', rollbackError)
       }
