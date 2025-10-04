@@ -634,45 +634,8 @@ const backToPreviousStep = () => {
 
 // 注文を保存（在庫は減らさない）
 const saveOrder = async (paymentMethod) => {
-  let stockData = null // エラーハンドリングでも参照できるようにスコープを拡張
-  
   try {
-    // 1. 原子的在庫減少操作（競合状態を防ぐ）
-    // まず現在の在庫を取得して排他ロック
-    const { data: currentStock, error: lockError } = await supabase
-      .from('succulents')
-      .select('quantity')
-      .eq('id', product.value.id)
-      .single()
-
-    if (lockError || !currentStock || currentStock.quantity < 1) {
-      throw new Error('在庫が不足しています')
-    }
-
-    // 原子的な在庫減少操作
-    const { data: stockUpdateResult, error: stockUpdateError } = await supabase
-      .from('succulents')
-      .update({ 
-        quantity: currentStock.quantity - 1
-      })
-      .eq('id', product.value.id)
-      .eq('quantity', currentStock.quantity)  // 楽観的ロック：取得時と同じ在庫数の場合のみ更新
-      .select('quantity')
-      .single()
-
-    if (stockUpdateError) {
-      console.error('在庫更新エラー:', stockUpdateError)
-      throw new Error('在庫の更新に失敗しました')
-    }
-
-    // 更新された行がない場合（在庫不足）
-    if (!stockUpdateResult) {
-      throw new Error('申し訳ありません。在庫が不足しています')
-    }
-
-    stockData = stockUpdateResult // エラーハンドリング用に保存
-
-    // 2. 注文データの準備
+    // 注文データの準備（在庫チェックはデータベーストリガーに任せる）
     const now = new Date().toISOString()
     
     // 郵便番号をフォーマット（ハイフンが無い場合は自動追加）
@@ -802,29 +765,6 @@ const saveOrder = async (paymentMethod) => {
 
   } catch (error) {
     console.error('Error saving order:', error)
-    
-    // エラーが発生した場合、在庫を元に戻す（原子的操作）
-    if (stockData) {
-      try {
-        // 現在の在庫を取得
-        const { data: currentStock } = await supabase
-          .from('succulents')
-          .select('quantity')
-          .eq('id', product.value.id)
-          .single()
-        
-        if (currentStock) {
-          // optimistic locking: 現在の在庫数を条件に在庫を戻す
-          await supabase
-            .from('succulents')
-            .update({ quantity: currentStock.quantity + 1 })
-            .eq('id', product.value.id)
-            .eq('quantity', currentStock.quantity)
-        }
-      } catch (rollbackError) {
-        console.error('在庫復元エラー:', rollbackError)
-      }
-    }
     
     throw error
   }
