@@ -9,7 +9,7 @@
   <!-- メインコンテンツ -->
   <div v-if="!showSplash && showContent" class="coming-soon fade-in">
     <h1>Coming Soon...</h1>
-    <p class="message">ただいまメンテナンス中です。販売開始告知までお待ちください🙇</p>
+    <p class="message">下記リンクのInstagramアカウントから発信される販売開始告知までお待ちください🙇</p>
     <div class="period" v-if="siteSettings">
       <p>販売期間：</p>
       <p>未定</p>
