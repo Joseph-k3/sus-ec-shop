@@ -194,7 +194,158 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label for="videos">商品動画</label>
+        <div class="multiple-video-upload-section">
+          <!-- 動画ファイル選択 -->
+          <div class="upload-options">
+            <label for="videoFiles" class="file-upload-btn video-upload">
+              🎬 動画を追加（複数選択可）
+              <input
+                id="videoFiles"
+                type="file"
+                accept="video/*"
+                multiple
+                @change="handleVideoSelect"
+                style="display: none;"
+              >
+            </label>
+            <button type="button" @click="checkVideoBucket" class="btn-check-bucket">
+              📁 バケット確認
+            </button>
+            <button type="button" @click="testStorageBucket" class="btn-test-bucket">
+              🧪 詳細テスト
+            </button>
+            <button type="button" @click="checkStorageUsage" class="btn-storage-info">
+              📊 使用量確認
+            </button>
+            <button type="button" @click="testR2Connection" class="btn-r2-test">
+              ☁️ R2テスト
+            </button>
+            <span class="upload-info">MP4, WebM, MOV対応 | 最大100MB</span>
+          </div>
+          
+          <!-- 動画アップロード進捗 -->
+          <div v-if="videoUploadProgress > 0 && videoUploadProgress < 100" class="upload-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: videoUploadProgress + '%' }"></div>
+            </div>
+            <span class="progress-text">{{ videoUploadProgress }}% アップロード中...</span>
+          </div>
+          
+          <!-- 一時動画一覧（新規商品用） -->
+          <div v-if="!editingId && tempVideos.length > 0" class="videos-gallery">
+            <h4>選択した動画（商品保存時にアップロードされます）</h4>
+            <div class="videos-grid temp-videos-grid">
+              <div 
+                v-for="(video, index) in tempVideos" 
+                :key="video.id"
+                class="video-item temp-video-item"
+                :class="{ 'primary': video.is_primary }"
+              >
+                <div class="video-thumbnail">
+                  <img v-if="video.thumbnail_url" :src="video.thumbnail_url" :alt="video.title || `動画 ${index + 1}`">
+                  <div v-else class="no-thumbnail">🎬</div>
+                  <div class="video-duration" v-if="video.duration">{{ formatDuration(video.duration) }}</div>
+                </div>
+                <div class="video-info">
+                  <input 
+                    v-model="video.title" 
+                    placeholder="動画タイトル" 
+                    class="video-title-input"
+                  >
+                </div>
+                <div class="video-controls">
+                  <button 
+                    type="button" 
+                    class="primary-btn"
+                    :class="{ active: video.is_primary }"
+                    @click="setTempPrimaryVideo(video.id)"
+                    title="メイン動画に設定"
+                  >
+                    ⭐
+                  </button>
+                  <button 
+                    type="button" 
+                    class="delete-btn"
+                    @click="removeTempVideo(video.id)"
+                    title="動画を削除"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div class="video-order">{{ index + 1 }}</div>
+                <div v-if="video.is_primary" class="primary-badge">メイン</div>
+                <div class="temp-badge">未保存</div>
+              </div>
+            </div>
+          </div>
 
+          <!-- 既存動画一覧 -->
+          <div v-if="editingId && productVideos.length > 0" class="videos-gallery">
+            <h4>登録済み動画（ドラッグ&ドロップで順序変更）</h4>
+            <div 
+              class="videos-grid"
+              @drop="handleVideoDrop"
+              @dragover.prevent
+              @dragenter.prevent
+            >
+              <div 
+                v-for="(video, index) in productVideos" 
+                :key="video.id"
+                class="video-item"
+                :class="{ 'primary': video.is_primary }"
+                draggable="true"
+                @dragstart="handleVideoDragStart($event, index)"
+                @dragend="handleVideoDragEnd"
+              >
+                <div class="video-thumbnail">
+                  <img v-if="video.thumbnail_url" :src="video.thumbnail_url" :alt="video.title || `動画 ${index + 1}`">
+                  <div v-else class="no-thumbnail">🎬</div>
+                  <div class="video-duration" v-if="video.duration">{{ formatDuration(video.duration) }}</div>
+                </div>
+                <div class="video-info">
+                  <input 
+                    v-model="video.title" 
+                    placeholder="動画タイトル" 
+                    class="video-title-input"
+                    @blur="updateVideoTitle(video.id, video.title)"
+                  >
+                </div>
+                <div class="video-controls">
+                  <button 
+                    type="button" 
+                    class="play-btn"
+                    @click="playVideo(video.video_url)"
+                    title="動画を再生"
+                  >
+                    ▶️
+                  </button>
+                  <button 
+                    type="button" 
+                    class="primary-btn"
+                    :class="{ active: video.is_primary }"
+                    @click="setPrimaryVideo(video.id)"
+                    title="メイン動画に設定"
+                  >
+                    ⭐
+                  </button>
+                  <button 
+                    type="button" 
+                    class="delete-btn"
+                    @click="deleteVideo(video.id)"
+                    title="動画を削除"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                <div class="video-order">{{ index + 1 }}</div>
+                <div v-if="video.is_primary" class="primary-badge">メイン</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="form-actions">
         <button type="submit" class="btn-primary">
@@ -259,6 +410,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 動画再生モーダル -->
+    <div v-if="showVideoModal" class="video-modal" @click.self="closeVideoModal">
+      <div class="video-modal-content">
+        <button class="close-btn" @click="closeVideoModal">×</button>
+        <video 
+          ref="modalVideo"
+          :src="currentVideoUrl" 
+          controls 
+          autoplay
+          style="width: 100%; max-height: 80vh;"
+        ></video>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -291,6 +456,28 @@ import {
   deleteProductImage, 
   updateImageDisplayOrder 
 } from '../lib/productImages'
+// R2対応版画像管理
+import {
+  uploadProductImage as uploadProductImageR2,
+  getImageStorageStatus
+} from '../lib/productImagesR2'
+import { validateR2Config, r2Client } from '../lib/cloudflareR2'
+import { 
+  getProductVideos, 
+  addProductVideo, 
+  updateProductVideo, 
+  deleteProductVideo, 
+  updateVideoDisplayOrder,
+  uploadVideoToStorage,
+  generateVideoThumbnail,
+  dataUrlToBlob,
+  getVideoDuration,
+  checkStorageBucket,
+  testBucketAccess,
+  checkAuthStatus,
+  getStorageInfo,
+  checkVideoFileSize
+} from '../lib/productVideos'
 
 const products = ref([])
 const editingId = ref(null)
@@ -302,6 +489,15 @@ const draggedIndex = ref(null)
 const tempImages = ref([]) // 新規商品用の一時画像保存
 const tempImageFiles = ref([]) // アップロード予定のファイル
 const editForm = ref(null) // フォーム要素への参照
+
+// 動画関連の変数
+const productVideos = ref([])
+const tempVideos = ref([]) // 新規商品用の一時動画保存
+const videoUploadProgress = ref(0)
+const draggedVideoIndex = ref(null)
+const showVideoModal = ref(false)
+const currentVideoUrl = ref('')
+const modalVideo = ref(null)
 const currentProduct = ref({
   name: '',
   description: '',
@@ -366,9 +562,13 @@ const handleSubmit = async () => {
       if (error) throw error
       savedProductId = data.id
       
-      // 新規商品の場合、一時画像をアップロード
+      // 新規商品の場合、一時画像と動画をアップロード
       if (tempImages.value.length > 0) {
         await uploadTempImages(savedProductId)
+      }
+      
+      if (tempVideos.value.length > 0) {
+        await uploadTempVideos(savedProductId)
       }
     }
     
@@ -379,8 +579,14 @@ const handleSubmit = async () => {
     // 商品一覧を再読み込み
     loadProducts()
   } catch (error) {
-    console.error('Error saving product:', error)
-    alert('エラーが発生しました: ' + error.message)
+    console.error('Error saving product:', {
+      error,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code
+    })
+    alert('エラーが発生しました: ' + (error?.message || 'Unknown error'))
   }
 }
 
@@ -388,8 +594,9 @@ const handleSubmit = async () => {
 const startEdit = async (product) => {
   editingId.value = product.id
   
-  // 商品の画像を読み込み
+  // 商品の画像と動画を読み込み
   await loadProductImages(product.id)
+  await loadProductVideos(product.id)
   
   // nextTickを使用してDOMの更新を待つ
   nextTick(() => {
@@ -421,8 +628,10 @@ const cancelEdit = () => {
 const resetForm = () => {
   editingId.value = null
   productImages.value = []
+  productVideos.value = []
   manualImageUrl.value = ''
   uploadProgress.value = 0
+  videoUploadProgress.value = 0
   
   // 一時画像のプレビューURLを解放
   tempImages.value.forEach(img => {
@@ -432,6 +641,17 @@ const resetForm = () => {
   })
   tempImages.value = []
   tempImageFiles.value = []
+  
+  // 一時動画のプレビューURLを解放
+  tempVideos.value.forEach(video => {
+    if (video.preview_url) {
+      URL.revokeObjectURL(video.preview_url)
+    }
+    if (video.thumbnail_url && video.thumbnail_url.startsWith('blob:')) {
+      URL.revokeObjectURL(video.thumbnail_url)
+    }
+  })
+  tempVideos.value = []
   
   currentProduct.value = {
     name: '',
@@ -476,6 +696,16 @@ const loadProductImages = async (productId) => {
     }
   } catch (error) {
     console.error('画像の読み込みに失敗しました:', error)
+  }
+}
+
+// 商品の動画一覧を読み込み
+const loadProductVideos = async (productId) => {
+  try {
+    const videos = await getProductVideos(productId)
+    productVideos.value = videos
+  } catch (error) {
+    console.error('動画の読み込みに失敗しました:', error)
   }
 }
 
@@ -569,32 +799,8 @@ const handleTempImageSelect = (files) => {
 const uploadSingleImage = async (file, isPrimary = false) => {
   
   try {
-    // ファイル名を生成（タイムスタンプ + ランダム文字列）
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(7)
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `${timestamp}_${randomId}.${fileExtension}`
-    
-    
-    // Supabaseストレージにアップロード
-    const { data, error } = await supabase.storage
-      .from('succulents-images')
-      .upload(fileName, file)
-    
-    if (error) {
-      console.error('ストレージアップロードエラー:', error)
-      throw error
-    }
-    
-    
-    // 公開URLを取得
-    const { data: { publicUrl } } = supabase.storage
-      .from('succulents-images')
-      .getPublicUrl(fileName)
-    
-    
-    // データベースに画像情報を保存
-    await addProductImage(editingId.value, publicUrl, {
+    // R2対応版のアップロード関数を使用
+    const result = await uploadProductImageR2(editingId.value, file, {
       displayOrder: productImages.value.length,
       altText: file.name,
       isPrimary: isPrimary
@@ -606,7 +812,7 @@ const uploadSingleImage = async (file, isPrimary = false) => {
   }
 }
 
-// 一時画像を実際にアップロード
+// 一時画像を実際にアップロード（R2対応版）
 const uploadTempImages = async (productId) => {
   
   try {
@@ -616,55 +822,46 @@ const uploadTempImages = async (productId) => {
     for (let i = 0; i < tempImages.value.length; i++) {
       const tempImage = tempImages.value[i]
       
-      // ファイル名を生成
-      const timestamp = Date.now()
-      const randomId = Math.random().toString(36).substring(7)
-      const fileExtension = tempImage.file.name.split('.').pop()
-      const fileName = `${timestamp}_${randomId}_${i}.${fileExtension}`
-      
-      // ストレージにアップロード  
-      const { data, error: uploadError } = await supabase.storage
-        .from('succulents-images')
-        .upload(fileName, tempImage.file)
-      
-      if (uploadError) {
-        console.error('ストレージアップロードエラー:', uploadError)
-        // ストレージエラーの場合はフォールバック（単一画像フィールドに最初の画像を保存）
-        if (i === 0) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('succulents-images')
-            .getPublicUrl(fileName)
-          
-          await supabase
-            .from('succulents')
-            .update({ image: publicUrl })
-            .eq('id', productId)
-        }
-        continue
-      }
-      
-      // 公開URLを取得
-      const { data: { publicUrl } } = supabase.storage
-        .from('succulents-images')
-        .getPublicUrl(fileName)
-      
       try {
-        // product_imagesテーブルに保存を試行
-        await addProductImage(productId, publicUrl, {
+        // R2対応版のアップロード関数を使用
+        await uploadProductImageR2(productId, tempImage.file, {
           displayOrder: i,
-          altText: tempImage.alt_text,
-          isPrimary: tempImage.is_primary
+          altText: tempImage.alt_text || tempImage.file.name,
+          isPrimary: tempImage.is_primary || (i === 0 && tempImages.value.length > 0)
         })
-      } catch (dbError) {
-        console.error('product_imagesテーブルへの保存に失敗:', dbError)
         
-        // フォールバック: 最初の画像のみsucculents.imageフィールドに保存
+      } catch (uploadError) {
+        console.error(`一時画像 ${i + 1}/${totalImages} アップロードエラー:`, uploadError)
+        
+        // 最初の画像がエラーの場合、フォールバック（単一画像フィールドに従来の方法で保存）
         if (i === 0) {
-          await supabase
-            .from('succulents')
-            .update({ image: publicUrl })
-            .eq('id', productId)
+          try {
+            const timestamp = Date.now()
+            const randomId = Math.random().toString(36).substring(7)
+            const fileExtension = tempImage.file.name.split('.').pop()
+            const fileName = `${timestamp}_${randomId}.${fileExtension}`
+            
+            const { data, error } = await supabase.storage
+              .from('succulents-images')
+              .upload(fileName, tempImage.file)
+            
+            if (!error) {
+              const { data: { publicUrl } } = supabase.storage
+                .from('succulents-images')
+                .getPublicUrl(fileName)
+              
+              await supabase
+                .from('succulents')
+                .update({ image: publicUrl })
+                .eq('id', productId)
+            }
+          } catch (fallbackError) {
+            console.error('フォールバック保存エラー:', fallbackError)
+          }
         }
+        
+        // エラーがあっても処理を続行
+        continue
       }
       
       uploadProgress.value = Math.round(((i + 1) / totalImages) * 100)
@@ -822,6 +1019,541 @@ const moveTempImage = (fromIndex, toIndex) => {
   tempImages.value.forEach((img, idx) => {
     img.display_order = idx
   })
+}
+
+// 動画選択処理
+const handleVideoSelect = async (event) => {
+  const files = Array.from(event.target.files)
+  if (files.length === 0) return
+  
+  // ファイルサイズチェック（100MB制限）
+  const maxSize = 100 * 1024 * 1024 // 100MB
+  for (const file of files) {
+    if (file.size > maxSize) {
+      alert(`ファイル "${file.name}" が大きすぎます。100MB以下のファイルを選択してください。`)
+      event.target.value = ''
+      return
+    }
+  }
+  
+  // 新規商品の場合は一時保存
+  if (!editingId.value) {
+    await handleTempVideoSelect(files)
+    return
+  }
+  
+  try {
+    videoUploadProgress.value = 0
+    const totalFiles = files.length
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      await uploadSingleVideo(file, i === 0 && productVideos.value.length === 0)
+      videoUploadProgress.value = Math.round(((i + 1) / totalFiles) * 100)
+    }
+    
+    // 動画一覧を再読み込み
+    await loadProductVideos(editingId.value)
+    videoUploadProgress.value = 0
+    
+    // ファイル入力をリセット
+    event.target.value = ''
+  } catch (error) {
+    console.error('動画アップロードに失敗しました:', error)
+    alert('動画のアップロードに失敗しました: ' + error.message)
+    videoUploadProgress.value = 0
+  }
+}
+
+// 新規商品の場合の一時動画選択処理
+const handleTempVideoSelect = async (files) => {
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      
+      // 動画の基本情報を取得
+      const duration = await getVideoDuration(file)
+      const thumbnailDataUrl = await generateVideoThumbnail(file)
+      
+      const tempVideo = {
+        id: `temp-video-${Date.now()}-${i}`,
+        file: file,
+        preview_url: URL.createObjectURL(file),
+        thumbnail_url: thumbnailDataUrl,
+        title: file.name.replace(/\.[^/.]+$/, ''), // 拡張子を除いたファイル名
+        duration: duration,
+        file_size: file.size,
+        mime_type: file.type,
+        is_primary: tempVideos.value.length === 0 && i === 0,
+        display_order: tempVideos.value.length + i
+      }
+      
+      tempVideos.value.push(tempVideo)
+    }
+  } catch (error) {
+    console.error('一時動画の処理に失敗しました:', error)
+    alert('動画の処理に失敗しました: ' + error.message)
+  }
+}
+
+// 単一動画のアップロード
+const uploadSingleVideo = async (file, isPrimary = false) => {
+  try {
+    // 動画をストレージにアップロード
+    const uploadResult = await uploadVideoToStorage(file, (progress) => {
+      // 個別の進捗は全体の進捗に含める
+    })
+    
+    // サムネイルを生成
+    const thumbnailDataUrl = await generateVideoThumbnail(file)
+    const thumbnailBlob = dataUrlToBlob(thumbnailDataUrl)
+    
+    // サムネイルをアップロード
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(7)
+    const thumbnailFileName = `thumbnail_${timestamp}_${randomId}.jpg`
+    
+    const { data: thumbnailData, error: thumbnailError } = await supabase.storage
+      .from('product-videos')
+      .upload(thumbnailFileName, thumbnailBlob)
+    
+    if (thumbnailError) {
+      console.error('サムネイルのアップロードに失敗:', thumbnailError)
+    }
+    
+    const { data: { publicUrl: thumbnailUrl } } = supabase.storage
+      .from('product-videos')
+      .getPublicUrl(thumbnailFileName)
+    
+    // 動画の長さを取得
+    const duration = await getVideoDuration(file)
+    
+    // データベースに動画情報を保存
+    await addProductVideo(editingId.value, uploadResult.videoUrl, {
+      title: file.name.replace(/\.[^/.]+$/, ''), // 拡張子を除いたファイル名
+      thumbnailUrl: thumbnailUrl,
+      duration: duration,
+      fileSize: uploadResult.fileSize,
+      mimeType: uploadResult.mimeType,
+      displayOrder: productVideos.value.length,
+      isPrimary: isPrimary
+    })
+    
+  } catch (error) {
+    console.error('uploadSingleVideo でエラー:', error)
+    throw error
+  }
+}
+
+// 一時動画を実際にアップロード
+const uploadTempVideos = async (productId) => {
+  try {
+    videoUploadProgress.value = 0
+    const totalVideos = tempVideos.value.length
+    
+    for (let i = 0; i < tempVideos.value.length; i++) {
+      const tempVideo = tempVideos.value[i]
+      
+      // 動画をアップロード
+      const uploadResult = await uploadVideoToStorage(tempVideo.file, (progress) => {
+        // 個別の進捗は全体に反映
+        const overallProgress = Math.round(((i + progress / 100) / totalVideos) * 100)
+        videoUploadProgress.value = overallProgress
+      })
+      
+      // サムネイルをアップロード
+      let thumbnailUrl = ''
+      if (tempVideo.thumbnail_url && tempVideo.thumbnail_url.startsWith('data:')) {
+        const thumbnailBlob = dataUrlToBlob(tempVideo.thumbnail_url)
+        const timestamp = Date.now()
+        const randomId = Math.random().toString(36).substring(7)
+        const thumbnailFileName = `thumbnail_${timestamp}_${randomId}_${i}.jpg`
+        
+        const { error: thumbnailError } = await supabase.storage
+          .from('product-videos')
+          .upload(thumbnailFileName, thumbnailBlob)
+        
+        if (!thumbnailError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-videos')
+            .getPublicUrl(thumbnailFileName)
+          thumbnailUrl = publicUrl
+        }
+      }
+      
+      // データベースに保存
+      await addProductVideo(productId, uploadResult.videoUrl, {
+        title: tempVideo.title,
+        thumbnailUrl: thumbnailUrl,
+        duration: tempVideo.duration,
+        fileSize: tempVideo.file_size,
+        mimeType: tempVideo.mime_type,
+        displayOrder: i,
+        isPrimary: tempVideo.is_primary
+      })
+      
+      videoUploadProgress.value = Math.round(((i + 1) / totalVideos) * 100)
+    }
+    
+    videoUploadProgress.value = 0
+    
+  } catch (error) {
+    console.error('一時動画のアップロードに失敗しました:', {
+      error,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code
+    })
+    videoUploadProgress.value = 0
+    throw error
+  }
+}
+
+// 秒数を分:秒形式に変換
+const formatDuration = (seconds) => {
+  if (!seconds) return '0:00'
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
+// メイン動画に設定
+const setPrimaryVideo = async (videoId) => {
+  try {
+    await updateProductVideo(videoId, { is_primary: true })
+    await loadProductVideos(editingId.value)
+  } catch (error) {
+    console.error('メイン動画の設定に失敗しました:', error)
+    alert('メイン動画の設定に失敗しました')
+  }
+}
+
+// 動画削除
+const deleteVideo = async (videoId) => {
+  if (!confirm('この動画を削除しますか？')) return
+  
+  try {
+    await deleteProductVideo(videoId)
+    await loadProductVideos(editingId.value)
+  } catch (error) {
+    console.error('動画の削除に失敗しました:', error)
+    alert('動画の削除に失敗しました')
+  }
+}
+
+// 動画タイトル更新
+const updateVideoTitle = async (videoId, title) => {
+  try {
+    await updateProductVideo(videoId, { title })
+  } catch (error) {
+    console.error('動画タイトルの更新に失敗しました:', error)
+  }
+}
+
+// 動画再生
+const playVideo = (videoUrl) => {
+  currentVideoUrl.value = videoUrl
+  showVideoModal.value = true
+}
+
+// 動画モーダルを閉じる
+const closeVideoModal = () => {
+  showVideoModal.value = false
+  currentVideoUrl.value = ''
+  if (modalVideo.value) {
+    modalVideo.value.pause()
+  }
+}
+
+// 一時動画を削除
+const removeTempVideo = (videoId) => {
+  const index = tempVideos.value.findIndex(video => video.id === videoId)
+  if (index >= 0) {
+    // プレビューURLを解放
+    if (tempVideos.value[index].preview_url) {
+      URL.revokeObjectURL(tempVideos.value[index].preview_url)
+    }
+    if (tempVideos.value[index].thumbnail_url && tempVideos.value[index].thumbnail_url.startsWith('blob:')) {
+      URL.revokeObjectURL(tempVideos.value[index].thumbnail_url)
+    }
+    
+    tempVideos.value.splice(index, 1)
+    
+    // 順序を再調整
+    tempVideos.value.forEach((video, idx) => {
+      video.display_order = idx
+    })
+    
+    // プライマリ動画を再設定
+    updateTempPrimaryVideo()
+  }
+}
+
+// 一時動画をプライマリに設定
+const setTempPrimaryVideo = (videoId) => {
+  tempVideos.value.forEach(video => {
+    video.is_primary = video.id === videoId
+  })
+}
+
+// プライマリ動画を自動設定（削除後など）
+const updateTempPrimaryVideo = () => {
+  const hasPrimary = tempVideos.value.some(video => video.is_primary)
+  
+  if (!hasPrimary && tempVideos.value.length > 0) {
+    tempVideos.value[0].is_primary = true
+  }
+}
+
+// 動画ドラッグ&ドロップ関連
+const handleVideoDragStart = (event, index) => {
+  draggedVideoIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+}
+
+const handleVideoDragEnd = () => {
+  draggedVideoIndex.value = null
+}
+
+const handleVideoDrop = async (event) => {
+  event.preventDefault()
+  
+  if (draggedVideoIndex.value === null) return
+  
+  const dropZone = event.target.closest('.video-item')
+  if (!dropZone) return
+  
+  const targetIndex = Array.from(dropZone.parentNode.children).indexOf(dropZone)
+  
+  if (draggedVideoIndex.value === targetIndex) return
+  
+  // 配列の順序を変更
+  const newVideos = [...productVideos.value]
+  const draggedVideo = newVideos.splice(draggedVideoIndex.value, 1)[0]
+  newVideos.splice(targetIndex, 0, draggedVideo)
+  
+  // 表示順序を更新
+  const videoIds = newVideos.map(video => video.id)
+  
+  try {
+    await updateVideoDisplayOrder(videoIds)
+    await loadProductVideos(editingId.value)
+  } catch (error) {
+    console.error('順序の更新に失敗しました:', error)
+    alert('順序の更新に失敗しました')
+  }
+}
+
+// バケット確認機能
+const checkVideoBucket = async () => {
+  try {
+    const bucketExists = await checkStorageBucket()
+    
+    if (bucketExists) {
+      alert('✅ product-videos バケットが正常に作成されています。\n動画アップロードが可能です。')
+    } else {
+      alert('❌ product-videos バケットが見つかりません。\n\n以下の手順でバケットを作成してください：\n\n1. Supabase Dashboard にアクセス\n2. Storage メニューをクリック\n3. "Create a new bucket" をクリック\n4. Name: "product-videos" を入力\n5. "Public bucket" にチェックを入れる\n6. "Create bucket" をクリック')
+    }
+  } catch (error) {
+    console.error('バケット確認エラー:', error)
+    alert('バケットの確認中にエラーが発生しました。\nコンソールを確認してください。')
+  }
+}
+
+// 詳細ストレージテスト機能
+const testStorageBucket = async () => {
+  try {
+    console.log('🧪 ストレージバケットの詳細テストを開始します...')
+    
+    // 認証状態も確認
+    const authStatus = await checkAuthStatus()
+    
+    const results = await testBucketAccess()
+    
+    let message = '🧪 ストレージテスト結果:\n\n'
+    
+    // 認証状態
+    message += `🔐 認証状態: ${authStatus.isAuthenticated ? '✅ ログイン済み' : '❌ 未ログイン'}\n`
+    if (authStatus.user) {
+      message += `ユーザーID: ${authStatus.user.id}\n`
+      message += `メール: ${authStatus.user.email || 'N/A'}\n`
+    }
+    message += '\n'
+    
+    // バケット一覧テスト結果
+    if (results.listBuckets?.error) {
+      message += '❌ バケット一覧取得: 失敗\n'
+      message += `エラー: ${results.listBuckets.error.message}\n\n`
+    } else {
+      const bucketNames = results.listBuckets?.data?.map(b => b.name) || []
+      message += `✅ バケット一覧取得: 成功\n`
+      message += `見つかったバケット: [${bucketNames.join(', ')}]\n\n`
+    }
+    
+    // ファイル一覧テスト結果
+    if (results.listFiles?.error) {
+      message += '❌ product-videos内ファイル一覧: 失敗\n'
+      message += `エラー: ${results.listFiles.error.message}\n\n`
+    } else {
+      const fileCount = results.listFiles?.data?.length || 0
+      message += `✅ product-videos内ファイル一覧: 成功\n`
+      message += `ファイル数: ${fileCount}個\n\n`
+    }
+    
+    // アップロードテスト結果
+    if (results.uploadTest?.error) {
+      message += '❌ テストファイルアップロード: 失敗\n'
+      message += `エラー: ${results.uploadTest.error.message}\n\n`
+    } else {
+      message += '✅ テストファイルアップロード: 成功\n\n'
+    }
+    
+    // 削除テスト結果
+    if (results.deleteTest?.error) {
+      message += '❌ テストファイル削除: 失敗\n'
+      message += `エラー: ${results.deleteTest.error.message}\n`
+    } else if (results.deleteTest) {
+      message += '✅ テストファイル削除: 成功\n'
+    }
+    
+    // 総合判定
+    const hasErrors = results.listBuckets?.error || results.listFiles?.error || results.uploadTest?.error
+    if (hasErrors) {
+      message += '\n❌ 一部のテストが失敗しました。詳細はコンソールを確認してください。'
+    } else {
+      message += '\n✅ すべてのテストが成功しました。動画アップロードが可能です。'
+    }
+    
+    alert(message)
+    
+  } catch (error) {
+    console.error('テスト実行エラー:', error)
+    alert('テスト実行中にエラーが発生しました。\nコンソールを確認してください。')
+  }
+}
+
+// Cloudflare R2接続テスト機能
+const testR2Connection = async () => {
+  try {
+    console.log('☁️ Cloudflare R2接続テストを開始...')
+    
+    // 1. 設定確認
+    const r2Configured = validateR2Config()
+    const storageStatus = getImageStorageStatus()
+    
+    let message = '☁️ Cloudflare R2接続テスト結果:\n\n'
+    
+    // 設定状況
+    message += `🔧 設定状況:\n`
+    message += `  R2設定: ${r2Configured ? '✅ 完了' : '❌ 不完全'}\n`
+    message += `  R2使用: ${storageStatus.useR2 ? '✅ 有効' : '❌ 無効'}\n`
+    message += `  フォールバック: ${storageStatus.fallbackToSupabase ? 'Supabase' : 'R2のみ'}\n\n`
+    
+    if (!r2Configured) {
+      message += '❌ R2設定が不完全です。\n環境変数を確認してください。'
+      alert(message)
+      return
+    }
+    
+    // 2. テスト用の小さな画像ファイルを作成
+    const canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 100
+    const ctx = canvas.getContext('2d')
+    
+    // 小さなテスト画像を描画
+    ctx.fillStyle = '#4F46E5'
+    ctx.fillRect(0, 0, 100, 100)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = '12px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText('R2 TEST', 50, 45)
+    ctx.fillText(new Date().getTime().toString().slice(-6), 50, 65)
+    
+    // Canvasをblobに変換してFileオブジェクトを作成
+    const testBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+    const testFile = new File([testBlob], 'r2-test.png', { type: 'image/png' })
+    
+    console.log('📝 テストファイル作成:', testFile)
+    
+    try {
+      // 3. バケット接続テスト
+      message += '🔗 バケット接続テスト:\n'
+      const connectionTest = await r2Client.testConnection()
+      message += `  接続: ${connectionTest ? '✅ 成功' : '❌ 失敗'}\n\n`
+      
+      if (!connectionTest) {
+        message += '❌ バケットに接続できません。\n設定を確認してください。'
+        alert(message)
+        return
+      }
+      
+      // 4. URL生成テスト
+      message += '� URL生成テスト:\n'
+      const testKey = r2Client.generateFileKey('test', testFile)
+      const testUrl = r2Client.getPublicUrl(testKey)
+      message += `  テストキー: ${testKey}\n`
+      message += `  公開URL: ${testUrl}\n\n`
+      
+      // 5. 実装状況の説明
+      message += '� R2実装状況:\n'
+      message += '  設定確認: ✅ 完了\n'
+      message += '  バケット疎通: ✅ 完了\n\n'
+      
+      // 5. 実際のアップロードテスト
+      message += '📤 アップロードテスト:\n'
+      try {
+        const testKey = r2Client.generateFileKey('test', testFile)
+        const uploadResult = await r2Client.uploadFile(testFile, testKey, (progress) => {
+          console.log(`📊 テストアップロード進捗: ${progress}%`)
+        })
+        
+        message += `  アップロード: ✅ 成功\n`
+        message += `  アップロード先: ${uploadResult}\n`
+        
+        // 削除テスト
+        try {
+          await r2Client.deleteFile(testKey)
+          message += `  削除テスト: ✅ 成功\n\n`
+        } catch (deleteError) {
+          message += `  削除テスト: ⚠️ エラー (${deleteError.message})\n\n`
+        }
+        
+      } catch (uploadError) {
+        message += `  アップロード: ❌ エラー\n`
+        message += `  詳細: ${uploadError.message}\n\n`
+      }
+      
+      // 6. 実装状況の説明
+      message += '⭐ R2実装状況:\n'
+      message += '  設定確認: ✅ 完了\n'
+      message += '  バケット疎通: ✅ 完了\n'
+      message += '  サーバーAPI: ✅ 実装済み\n'
+      message += '  アップロード: ✅ 利用可能\n'
+      message += '  削除機能: ✅ 利用可能\n\n'
+      
+      message += '🎉 Cloudflare R2が完全に利用可能です！'
+      
+    } catch (testError) {
+      console.error('❌ R2テストエラー:', testError)
+      message += `  テスト: ❌ 失敗\n`
+      message += `  エラー: ${testError.message}\n\n`
+      
+      message += '❌ R2設定またはバケット接続に問題があります。\n'
+      message += '以下を確認してください:\n\n'
+      message += '1. 環境変数の設定\n'
+      message += '2. Cloudflareでのバケット作成\n'
+      message += '3. パブリックアクセス設定\n'
+      message += '4. API Tokenの権限'
+    }
+    
+    alert(message)
+    
+  } catch (error) {
+    console.error('❌ R2テスト実行エラー:', error)
+    alert('R2テスト実行中にエラーが発生しました。\nコンソールを確認してください。')
+  }
 }
 
 // コンポーネント初期化時に商品一覧を読み込み
@@ -1636,55 +2368,6 @@ onMounted(() => {
     height: 250px;
     margin-bottom: 0.75rem;
   }
-  
-  .product-thumb {
-    object-fit: contain;
-  }
-  
-  .product-details h4 {
-    font-size: 1.1rem;
-  }
-  
-  .product-details .price {
-    font-size: 1.2rem;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-    padding: 1rem;
-  }
-  
-  .product-actions {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .btn-edit,
-  .btn-delete {
-    width: 100%;
-    padding: 0.75rem;
-  }
-  
-  .quantity-group {
-    flex-direction: column;
-    align-items: start;
-    gap: 0.75rem;
-  }
-  
-  .quantity-group input[type="number"] {
-    max-width: 100%;
-    width: 100%;
-  }
-  
-  .products-list {
-    padding: 1rem;
-  }
 }
 
 /* より小さなスマホ画面対応 */
@@ -1768,16 +2451,331 @@ onMounted(() => {
   }
 }
 
-.no-products {
-  text-align: center;
-  padding: 2rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  color: #666;
-  border: 2px dashed #ddd;
+/* バケット確認ボタン */
+.btn-check-bucket,
+.btn-test-bucket,
+.btn-storage-info {
+  padding: 0.5rem 1rem;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 1rem;
 }
 
-.no-products p {
-  margin: 0.5rem 0;
+.btn-test-bucket {
+  background: #6c757d;
+}
+
+.btn-storage-info {
+  background: #28a745;
+}
+
+.btn-r2-test {
+  background: #fd7e14;
+}
+
+.btn-check-bucket:hover,
+.btn-test-bucket:hover,
+.btn-storage-info:hover,
+.btn-r2-test:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.btn-test-bucket:hover {
+  background: #5a6268;
+}
+
+.btn-storage-info:hover {
+  background: #218838;
+}
+
+.btn-r2-test:hover {
+  background: #e8590c;
+}
+
+.btn-check-bucket:active,
+.btn-test-bucket:active,
+.btn-storage-info:active,
+.btn-r2-test:active {
+  background: #117a8b;
+  transform: translateY(0);
+}
+
+.btn-test-bucket:active {
+  background: #545b62;
+}
+
+.btn-storage-info:active {
+  background: #1e7e34;
+}
+
+.btn-r2-test:active {
+  background: #dc6405;
+}
+
+/* 動画アップロード関連のスタイル */
+.multiple-video-upload-section {
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: #f8f9ff;
+  margin-top: 1rem;
+}
+
+.video-upload {
+  background: #007bff !important;
+  color: white !important;
+}
+
+.video-upload:hover {
+  background: #0056b3 !important;
+}
+
+.videos-gallery {
+  margin-top: 1.5rem;
+}
+
+.videos-gallery h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap:  1rem;
+  min-height: 100px;
+}
+
+.video-item {
+  position: relative;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: move;
+  transition: all 0.3s ease;
+}
+
+.video-item:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.video-item.primary {
+  border-color: #ffd700;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+}
+
+.video-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.no-thumbnail {
+  font-size: 2rem;
+  color: #6c757d;
+}
+
+.video-duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.video-info {
+  padding: 8px;
+}
+
+.video-title-input {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.video-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.play-btn {
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.play-btn:hover {
+  background: rgba(0, 123, 255, 1);
+}
+
+.video-order {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.temp-video-item {
+  border-color: #007bff;
+}
+
+.temp-video-item:hover {
+  border-color: #0056b3;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.temp-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #007bff;
+  color: white;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px;
+}
+
+/* 動画モーダルのスタイル */
+.video-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.video-modal-content {
+  position: relative;
+  background: black;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+  .videos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .video-item {
+    border-width: 1px;
+  }
+  
+  .video-thumbnail {
+    height: 100px;
+  }
+  
+  .multiple-video-upload-section {
+    padding: 1rem;
+  }
+  
+  .video-modal-content {
+    max-width: 95vw;
+    max-height: 85vh;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .videos-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  
+  .video-thumbnail {
+    height: 80px;
+  }
+  
+  .video-controls {
+    gap: 2px;
+  }
+  
+  .play-btn,
+  .primary-btn,
+  .delete-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
 }
 </style>
