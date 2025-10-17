@@ -252,10 +252,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { supabase } from '../../lib/supabase'
+import getPublicImageUrl from '../../lib/imageUtils.js'
 import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を有効化
 
+const route = useRoute()
 const orders = ref([])
 const statusFilter = ref('all')
 const trackingNumbers = ref({}) // 追跡番号を格納
@@ -345,15 +348,79 @@ const groupedOrders = computed(() => {
 // 注文データの取得
 const fetchOrders = async () => {
   try {
-    const { data, error } = await supabase
+    // まずordersテーブルから全注文を取得
+    const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-    orders.value = data
+    if (ordersError) {
+      console.error('❌ 注文データ取得エラー:', ordersError)
+      throw ordersError
+    }
+    
+    if (ordersData.length === 0) {
+      orders.value = []
+      return
+    }
+    
+    // 各注文に対して商品情報を個別に取得
+    const ordersWithProductInfo = await Promise.all(
+      ordersData.map(async (order) => {
+        // デフォルト値
+        let productName = '商品情報なし'
+        let productImage = '/placeholder.jpg'
+        
+        if (order.product_id) {
+          try {
+            // succulentsテーブルから商品情報を取得
+            const { data: product, error: productError } = await supabase
+              .from('succulents')
+              .select('name, image')
+              .eq('id', order.product_id)
+              .maybeSingle()
+            
+            if (!productError && product) {
+              productName = product.name
+              
+              // まずproduct_imagesテーブルから画像を取得
+              const { data: productImages, error: imageError } = await supabase
+                .from('product_images')
+                .select('image_url, is_primary, display_order')
+                .eq('product_id', order.product_id)
+                .order('display_order', { ascending: true })
+              
+              if (!imageError && productImages && productImages.length > 0) {
+                // プライマリ画像があればそれを使用、なければ最初の画像
+                const primaryImage = productImages.find(img => img.is_primary) || productImages[0]
+                productImage = getPublicImageUrl(primaryImage.image_url)
+              } else {
+                // product_imagesになければsucculentsテーブルの画像を使用
+                if (product.image) {
+                  productImage = getPublicImageUrl(product.image)
+                }
+              }
+            } else {
+              console.warn(`⚠️ 商品情報取得失敗 (product_id: ${order.product_id}):`, productError)
+            }
+          } catch (err) {
+            console.error(`❌ 商品データ取得エラー (product_id: ${order.product_id}):`, err)
+          }
+        }
+        
+        return {
+          ...order,
+          product_name: productName,
+          product_image: productImage
+        }
+      })
+    )
+    
+    orders.value = ordersWithProductInfo
+    
   } catch (error) {
-    console.error('注文データの取得に失敗しました:', error)
+    console.error('❌ 注文データの取得に失敗しました:', error)
+    alert('注文データの取得に失敗しました。\n\nエラー: ' + (error.message || '不明なエラー'))
   }
 }
 
@@ -754,7 +821,22 @@ const extractCartGroupId = (order) => {
 }
 
 // 初期データ取得
-onMounted(fetchOrders)
+onMounted(() => {
+  fetchOrders()
+})
+
+// コンポーネントが再アクティブ化された時（keep-alive使用時）
+onActivated(() => {
+  fetchOrders()
+})
+
+// ルート変更を監視
+watch(() => route.path, (newPath) => {
+  if (newPath === '/admin/orders') {
+    fetchOrders()
+  }
+})
+
 </script>
 
 <style scoped>

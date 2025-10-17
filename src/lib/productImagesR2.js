@@ -15,14 +15,11 @@ const USE_R2_FOR_IMAGES = import.meta.env.VITE_USE_R2_FOR_IMAGES === 'true'
  */
 export async function uploadProductImage(productId, file, options = {}, onProgress = null) {
   try {
-    console.log('🖼️ 画像アップロード開始:', { productId, fileName: file.name, useR2: USE_R2_FOR_IMAGES })
-
     let imageUrl
     let storageInfo = {}
 
     if (USE_R2_FOR_IMAGES && validateR2Config()) {
       // Cloudflare R2にアップロード
-      console.log('📡 Cloudflare R2を使用してアップロード中...')
       const key = r2Client.generateFileKey(`products/${productId}`, file)
       imageUrl = await r2Client.uploadFile(file, key, onProgress)
       storageInfo = {
@@ -30,38 +27,43 @@ export async function uploadProductImage(productId, file, options = {}, onProgre
         storage_key: key,
         storage_bucket: r2Client.bucketName
       }
-      console.log('✅ R2アップロード完了:', { imageUrl, key })
     } else {
       // Supabase Storageにアップロード（フォールバック）
-      console.log('📡 Supabaseストレージを使用してアップロード中...')
       imageUrl = await uploadToSupabaseStorage(productId, file, onProgress)
       storageInfo = {
         storage_provider: 'supabase',
         storage_key: extractSupabaseStorageKey(imageUrl),
         storage_bucket: 'succulents-images'
       }
-      console.log('✅ Supabaseアップロード完了:', { imageUrl })
     }
 
     // データベースにメタデータを保存
+    const insertData = {
+      product_id: productId,
+      image_url: imageUrl,
+      alt_text: options.altText || `${productId} 商品画像`,
+      display_order: options.displayOrder || 0,
+      is_primary: options.isPrimary || false,
+      file_size: file.size,
+      mime_type: file.type,
+      original_filename: file.name,
+      ...storageInfo
+    }
+    
     const { data, error } = await supabase
       .from('product_images')
-      .insert([{
-        product_id: productId,
-        image_url: imageUrl,
-        alt_text: options.altText || `${productId} 商品画像`,
-        display_order: options.displayOrder || 0,
-        is_primary: options.isPrimary || false,
-        file_size: file.size,
-        mime_type: file.type,
-        original_filename: file.name,
-        ...storageInfo
-      }])
+      .insert([insertData])
       .select()
       .single()
 
     if (error) {
-      console.error('❌ データベース保存エラー:', error)
+      console.error('❌ データベース保存エラー:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       throw error
     }
 

@@ -210,18 +210,6 @@
                 style="display: none;"
               >
             </label>
-            <button type="button" @click="checkVideoBucket" class="btn-check-bucket">
-              📁 バケット確認
-            </button>
-            <button type="button" @click="testStorageBucket" class="btn-test-bucket">
-              🧪 詳細テスト
-            </button>
-            <button type="button" @click="checkStorageUsage" class="btn-storage-info">
-              📊 使用量確認
-            </button>
-            <button type="button" @click="testR2Connection" class="btn-r2-test">
-              ☁️ R2テスト
-            </button>
             <span class="upload-info">MP4, WebM, MOV対応 | 最大100MB</span>
           </div>
           
@@ -281,9 +269,14 @@
             </div>
           </div>
 
+          <!-- 動画なしメッセージ -->
+          <div v-if="editingId && productVideos.length === 0" style="padding: 1rem; background: #f8f9fa; border-radius: 4px; text-align: center; color: #6c757d;">
+            この商品には動画が登録されていません。上の「動画を追加」ボタンから動画をアップロードできます。
+          </div>
+          
           <!-- 既存動画一覧 -->
           <div v-if="editingId && productVideos.length > 0" class="videos-gallery">
-            <h4>登録済み動画（ドラッグ&ドロップで順序変更）</h4>
+            <h4>登録済み動画（ドラッグ&ドロップで順序変更）- {{ productVideos.length }}件</h4>
             <div 
               class="videos-grid"
               @drop="handleVideoDrop"
@@ -300,7 +293,12 @@
                 @dragend="handleVideoDragEnd"
               >
                 <div class="video-thumbnail">
-                  <img v-if="video.thumbnail_url" :src="video.thumbnail_url" :alt="video.title || `動画 ${index + 1}`">
+                  <img 
+                    v-if="video.thumbnail_url" 
+                    :src="getPublicImageUrl(video.thumbnail_url)" 
+                    :alt="video.title || `動画 ${index + 1}`"
+                    class="video-thumbnail-img"
+                  >
                   <div v-else class="no-thumbnail">🎬</div>
                   <div class="video-duration" v-if="video.duration">{{ formatDuration(video.duration) }}</div>
                 </div>
@@ -376,7 +374,55 @@
       <div v-else class="product-grid">
         <div v-for="product in products" :key="product.id" class="product-item">
           <div class="product-image-container">
-            <img :src="product.image" :alt="product.name" class="product-thumb">
+            <!-- 動画がある場合はサムネイルを全面表示 -->
+            <div v-if="product.videos && product.videos.length > 0 && product.videos[0].thumbnail_url" 
+                 class="video-thumbnail-main" 
+                 @click="playVideoFromList(product, product.videos[0])" 
+                 title="動画を再生">
+              <img 
+                :src="product.videos[0].thumbnail_url" 
+                :alt="`${product.name} 動画サムネイル`"
+                class="product-thumb video-thumbnail-image"
+              >
+              <!-- 再生アイコンオーバーレイ -->
+              <div class="play-icon-overlay-main">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+              <!-- 動画カウント（複数動画がある場合） -->
+              <span v-if="product.videos.length > 1" class="video-count-badge">{{ product.videos.length }}本</span>
+            </div>
+            
+            <!-- 動画がない場合は従来通りの画像表示 -->
+            <template v-else>
+              <!-- 複数画像の場合はSwiper表示 -->
+              <div v-if="product.images && product.images.length > 1" class="swiper-container" :class="`product-swiper-${product.id}`">
+                <div class="swiper-wrapper">
+                  <div 
+                    v-for="(image, index) in product.images" 
+                    :key="index"
+                    class="swiper-slide"
+                  >
+                    <img 
+                      :src="getPublicImageUrl(image.image_url)" 
+                      :alt="`${product.name} ${index + 1}`"
+                      class="product-thumb"
+                    >
+                  </div>
+                </div>
+                <!-- ナビゲーション矢印 -->
+                <div class="swiper-button-next"></div>
+                <div class="swiper-button-prev"></div>
+                <!-- ページネーション -->
+                <div class="swiper-pagination"></div>
+              </div>
+              <!-- 単一画像の場合 -->
+              <div v-else>
+                <img :src="getPublicImageUrl(product.image)" :alt="product.name" class="product-thumb">
+              </div>
+            </template>
+            
             <div v-if="product.is_reserved" class="status-badge reserved">取引中</div>
             <div v-else-if="product.quantity <= 0" class="status-badge sold-out">売約済み</div>
           </div>
@@ -411,19 +457,20 @@
       </div>
     </div>
 
-    <!-- 動画再生モーダル -->
-    <div v-if="showVideoModal" class="video-modal" @click.self="closeVideoModal">
-      <div class="video-modal-content">
-        <button class="close-btn" @click="closeVideoModal">×</button>
-        <video 
-          ref="modalVideo"
-          :src="currentVideoUrl" 
-          controls 
-          autoplay
-          style="width: 100%; max-height: 80vh;"
-        ></video>
+    <!-- R2動画再生モーダル -->
+    <Teleport to="body">
+      <div v-if="showVideoModal" class="video-modal" @click="closeVideoModal">
+        <div class="video-content" @click.stop>
+          <button class="modal-close" @click="closeVideoModal">&times;</button>
+          <R2VideoPlayer 
+            v-if="currentVideoUrl"
+            :video-url="currentVideoUrl"
+            :autoplay="true"
+            @close="closeVideoModal"
+          />
+        </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -449,6 +496,13 @@
 
 import { ref, onMounted, nextTick } from 'vue'
 import { supabase } from '../lib/supabase'
+import getPublicImageUrl from '../lib/imageUtils.js'
+// Swiperのインポート
+import { Swiper } from 'swiper'
+import { Navigation, Pagination } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
 import { 
   getProductImages, 
   addProductImage, 
@@ -471,13 +525,9 @@ import {
   uploadVideoToStorage,
   generateVideoThumbnail,
   dataUrlToBlob,
-  getVideoDuration,
-  checkStorageBucket,
-  testBucketAccess,
-  checkAuthStatus,
-  getStorageInfo,
-  checkVideoFileSize
+  getVideoDuration
 } from '../lib/productVideos'
+import R2VideoPlayer from './R2VideoPlayer.vue'
 
 const products = ref([])
 const editingId = ref(null)
@@ -517,15 +567,107 @@ const loadProducts = async () => {
       .order('id', { ascending: true })
     
     if (error) {
-      console.error('Error loading products:', error)
+      console.error('❌ 商品読み込みエラー:', error)
       return
     }
     
-    products.value = data || []
+    // 各商品に対してproduct_imagesテーブルから画像と動画を取得
+    const productsWithImages = await Promise.all(
+      (data || []).map(async (product) => {
+        try {
+          // product_imagesテーブルから画像を取得
+          const { data: productImages, error: imageError } = await supabase
+            .from('product_images')
+            .select('image_url, is_primary, display_order')
+            .eq('product_id', product.id)
+            .order('display_order', { ascending: true })
+          
+          // product_videosテーブルから動画を取得
+          const { data: productVideos, error: videoError } = await supabase
+            .from('product_videos')
+            .select('*')
+            .eq('product_id', product.id)
+            .order('display_order', { ascending: true })
+          
+          if (videoError) {
+            console.error('❌ 動画取得エラー:', videoError)
+          }
+          
+          let displayImage = product.image // デフォルトはsucculents.image
+          let images = [] // 画像配列
+          
+          if (!imageError && productImages && productImages.length > 0) {
+            // プライマリ画像があればそれを使用、なければ最初の画像
+            const primaryImage = productImages.find(img => img.is_primary) || productImages[0]
+            displayImage = primaryImage.image_url
+            images = productImages // 画像配列を保存
+          } else {
+            // product_imagesになければ、succulents.imageを使用
+            if (product.image) {
+              displayImage = product.image
+              // 単一画像の場合も配列形式で保存
+              images = [{
+                image_url: product.image,
+                is_primary: true,
+                display_order: 0
+              }]
+            }
+          }
+          
+          return {
+            ...product,
+            image: displayImage, // 表示用の画像URL
+            images: images, // 画像配列（Swiper用）
+            videos: productVideos && productVideos.length > 0 ? productVideos.map(video => ({
+              ...video,
+              video_url: getPublicImageUrl(video.video_url),
+              thumbnail_url: video.thumbnail_url ? getPublicImageUrl(video.thumbnail_url) : null
+            })) : []
+          }
+        } catch (err) {
+          console.error(`❌ 商品 ${product.name} の画像・動画取得エラー:`, err)
+          return product
+        }
+      })
+    )
+    
+    products.value = productsWithImages
+    
+    // Swiper初期化（DOMが更新された後に実行）
+    nextTick(() => {
+      initProductSwipers()
+    })
+    
   } catch (error) {
-    console.error('商品読み込み時にエラーが発生しました:', error)
+    console.error('❌ 商品読み込み時にエラーが発生しました:', error)
     products.value = []
   }
+}
+
+// 商品一覧のSwiper初期化
+const initProductSwipers = () => {
+  products.value.forEach((product) => {
+    if (product.images && product.images.length > 1) {
+      const swiperEl = document.querySelector(`.product-swiper-${product.id}`)
+      if (swiperEl) {
+        new Swiper(swiperEl, {
+          modules: [Navigation, Pagination],
+          loop: true,
+          navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+          },
+          pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+            type: 'bullets',
+          },
+          slidesPerView: 1,
+          spaceBetween: 0,
+        })
+      }
+    }
+  })
 }
 
 // 商品を追加・更新
@@ -564,7 +706,18 @@ const handleSubmit = async () => {
       
       // 新規商品の場合、一時画像と動画をアップロード
       if (tempImages.value.length > 0) {
-        await uploadTempImages(savedProductId)
+        const uploadedImages = await uploadTempImages(savedProductId)
+        
+        // プライマリ画像をsucculents.imageにも保存
+        if (uploadedImages && uploadedImages.length > 0) {
+          const primaryImage = uploadedImages.find(img => img.is_primary) || uploadedImages[0]
+          if (primaryImage && primaryImage.image_url) {
+            await supabase
+              .from('succulents')
+              .update({ image: primaryImage.image_url })
+              .eq('id', savedProductId)
+          }
+        }
       }
       
       if (tempVideos.value.length > 0) {
@@ -593,6 +746,25 @@ const handleSubmit = async () => {
 // 編集を開始
 const startEdit = async (product) => {
   editingId.value = product.id
+  
+  // 一時データをクリア
+  tempImages.value.forEach(img => {
+    if (img.preview_url) {
+      URL.revokeObjectURL(img.preview_url)
+    }
+  })
+  tempImages.value = []
+  tempImageFiles.value = []
+  
+  tempVideos.value.forEach(video => {
+    if (video.preview_url) {
+      URL.revokeObjectURL(video.preview_url)
+    }
+    if (video.thumbnail_url && video.thumbnail_url.startsWith('blob:')) {
+      URL.revokeObjectURL(video.thumbnail_url)
+    }
+  })
+  tempVideos.value = []
   
   // 商品の画像と動画を読み込み
   await loadProductImages(product.id)
@@ -797,7 +969,6 @@ const handleTempImageSelect = (files) => {
 
 // 単一画像のアップロード
 const uploadSingleImage = async (file, isPrimary = false) => {
-  
   try {
     // R2対応版のアップロード関数を使用
     const result = await uploadProductImageR2(editingId.value, file, {
@@ -806,32 +977,51 @@ const uploadSingleImage = async (file, isPrimary = false) => {
       isPrimary: isPrimary
     })
     
+    return result
+    
   } catch (error) {
-    console.error('uploadSingleImageでエラー:', error)
+    console.error('❌ uploadSingleImageでエラー:', {
+      error,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    })
     throw error
   }
 }
 
 // 一時画像を実際にアップロード（R2対応版）
 const uploadTempImages = async (productId) => {
-  
   try {
     uploadProgress.value = 0
     const totalImages = tempImages.value.length
+    const uploadedImages = [] // アップロードした画像情報を保存
     
     for (let i = 0; i < tempImages.value.length; i++) {
       const tempImage = tempImages.value[i]
       
       try {
         // R2対応版のアップロード関数を使用
-        await uploadProductImageR2(productId, tempImage.file, {
+        const result = await uploadProductImageR2(productId, tempImage.file, {
           displayOrder: i,
           altText: tempImage.alt_text || tempImage.file.name,
           isPrimary: tempImage.is_primary || (i === 0 && tempImages.value.length > 0)
         })
         
+        // アップロード成功した画像を配列に追加
+        if (result) {
+          uploadedImages.push(result)
+        }
+        
       } catch (uploadError) {
-        console.error(`一時画像 ${i + 1}/${totalImages} アップロードエラー:`, uploadError)
+        console.error(`❌ 一時画像 ${i + 1}/${totalImages} アップロードエラー:`, {
+          error: uploadError,
+          message: uploadError.message,
+          details: uploadError.details,
+          hint: uploadError.hint,
+          code: uploadError.code
+        })
         
         // 最初の画像がエラーの場合、フォールバック（単一画像フィールドに従来の方法で保存）
         if (i === 0) {
@@ -869,8 +1059,18 @@ const uploadTempImages = async (productId) => {
     
     uploadProgress.value = 0
     
+    // アップロードした画像情報を返す
+    return uploadedImages
+    
   } catch (error) {
-    console.error('一時画像のアップロードに失敗しました:', error)
+    console.error('❌ 一時画像のアップロードに失敗しました:', {
+      error,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      stack: error.stack
+    })
     uploadProgress.value = 0
     throw error
   }
@@ -1108,22 +1308,32 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
     const thumbnailDataUrl = await generateVideoThumbnail(file)
     const thumbnailBlob = dataUrlToBlob(thumbnailDataUrl)
     
-    // サムネイルをアップロード
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(7)
-    const thumbnailFileName = `thumbnail_${timestamp}_${randomId}.jpg`
-    
-    const { data: thumbnailData, error: thumbnailError } = await supabase.storage
-      .from('product-videos')
-      .upload(thumbnailFileName, thumbnailBlob)
-    
-    if (thumbnailError) {
+    // サムネイルをR2にアップロード
+    let thumbnailUrl = ''
+    try {
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(7)
+      const thumbnailFile = new File([thumbnailBlob], `thumb_${timestamp}_${randomId}.jpg`, { type: 'image/jpeg' })
+      
+      const formData = new FormData()
+      formData.append('file', thumbnailFile)
+      formData.append('type', 'thumbnail')
+      
+      const uploadResponse = await fetch('/api/r2-upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!uploadResponse.ok) {
+        throw new Error(`サムネイルアップロード失敗: ${uploadResponse.statusText}`)
+      }
+      
+      const uploadData = await uploadResponse.json()
+      thumbnailUrl = uploadData.url
+    } catch (thumbnailError) {
       console.error('サムネイルのアップロードに失敗:', thumbnailError)
+      // サムネイルがなくても動画は保存する
     }
-    
-    const { data: { publicUrl: thumbnailUrl } } = supabase.storage
-      .from('product-videos')
-      .getPublicUrl(thumbnailFileName)
     
     // 動画の長さを取得
     const duration = await getVideoDuration(file)
@@ -1164,25 +1374,36 @@ const uploadTempVideos = async (productId) => {
       // サムネイルをアップロード
       let thumbnailUrl = ''
       if (tempVideo.thumbnail_url && tempVideo.thumbnail_url.startsWith('data:')) {
-        const thumbnailBlob = dataUrlToBlob(tempVideo.thumbnail_url)
-        const timestamp = Date.now()
-        const randomId = Math.random().toString(36).substring(7)
-        const thumbnailFileName = `thumbnail_${timestamp}_${randomId}_${i}.jpg`
-        
-        const { error: thumbnailError } = await supabase.storage
-          .from('product-videos')
-          .upload(thumbnailFileName, thumbnailBlob)
-        
-        if (!thumbnailError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('product-videos')
-            .getPublicUrl(thumbnailFileName)
-          thumbnailUrl = publicUrl
+        try {
+          const thumbnailBlob = dataUrlToBlob(tempVideo.thumbnail_url)
+          const timestamp = Date.now()
+          const randomId = Math.random().toString(36).substring(7)
+          
+          // R2にサムネイルをアップロード
+          const thumbnailFile = new File([thumbnailBlob], `thumb_${timestamp}_${randomId}.jpg`, { type: 'image/jpeg' })
+          const formData = new FormData()
+          formData.append('file', thumbnailFile)
+          formData.append('type', 'thumbnail')
+          
+          const uploadResponse = await fetch('/api/r2-upload', {
+            method: 'POST',
+            body: formData
+          })
+          
+          if (!uploadResponse.ok) {
+            throw new Error(`サムネイルアップロード失敗: ${uploadResponse.statusText}`)
+          }
+          
+          const uploadData = await uploadResponse.json()
+          thumbnailUrl = uploadData.url
+        } catch (thumbnailError) {
+          console.error('⚠️ サムネイルのアップロード失敗:', thumbnailError)
+          // サムネイルがなくても動画は保存する
         }
       }
       
       // データベースに保存
-      await addProductVideo(productId, uploadResult.videoUrl, {
+      const savedVideo = await addProductVideo(productId, uploadResult.videoUrl, {
         title: tempVideo.title,
         thumbnailUrl: thumbnailUrl,
         duration: tempVideo.duration,
@@ -1198,13 +1419,7 @@ const uploadTempVideos = async (productId) => {
     videoUploadProgress.value = 0
     
   } catch (error) {
-    console.error('一時動画のアップロードに失敗しました:', {
-      error,
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-      code: error?.code
-    })
+    console.error('❌ 一時動画のアップロードに失敗しました:', error)
     videoUploadProgress.value = 0
     throw error
   }
@@ -1255,12 +1470,21 @@ const updateVideoTitle = async (videoId, title) => {
 const playVideo = (videoUrl) => {
   currentVideoUrl.value = videoUrl
   showVideoModal.value = true
+  document.body.style.overflow = 'hidden' // スクロールを無効化
+}
+
+// 商品一覧からの動画再生
+const playVideoFromList = (product, video) => {
+  currentVideoUrl.value = video.video_url || video
+  showVideoModal.value = true
+  document.body.style.overflow = 'hidden' // スクロールを無効化
 }
 
 // 動画モーダルを閉じる
 const closeVideoModal = () => {
   showVideoModal.value = false
   currentVideoUrl.value = ''
+  document.body.style.overflow = '' // スクロールを復元
   if (modalVideo.value) {
     modalVideo.value.pause()
   }
@@ -1345,221 +1569,64 @@ const handleVideoDrop = async (event) => {
   }
 }
 
-// バケット確認機能
-const checkVideoBucket = async () => {
+// R2動画再生のエラーハンドリング
+const onVideoPlaybackError = (error) => {
+  console.error('❌ R2動画再生エラー:', error)
+  alert(`R2動画の再生でエラーが発生しました:\n${error.error || 'Unknown error'}`)
+}
+
+const onVideoCanPlay = () => {
+  // 動画再生準備完了
+}
+
+const onVideoLoadStart = () => {
+  // 動画読み込み開始
+}
+
+// 動画URLをテストする関数
+const testVideoUrl = async () => {
+  if (!currentVideoUrl.value) {
+    alert('テストする動画URLがありません')
+    return
+  }
+  
   try {
-    const bucketExists = await checkStorageBucket()
+    // HEADリクエストで動画の存在確認
+    const response = await fetch(currentVideoUrl.value, { method: 'HEAD' })
     
-    if (bucketExists) {
-      alert('✅ product-videos バケットが正常に作成されています。\n動画アップロードが可能です。')
-    } else {
-      alert('❌ product-videos バケットが見つかりません。\n\n以下の手順でバケットを作成してください：\n\n1. Supabase Dashboard にアクセス\n2. Storage メニューをクリック\n3. "Create a new bucket" をクリック\n4. Name: "product-videos" を入力\n5. "Public bucket" にチェックを入れる\n6. "Create bucket" をクリック')
+    const testResult = {
+      url: currentVideoUrl.value,
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length'),
+      isR2Url: currentVideoUrl.value.includes('.r2.dev'),
+      exists: response.ok
     }
+    
+    if (response.ok) {
+      const sizeInfo = testResult.contentLength 
+        ? `\nファイルサイズ: ${(testResult.contentLength / 1024 / 1024).toFixed(2)} MB`
+        : ''
+        
+      alert(`✅ R2動画URL接続テスト成功\n\nステータス: ${testResult.status} ${testResult.statusText}\nContent-Type: ${testResult.contentType || 'Unknown'}${sizeInfo}\n\n動画の配信は正常です`)
+    } else {
+      alert(`❌ R2動画URL接続テスト失敗\n\nステータス: ${testResult.status} ${testResult.statusText}\n\nR2バケットの公開設定またはCORS設定を確認してください`)
+    }
+    
   } catch (error) {
-    console.error('バケット確認エラー:', error)
-    alert('バケットの確認中にエラーが発生しました。\nコンソールを確認してください。')
+    console.error('❌ R2動画URL接続テストエラー:', error)
+    alert(`❌ R2動画URL接続テストでエラーが発生しました:\n${error.message}\n\nネットワーク接続またはCORS設定を確認してください`)
   }
 }
 
-// 詳細ストレージテスト機能
-const testStorageBucket = async () => {
-  try {
-    console.log('🧪 ストレージバケットの詳細テストを開始します...')
-    
-    // 認証状態も確認
-    const authStatus = await checkAuthStatus()
-    
-    const results = await testBucketAccess()
-    
-    let message = '🧪 ストレージテスト結果:\n\n'
-    
-    // 認証状態
-    message += `🔐 認証状態: ${authStatus.isAuthenticated ? '✅ ログイン済み' : '❌ 未ログイン'}\n`
-    if (authStatus.user) {
-      message += `ユーザーID: ${authStatus.user.id}\n`
-      message += `メール: ${authStatus.user.email || 'N/A'}\n`
-    }
-    message += '\n'
-    
-    // バケット一覧テスト結果
-    if (results.listBuckets?.error) {
-      message += '❌ バケット一覧取得: 失敗\n'
-      message += `エラー: ${results.listBuckets.error.message}\n\n`
-    } else {
-      const bucketNames = results.listBuckets?.data?.map(b => b.name) || []
-      message += `✅ バケット一覧取得: 成功\n`
-      message += `見つかったバケット: [${bucketNames.join(', ')}]\n\n`
-    }
-    
-    // ファイル一覧テスト結果
-    if (results.listFiles?.error) {
-      message += '❌ product-videos内ファイル一覧: 失敗\n'
-      message += `エラー: ${results.listFiles.error.message}\n\n`
-    } else {
-      const fileCount = results.listFiles?.data?.length || 0
-      message += `✅ product-videos内ファイル一覧: 成功\n`
-      message += `ファイル数: ${fileCount}個\n\n`
-    }
-    
-    // アップロードテスト結果
-    if (results.uploadTest?.error) {
-      message += '❌ テストファイルアップロード: 失敗\n'
-      message += `エラー: ${results.uploadTest.error.message}\n\n`
-    } else {
-      message += '✅ テストファイルアップロード: 成功\n\n'
-    }
-    
-    // 削除テスト結果
-    if (results.deleteTest?.error) {
-      message += '❌ テストファイル削除: 失敗\n'
-      message += `エラー: ${results.deleteTest.error.message}\n`
-    } else if (results.deleteTest) {
-      message += '✅ テストファイル削除: 成功\n'
-    }
-    
-    // 総合判定
-    const hasErrors = results.listBuckets?.error || results.listFiles?.error || results.uploadTest?.error
-    if (hasErrors) {
-      message += '\n❌ 一部のテストが失敗しました。詳細はコンソールを確認してください。'
-    } else {
-      message += '\n✅ すべてのテストが成功しました。動画アップロードが可能です。'
-    }
-    
-    alert(message)
-    
-  } catch (error) {
-    console.error('テスト実行エラー:', error)
-    alert('テスト実行中にエラーが発生しました。\nコンソールを確認してください。')
-  }
-}
-
-// Cloudflare R2接続テスト機能
-const testR2Connection = async () => {
-  try {
-    console.log('☁️ Cloudflare R2接続テストを開始...')
-    
-    // 1. 設定確認
-    const r2Configured = validateR2Config()
-    const storageStatus = getImageStorageStatus()
-    
-    let message = '☁️ Cloudflare R2接続テスト結果:\n\n'
-    
-    // 設定状況
-    message += `🔧 設定状況:\n`
-    message += `  R2設定: ${r2Configured ? '✅ 完了' : '❌ 不完全'}\n`
-    message += `  R2使用: ${storageStatus.useR2 ? '✅ 有効' : '❌ 無効'}\n`
-    message += `  フォールバック: ${storageStatus.fallbackToSupabase ? 'Supabase' : 'R2のみ'}\n\n`
-    
-    if (!r2Configured) {
-      message += '❌ R2設定が不完全です。\n環境変数を確認してください。'
-      alert(message)
-      return
-    }
-    
-    // 2. テスト用の小さな画像ファイルを作成
-    const canvas = document.createElement('canvas')
-    canvas.width = 100
-    canvas.height = 100
-    const ctx = canvas.getContext('2d')
-    
-    // 小さなテスト画像を描画
-    ctx.fillStyle = '#4F46E5'
-    ctx.fillRect(0, 0, 100, 100)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = '12px Arial'
-    ctx.textAlign = 'center'
-    ctx.fillText('R2 TEST', 50, 45)
-    ctx.fillText(new Date().getTime().toString().slice(-6), 50, 65)
-    
-    // Canvasをblobに変換してFileオブジェクトを作成
-    const testBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-    const testFile = new File([testBlob], 'r2-test.png', { type: 'image/png' })
-    
-    console.log('📝 テストファイル作成:', testFile)
-    
-    try {
-      // 3. バケット接続テスト
-      message += '🔗 バケット接続テスト:\n'
-      const connectionTest = await r2Client.testConnection()
-      message += `  接続: ${connectionTest ? '✅ 成功' : '❌ 失敗'}\n\n`
-      
-      if (!connectionTest) {
-        message += '❌ バケットに接続できません。\n設定を確認してください。'
-        alert(message)
-        return
-      }
-      
-      // 4. URL生成テスト
-      message += '� URL生成テスト:\n'
-      const testKey = r2Client.generateFileKey('test', testFile)
-      const testUrl = r2Client.getPublicUrl(testKey)
-      message += `  テストキー: ${testKey}\n`
-      message += `  公開URL: ${testUrl}\n\n`
-      
-      // 5. 実装状況の説明
-      message += '� R2実装状況:\n'
-      message += '  設定確認: ✅ 完了\n'
-      message += '  バケット疎通: ✅ 完了\n\n'
-      
-      // 5. 実際のアップロードテスト
-      message += '📤 アップロードテスト:\n'
-      try {
-        const testKey = r2Client.generateFileKey('test', testFile)
-        const uploadResult = await r2Client.uploadFile(testFile, testKey, (progress) => {
-          console.log(`📊 テストアップロード進捗: ${progress}%`)
-        })
-        
-        message += `  アップロード: ✅ 成功\n`
-        message += `  アップロード先: ${uploadResult}\n`
-        
-        // 削除テスト
-        try {
-          await r2Client.deleteFile(testKey)
-          message += `  削除テスト: ✅ 成功\n\n`
-        } catch (deleteError) {
-          message += `  削除テスト: ⚠️ エラー (${deleteError.message})\n\n`
-        }
-        
-      } catch (uploadError) {
-        message += `  アップロード: ❌ エラー\n`
-        message += `  詳細: ${uploadError.message}\n\n`
-      }
-      
-      // 6. 実装状況の説明
-      message += '⭐ R2実装状況:\n'
-      message += '  設定確認: ✅ 完了\n'
-      message += '  バケット疎通: ✅ 完了\n'
-      message += '  サーバーAPI: ✅ 実装済み\n'
-      message += '  アップロード: ✅ 利用可能\n'
-      message += '  削除機能: ✅ 利用可能\n\n'
-      
-      message += '🎉 Cloudflare R2が完全に利用可能です！'
-      
-    } catch (testError) {
-      console.error('❌ R2テストエラー:', testError)
-      message += `  テスト: ❌ 失敗\n`
-      message += `  エラー: ${testError.message}\n\n`
-      
-      message += '❌ R2設定またはバケット接続に問題があります。\n'
-      message += '以下を確認してください:\n\n'
-      message += '1. 環境変数の設定\n'
-      message += '2. Cloudflareでのバケット作成\n'
-      message += '3. パブリックアクセス設定\n'
-      message += '4. API Tokenの権限'
-    }
-    
-    alert(message)
-    
-  } catch (error) {
-    console.error('❌ R2テスト実行エラー:', error)
-    alert('R2テスト実行中にエラーが発生しました。\nコンソールを確認してください。')
-  }
-}
-
-// コンポーネント初期化時に商品一覧を読み込み
+// 初期データ読み込み
 onMounted(() => {
   loadProducts()
 })
+
+// ...existing video-related functions...
+
 </script>
 
 <style scoped>
@@ -1867,6 +1934,47 @@ onMounted(() => {
   border-radius: 8px;
   overflow: hidden;
   background: #f8f9fa;
+}
+
+/* Swiper用のスタイル */
+.swiper-container {
+  width: 100%;
+  height: 100%;
+}
+
+.swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.5);
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50%;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 14px !important;
+}
+
+.swiper-pagination {
+  bottom: 10px !important;
+}
+
+.swiper-pagination-bullet {
+  background: #fff !important;
+  opacity: 0.7;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+  background: #007bff !important;
 }
 
 .product-thumb {
@@ -2188,6 +2296,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: bold;
   padding: 4px;
+  z-index: 5;
 }
 
 .manual-input {
@@ -2241,541 +2350,191 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(240, 173, 78, 0.3);
 }
 
-/* レスポンシブ対応 */
-@media screen and (max-width: 768px) {
-  .images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.75rem;
-  }
-  
-  .image-item img {
-    height: 100px;
-  }
-  
-  .multiple-image-upload-section {
-    padding: 1rem;
-  }
-}
-
-/* タブレット対応 */
-@media (max-width: 992px) {
-  .admin-panel {
-    margin: 1.5rem;
-    padding: 1.5rem;
-  }
-  
-  .edit-form {
-    padding: 1.5rem;
-  }
-  
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .product-image-container {
-    height: 180px;
-  }
-}
-
-/* モバイル対応 */
-@media (max-width: 768px) {
-  .admin-panel {
-    margin: 1rem;
-    padding: 1rem;
-  }
-  
-  .admin-panel h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .admin-panel h3 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-  }
-  
-  .edit-form {
-    padding: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .form-group {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .form-group label {
-    text-align: left;
-    font-size: 0.9rem;
-  }
-  
-  .form-group.description-group {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-  
-  .form-group.description-group textarea {
-    width: 100%;
-    min-height: 120px;
-    height: auto;
-    box-sizing: border-box;
-  }
-  
-  .form-group input[type="text"],
-  .form-group input[type="number"],
-  .form-group input[type="url"],
-  .form-group textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.75rem;
-    font-size: 1rem;
-  }
-  
-  .upload-options {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-  
-  .file-upload-btn {
-    text-align: center;
-    width: 100%;
-    padding: 1rem;
-  }
-  
-  .image-preview {
-    max-width: 100%;
-    margin: 0.75rem 0;
-  }
-  
-  .image-preview img {
-    height: 200px;
-    object-fit: contain;
-  }
-  
-  .product-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-  
-  .product-item {
-    padding: 1rem;
-  }
-  
-  .product-image-container {
-    height: 250px;
-    margin-bottom: 0.75rem;
-  }
-}
-
-/* より小さなスマホ画面対応 */
-@media (max-width: 480px) {
-  .admin-panel {
-    margin: 0.5rem;
-    padding: 0.75rem;
-  }
-  
-  .admin-panel h2 {
-    font-size: 1.25rem;
-  }
-  
-  .edit-form {
-    padding: 0.75rem;
-  }
-  
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  
-  .form-group input[type="text"],
-  .form-group input[type="number"],
-  .form-group input[type="url"],
-  .form-group textarea {
-    padding: 0.5rem;
-    font-size: 0.95rem;
-  }
-  
-  .form-group.description-group textarea {
-    min-height: 100px;
-    padding: 0.5rem;
-  }
-  
-  .file-upload-btn {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-  }
-  
-  .image-preview img {
-    height: 180px;
-  }
-  
-  .product-item {
-    padding: 0.75rem;
-  }
-  
-  .product-image-container {
-    height: 200px;
-  }
-  
-  .product-details h4 {
-    font-size: 1rem;
-  }
-  
-  .product-details .price {
-    font-size: 1.1rem;
-  }
-  
-  .btn-primary,
-  .btn-secondary {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-  }
-  
-  .btn-edit,
-  .btn-delete {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-    min-height: 44px; /* Appleのタッチターゲット推奨サイズ */
-    touch-action: manipulation; /* タッチ操作の最適化 */
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* タッチ時のハイライト */
-  }
-  
-  .products-list {
-    padding: 0.75rem;
-  }
-  
-  .form-row {
-    gap: 1rem;
-  }
-}
-
-/* バケット確認ボタン */
-.btn-check-bucket,
-.btn-test-bucket,
-.btn-storage-info {
-  padding: 0.5rem 1rem;
-  background: #17a2b8;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: 1rem;
-}
-
-.btn-test-bucket {
-  background: #6c757d;
-}
-
-.btn-storage-info {
-  background: #28a745;
-}
-
-.btn-r2-test {
-  background: #fd7e14;
-}
-
-.btn-check-bucket:hover,
-.btn-test-bucket:hover,
-.btn-storage-info:hover,
-.btn-r2-test:hover {
-  background: #138496;
-  transform: translateY(-1px);
-}
-
-.btn-test-bucket:hover {
-  background: #5a6268;
-}
-
-.btn-storage-info:hover {
-  background: #218838;
-}
-
-.btn-r2-test:hover {
-  background: #e8590c;
-}
-
-.btn-check-bucket:active,
-.btn-test-bucket:active,
-.btn-storage-info:active,
-.btn-r2-test:active {
-  background: #117a8b;
-  transform: translateY(0);
-}
-
-.btn-test-bucket:active {
-  background: #545b62;
-}
-
-.btn-storage-info:active {
-  background: #1e7e34;
-}
-
-.btn-r2-test:active {
-  background: #dc6405;
-}
-
-/* 動画アップロード関連のスタイル */
-.multiple-video-upload-section {
-  border: 2px dashed #007bff;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background: #f8f9ff;
-  margin-top: 1rem;
-}
-
-.video-upload {
-  background: #007bff !important;
-  color: white !important;
-}
-
-.video-upload:hover {
-  background: #0056b3 !important;
-}
-
-.videos-gallery {
-  margin-top: 1.5rem;
-}
-
-.videos-gallery h4 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-size: 1.1rem;
-}
-
-.videos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap:  1rem;
-  min-height: 100px;
-}
-
-.video-item {
+/* 動画サムネイルをメイン画像として表示 */
+.video-thumbnail-main {
   position: relative;
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
   overflow: hidden;
-  cursor: move;
+  border-radius: 8px;
+  background-color: #000;
+}
+
+.video-thumbnail-main .video-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.play-icon-overlay-main {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
   transition: all 0.3s ease;
 }
 
-.video-item:hover {
-  border-color: #007bff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+.video-thumbnail-main:hover .play-icon-overlay-main {
+  background: rgba(0, 0, 0, 0.85);
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
-.video-item.primary {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+.play-icon-overlay-main svg {
+  width: 36px;
+  height: 36px;
+  margin-left: 2px;
 }
 
-.video-thumbnail {
-  position: relative;
-  width: 100%;
-  height: 120px;
-  background: #f8f9fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.no-thumbnail {
-  font-size: 2rem;
-  color: #6c757d;
-}
-
-.video-duration {
+.video-count-badge {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.video-info {
-  padding: 8px;
-}
-
-.video-title-input {
-  width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 4px 6px;
-  font-size: 12px;
-}
-
-.video-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-}
-
-.play-btn {
-  background: rgba(0, 123, 255, 0.9);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.play-btn:hover {
-  background: rgba(0, 123, 255, 1);
-}
-
-.video-order {
-  position: absolute;
-  top: 8px;
+  bottom: 8px;
   left: 8px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(220, 53, 69, 0.9);
   color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
   font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 11;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.temp-video-item {
-  border-color: #007bff;
+/* モバイル対応調整 */
+@media screen and (max-width: 768px) {
+  .play-icon-overlay-main {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .play-icon-overlay-main svg {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .video-count-badge {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
 }
 
-.temp-video-item:hover {
-  border-color: #0056b3;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+@media screen and (max-width: 480px) {
+  .play-icon-overlay-main {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .play-icon-overlay-main svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .video-count-badge {
+    font-size: 0.65rem;
+    padding: 2px 5px;
+  }
 }
 
-.temp-badge {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: #007bff;
-  color: white;
-  text-align: center;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 2px;
-}
-
-/* 動画モーダルのスタイル */
+/* 動画モーダル */
 .video-modal {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   padding: 1rem;
   box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.video-modal-content {
+.video-content {
   position: relative;
-  background: black;
-  border-radius: 8px;
+  background: #000;
+  border-radius: 12px;
   overflow: hidden;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 90vw;
+  height: 90vh;
+  max-width: 1200px;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
-.close-btn {
+.video-content .modal-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.8);
   color: white;
   border: none;
   border-radius: 50%;
   width: 40px;
   height: 40px;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
   z-index: 10001;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s ease;
 }
 
-.close-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
+.video-content .modal-close:hover {
+  background: rgba(255, 0, 0, 0.8);
 }
 
-/* レスポンシブ対応 */
+/* アニメーションキーフレーム */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* モバイル対応：動画モーダル */
 @media screen and (max-width: 768px) {
-  .videos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.75rem;
-  }
-  
-  .video-item {
-    border-width: 1px;
-  }
-  
-  .video-thumbnail {
-    height: 100px;
-  }
-  
-  .multiple-video-upload-section {
-    padding: 1rem;
-  }
-  
-  .video-modal-content {
-    max-width: 95vw;
-    max-height: 85vh;
+  .video-content {
+    width: 95vw;
+    height: 95vh;
+    max-width: none;
+    max-height: none;
   }
 }
 
 @media screen and (max-width: 480px) {
-  .videos-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-  
-  .video-thumbnail {
-    height: 80px;
-  }
-  
-  .video-controls {
-    gap: 2px;
-  }
-  
-  .play-btn,
-  .primary-btn,
-  .delete-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
+  .video-content {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
   }
 }
 </style>

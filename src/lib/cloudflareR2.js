@@ -199,7 +199,10 @@ class CloudflareR2Client {
    * @returns {string} - 公開URL
    */
   getPublicUrl(key) {
-    return `${this.publicUrl}/${key}`
+    // ダブルスラッシュを回避
+    const cleanKey = key.startsWith('/') ? key.substring(1) : key
+    const cleanPublicUrl = this.publicUrl.endsWith('/') ? this.publicUrl.slice(0, -1) : this.publicUrl
+    return `${cleanPublicUrl}/${cleanKey}`
   }
 
   /**

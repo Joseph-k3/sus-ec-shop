@@ -25,43 +25,69 @@
     <div class="product-list" :class="{ 'admin-grid': route.path.startsWith('/admin') }">
       <div v-for="product in sortedProducts" :key="product.id" class="product-card" :class="{ 'sold-out': product.quantity <= 0, 'reserved': product.is_reserved }">
         <div class="image-container">
-          <!-- 複数画像がある場合はSwiper、単一画像の場合は通常表示 -->
-          <div v-if="product.images && product.images.length > 1" class="product-swiper-container">
-            <div class="swiper product-swiper" :data-product-id="product.id">
-              <div class="swiper-wrapper">
-                <div 
-                  v-for="(image, index) in product.images" 
-                  :key="image.id"
-                  class="swiper-slide"
-                  @click="openImageModal(product, index)"
-                >
-                  <img 
-                    :src="image.image_url" 
-                    :alt="`${product.name} ${index + 1}`"
-                    class="product-image"
-                    @error="handleImageError"
-                    @load="handleImageLoad"
-                  >
-                </div>
-              </div>
-              <!-- PC用の小さな矢印 -->
-              <div class="swiper-button-next product-swiper-next"></div>
-              <div class="swiper-button-prev product-swiper-prev"></div>
-              <!-- ページネーション（ドット） -->
-              <div class="swiper-pagination product-swiper-pagination"></div>
-            </div>
-          </div>
-          <!-- 単一画像の場合 -->
-          <div v-else class="single-image-container">
+          <!-- 動画がある場合はサムネイルを全面表示 -->
+          <div v-if="product.videos && product.videos.length > 0 && product.videos[0].thumbnail_url" 
+               class="video-thumbnail-main" 
+               @click="playVideo(product, product.videos[0])" 
+               title="動画を再生">
             <img 
-              :src="product.image" 
-              :alt="product.name" 
-              class="product-image main-image"
+              :src="product.videos[0].thumbnail_url" 
+              :alt="`${product.name} 動画サムネイル`"
+              class="product-image video-thumbnail-image"
               @error="handleImageError"
               @load="handleImageLoad"
-              @click="openImageModal(product)"
             >
+            <!-- 再生アイコンオーバーレイ -->
+            <div class="play-icon-overlay-main">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="white">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+            <!-- 動画カウント（複数動画がある場合） -->
+            <span v-if="product.videos.length > 1" class="video-count-badge">{{ product.videos.length }}本の動画</span>
           </div>
+          
+          <!-- 動画がない場合は従来通りの画像表示 -->
+          <template v-else>
+            <!-- 複数画像がある場合はSwiper -->
+            <div v-if="product.images && product.images.length > 1" class="product-swiper-container">
+              <div class="swiper product-swiper" :data-product-id="product.id">
+                <div class="swiper-wrapper">
+                  <div 
+                    v-for="(image, index) in product.images" 
+                    :key="image.id"
+                    class="swiper-slide"
+                    @click="openImageModal(product, index)"
+                  >
+                    <img 
+                      :src="image.image_url" 
+                      :alt="`${product.name} ${index + 1}`"
+                      class="product-image"
+                      @error="handleImageError"
+                      @load="handleImageLoad"
+                    >
+                  </div>
+                </div>
+                <!-- PC用の小さな矢印 -->
+                <div class="swiper-button-next product-swiper-next"></div>
+                <div class="swiper-button-prev product-swiper-prev"></div>
+                <!-- ページネーション（ドット） -->
+                <div class="swiper-pagination product-swiper-pagination"></div>
+              </div>
+            </div>
+            <!-- 単一画像の場合 -->
+            <div v-else class="single-image-container">
+              <img 
+                :src="product.image" 
+                :alt="product.name" 
+                class="product-image main-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                @click="openImageModal(product)"
+              >
+            </div>
+          </template>
+          
           <div v-if="product.is_reserved" class="reserved-overlay">取引中</div>
           <div v-else-if="product.quantity <= 0" class="sold-out-overlay">売約済み</div>
         </div>
@@ -147,12 +173,23 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- 動画モーダル -->
+  <Teleport to="body">
+    <div v-if="showVideoModal" class="video-modal" @click="closeVideoModal">
+      <div class="video-content" @click.stop>
+        <button class="modal-close" @click="closeVideoModal">&times;</button>
+        <R2VideoPlayer :videoUrl="currentVideoUrl" :autoplay="true" @close="closeVideoModal" />
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import SortSelector from './SortSelector.vue'
+import R2VideoPlayer from './R2VideoPlayer.vue'
 import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customerUtils'
 import getPublicImageUrl from '../lib/imageUtils.js'
@@ -187,6 +224,10 @@ const currentSwiperIndex = ref(0)
 // スプラッシュ関連
 const showSplash = ref(true)
 const showContent = ref(false)
+// 動画モーダル関連
+const showVideoModal = ref(false)
+const currentVideoUrl = ref('')
+const currentProduct = ref(null)
 
 onMounted(async () => {
   // 本番運用時は常にスプラッシュを表示、開発時はComingSoon画面からの遷移の場合のみ表示
@@ -301,11 +342,23 @@ const fetchProducts = async () => {
 
     if (error) throw error
     
-    // 各商品の画像を取得
-    const productsWithImages = await Promise.all(
+    // 各商品の画像と動画を取得
+    const productsWithMedia = await Promise.all(
       data.map(async (product) => {
+        // 画像取得
         const images = await getProductImagesWithFallback(product)
         const primaryImage = images.find(img => img.is_primary) || images[0]
+        
+        // 動画取得
+        const { data: videos, error: videoError } = await supabase
+          .from('product_videos')
+          .select('*')
+          .eq('product_id', product.id)
+          .order('display_order', { ascending: true })
+        
+        if (videoError) {
+          console.error('動画取得エラー:', videoError)
+        }
         
         return {
           ...product,
@@ -313,18 +366,23 @@ const fetchProducts = async () => {
           images: images.map(img => ({
             ...img,
             image_url: getPublicImageUrl(img.image_url)
-          }))
+          })),
+          videos: videos && videos.length > 0 ? videos.map(video => ({
+            ...video,
+            video_url: getPublicImageUrl(video.video_url),
+            thumbnail_url: video.thumbnail_url ? getPublicImageUrl(video.thumbnail_url) : null
+          })) : []
         }
       })
     )
     
-    products.value = productsWithImages
+    products.value = productsWithMedia
     
     // DOM更新後にSwiperを初期化
     await nextTick()
     initProductSwipers()
   } catch (error) {
-    // エラーハンドリング
+    console.error('商品データ取得エラー:', error)
   }
 }
 
@@ -465,6 +523,22 @@ const showMessage = (text, type = 'success', event = null) => {
     message.value = ''
     popupStyle.value = {}
   }, 3000)
+}
+
+// 動画再生
+const playVideo = (product, video) => {
+  currentProduct.value = product
+  currentVideoUrl.value = video.video_url || video
+  showVideoModal.value = true
+  document.body.style.overflow = 'hidden' // スクロールを無効化
+}
+
+// 動画モーダルを閉じる
+const closeVideoModal = () => {
+  showVideoModal.value = false
+  currentVideoUrl.value = ''
+  currentProduct.value = null
+  document.body.style.overflow = '' // スクロールを復元
 }
 </script>
 
@@ -824,6 +898,120 @@ div[class~="admin-grid"] {
   min-width: 120px;
   text-align: center;
   box-sizing: border-box;
+}
+
+/* 動画サムネイルをメイン画像として表示 */
+.video-thumbnail-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: #000;
+}
+
+.video-thumbnail-main .video-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.play-icon-overlay-main {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.video-thumbnail-main:hover .play-icon-overlay-main {
+  background: rgba(0, 0, 0, 0.85);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.play-icon-overlay-main svg {
+  width: 48px;
+  height: 48px;
+  margin-left: 4px;
+}
+
+.video-count-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  z-index: 11;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 動画モーダル */
+.video-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.video-content {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 90vw;
+  height: 90vh;
+  max-width: 1200px;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.video-content .modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.video-content .modal-close:hover {
+  background: rgba(255, 0, 0, 0.8);
 }
 
 /* ポップアップメッセージ表示 */
@@ -1190,6 +1378,33 @@ div[class~="admin-grid"] {
   .sold-out-overlay {
     font-size: 0.9rem;
   }
+  
+  .modal-info {
+    padding: 0.75rem;
+  }
+  
+  /* 非常に小さな画面での動画サムネイル調整 */
+  .play-icon-overlay-main {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .play-icon-overlay-main svg {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .video-count-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+  
+  /* 動画モーダルを完全に画面いっぱいに */
+  .video-content {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
 }
 
 /* 画像拡大モーダル */
@@ -1386,6 +1601,30 @@ div[class~="admin-grid"] {
   .modal-price {
     font-size: 1.1rem;
   }
+  
+  /* モバイルでの動画サムネイル用再生アイコンを少し小さく */
+  .play-icon-overlay-main {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .play-icon-overlay-main svg {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .video-count-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+  }
+  
+  /* モバイルで動画モーダルを全画面に */
+  .video-content {
+    width: 95vw;
+    height: 95vh;
+    max-width: none;
+    max-height: none;
+  }
 }
 
 /* 非常に小さな画面では矢印を非表示にしてスワイプメインに */
@@ -1406,6 +1645,15 @@ div[class~="admin-grid"] {
   
   .modal-info {
     padding: 0.75rem;
+  }
+  
+  /* 非常に小さな画面での動画サムネイルバッジ調整（重複防止） */
+  
+  /* 動画モーダルを完全に画面いっぱいに */
+  .video-content {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
   }
 }
 

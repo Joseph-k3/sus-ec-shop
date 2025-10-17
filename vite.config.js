@@ -6,6 +6,14 @@ export default defineConfig({
   plugins: [vue()],
   envPrefix: 'VITE_',  // 環境変数のプレフィックスを明示的に設定
   base: '/',
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      }
+    }
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -19,13 +27,5 @@ export default defineConfig({
         }
       }
     }
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
   },
 })

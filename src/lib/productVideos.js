@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 
+// ストレージプロバイダーの設定
+const STORAGE_PROVIDER = import.meta.env.VITE_STORAGE_PROVIDER || 'supabase'
+const USE_R2 = STORAGE_PROVIDER === 'r2'
+
 /**
  * 商品の動画一覧を取得
  * @param {string} productId 商品ID
@@ -8,7 +12,7 @@ import { supabase } from './supabase'
 export const getProductVideos = async (productId) => {
   try {
     const { data, error } = await supabase
-      .from('product-videos')
+      .from('product_videos')
       .select('*')
       .eq('product_id', productId)
       .order('display_order', { ascending: true })
@@ -48,31 +52,40 @@ export const addProductVideo = async (productId, videoUrl, options = {}) => {
     // プライマリ動画の場合、他のプライマリ動画を無効化
     if (isPrimary) {
       await supabase
-        .from('product-videos')
+        .from('product_videos')
         .update({ is_primary: false })
         .eq('product_id', productId)
         .eq('is_primary', true)
     }
 
+    const insertData = {
+      product_id: productId,
+      video_url: videoUrl,
+      thumbnail_url: thumbnailUrl,
+      title,
+      description,
+      duration,
+      file_size: fileSize,
+      mime_type: mimeType,
+      display_order: displayOrder,
+      is_primary: isPrimary
+    }
+
     const { data, error } = await supabase
-      .from('product-videos')
-      .insert([{
-        product_id: productId,
-        video_url: videoUrl,
-        thumbnail_url: thumbnailUrl,
-        title,
-        description,
-        duration,
-        file_size: fileSize,
-        mime_type: mimeType,
-        display_order: displayOrder,
-        is_primary: isPrimary
-      }])
+      .from('product_videos')
+      .insert([insertData])
       .select()
       .single()
 
     if (error) {
-      console.error('動画の追加に失敗:', error)
+      console.error('❌ 動画の追加に失敗:', {
+        error,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        insertData
+      })
       throw error
     }
 
@@ -95,14 +108,14 @@ export const updateProductVideo = async (videoId, updates) => {
     if (updates.is_primary) {
       // まず、この動画の商品IDを取得
       const { data: videoData } = await supabase
-        .from('product-videos')
+        .from('product_videos')
         .select('product_id')
         .eq('id', videoId)
         .single()
 
       if (videoData) {
         await supabase
-          .from('product-videos')
+          .from('product_videos')
           .update({ is_primary: false })
           .eq('product_id', videoData.product_id)
           .eq('is_primary', true)
@@ -111,7 +124,7 @@ export const updateProductVideo = async (videoId, updates) => {
     }
 
     const { data, error } = await supabase
-      .from('product-videos')
+      .from('product_videos')
       .update(updates)
       .eq('id', videoId)
       .select()
@@ -137,7 +150,7 @@ export const deleteProductVideo = async (videoId) => {
   try {
     // 動画情報を取得してストレージからも削除
     const { data: videoData } = await supabase
-      .from('product-videos')
+      .from('product_videos')
       .select('video_url, thumbnail_url')
       .eq('id', videoId)
       .single()
@@ -148,7 +161,7 @@ export const deleteProductVideo = async (videoId) => {
         const videoPath = videoData.video_url.split('/').pop()
         if (videoPath) {
           await supabase.storage
-            .from('product-videos')
+            .from('product_videos')
             .remove([videoPath])
         }
       }
@@ -158,14 +171,14 @@ export const deleteProductVideo = async (videoId) => {
         const thumbnailPath = videoData.thumbnail_url.split('/').pop()
         if (thumbnailPath) {
           await supabase.storage
-            .from('product-videos')
+            .from('product_videos')
             .remove([thumbnailPath])
         }
       }
     }
 
     const { error } = await supabase
-      .from('product-videos')
+      .from('product_videos')
       .delete()
       .eq('id', videoId)
 
@@ -187,7 +200,7 @@ export const updateVideoDisplayOrder = async (videoIds) => {
   try {
     const promises = videoIds.map((videoId, index) =>
       supabase
-        .from('product-videos')
+        .from('product_videos')
         .update({ display_order: index })
         .eq('id', videoId)
     )
@@ -200,7 +213,7 @@ export const updateVideoDisplayOrder = async (videoIds) => {
 }
 
 /**
- * 動画ファイルをSupabaseストレージにアップロード
+ * 動画ファイルをストレージにアップロード（SupabaseまたはR2）
  * @param {File} file 動画ファイル
  * @param {Function} onProgress 進捗コールバック
  * @returns {Object} アップロード結果
@@ -212,29 +225,30 @@ export const uploadVideoToStorage = async (file, onProgress = null) => {
       throw new Error('ファイルサイズが制限を超えています')
     }
 
-    console.log('Starting video upload:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type
-    })
+    // R2を使用する場合
+    if (USE_R2) {
+      return await uploadVideoToR2(file, onProgress)
+    }
 
+    // Supabaseストレージを使用する場合
     // バケットの存在確認
     const bucketExists = await checkStorageBucket()
     if (!bucketExists) {
       throw new Error('ストレージバケット "product-videos" が見つかりません。Supabaseダッシュボードでバケットを作成してください。\n\n手順:\n1. Supabase Dashboard → Storage\n2. "Create a new bucket" をクリック\n3. Name: "product-videos"\n4. "Public bucket" にチェック\n5. "Create bucket" をクリック')
     }
 
-    // ファイル名を生成
+    // ファイル名を生成（年月ベース）
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
     const timestamp = Date.now()
     const randomId = Math.random().toString(36).substring(7)
     const fileExtension = file.name.split('.').pop()
-    const fileName = `video_${timestamp}_${randomId}.${fileExtension}`
-
-    console.log('Generated filename:', fileName)
+    const fileName = `products/${year}/${month}/videos/video_${timestamp}_${randomId}.${fileExtension}`
 
     // ストレージにアップロード
     const { data, error } = await supabase.storage
-      .from('product-videos')
+      .from('product_videos')
       .upload(fileName, file, {
         onUploadProgress: (progress) => {
           if (onProgress && progress.total) {
@@ -243,8 +257,6 @@ export const uploadVideoToStorage = async (file, onProgress = null) => {
           }
         }
       })
-
-    console.log('Upload result:', { data, error })
 
     if (error) {
       // バケットが見つからない場合の特別なエラーメッセージ
@@ -268,7 +280,7 @@ export const uploadVideoToStorage = async (file, onProgress = null) => {
 
     // 公開URLを取得
     const { data: { publicUrl } } = supabase.storage
-      .from('product-videos')
+      .from('product_videos')
       .getPublicUrl(fileName)
 
     return {
@@ -376,6 +388,63 @@ export const getVideoDuration = (file) => {
 }
 
 /**
+ * 動画ファイルをR2にアップロード
+ * @param {File} file 動画ファイル
+ * @param {Function} onProgress 進捗コールバック
+ * @returns {Object} アップロード結果
+ */
+export const uploadVideoToR2 = async (file, onProgress = null) => {
+  try {
+    console.log('🌥️ R2へのアップロードを開始:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    })
+
+    // ファイル名を生成
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(7)
+    const fileExtension = file.name.split('.').pop()
+    const fileName = `videos/video_${timestamp}_${randomId}.${fileExtension}`
+
+    // FormDataを作成
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('type', 'video')
+    formData.append('filename', fileName)
+
+    // R2アップロードAPIを呼び出し
+    const response = await fetch('/api/r2-upload', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`R2アップロードエラー: ${response.status} - ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ R2アップロード完了:', result)
+
+    return {
+      videoUrl: result.url,  // videoUrlとして返す
+      fileName: result.fileName,
+      fileSize: file.size,
+      mimeType: file.type
+    }
+
+  } catch (error) {
+    console.error('❌ R2アップロードエラー:', error)
+    return {
+      data: null,
+      publicURL: null,
+      error: error
+    }
+  }
+}
+
+/**
  * ストレージバケットの存在確認
  * @returns {Promise<boolean>} バケットが存在するかどうか
  */
@@ -400,24 +469,30 @@ export const checkStorageBucket = async () => {
       })
       return false
     }
-    
-    if (!buckets || buckets.length === 0) {
+     if (!buckets || buckets.length === 0) {
       console.warn('⚠️ バケットが1つも見つかりません')
-      return false
+      // バケットを自動作成してみる
+      return await createProductVideosBuffer()
     }
-    
+
     const bucketNames = buckets.map(b => b.name)
-    const hasProductVideosBucket = buckets.some(bucket => bucket.name === 'product-videos')
-    
+    const hasProductVideosBucket = buckets.some(bucket => bucket.name === 'product_videos')
+
     console.log('📁 利用可能なバケット:', bucketNames)
     console.log('🎬 product-videos バケット存在:', hasProductVideosBucket)
-    
+
     // バケット詳細情報もログ出力
-    const productVideosBucket = buckets.find(b => b.name === 'product-videos')
+    const productVideosBucket = buckets.find(b => b.name === 'product_videos')
     if (productVideosBucket) {
       console.log('🎬 product-videos バケット詳細:', productVideosBucket)
     }
-    
+
+    // バケットが存在しない場合は作成を試行
+    if (!hasProductVideosBucket) {
+      console.log('🛠️ product-videos バケットが存在しないため、作成を試行します')
+      return await createProductVideosBuffer()
+    }
+
     return hasProductVideosBucket
   } catch (error) {
     console.error('❌ checkStorageBucket エラー:', {
@@ -425,6 +500,41 @@ export const checkStorageBucket = async () => {
       message: error?.message,
       stack: error?.stack
     })
+    return false
+  }
+}
+
+/**
+ * product-videosバケットを作成
+ * @returns {Promise<boolean>} 作成成功かどうか
+ */
+export const createProductVideosBuffer = async () => {
+  try {
+    console.log('🛠️ product-videos バケットを作成中...')
+    
+    const { data, error } = await supabase.storage.createBucket('product_videos', {
+      public: true,
+      allowedMimeTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
+      fileSizeLimit: 50 * 1024 * 1024 // 50MB
+    })
+    
+    if (error) {
+      console.error('❌ バケット作成エラー:', error)
+      
+      // バケットが既に存在する場合のエラーは無視
+      if (error.message?.includes('already exists') || error.message?.includes('Duplicate')) {
+        console.log('✅ バケットは既に存在します')
+        return true
+      }
+      
+      return false
+    }
+    
+    console.log('✅ product-videos バケットを作成しました:', data)
+    return true
+    
+  } catch (error) {
+    console.error('❌ createProductVideosBuffer エラー:', error)
     return false
   }
 }
@@ -456,7 +566,7 @@ export const testBucketAccess = async () => {
     // 2. product-videos バケット内のファイル一覧取得テスト
     console.log('🧪 テスト2: product-videos バケット内ファイル一覧')
     const { data: files, error: filesError } = await supabase.storage
-      .from('product-videos')
+      .from('product_videos')
       .list('', { limit: 10 })
     results.listFiles = { data: files, error: filesError }
     console.log('結果:', results.listFiles)
@@ -467,7 +577,7 @@ export const testBucketAccess = async () => {
     const testFileName = `test_${Date.now()}.txt`
     
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('product-videos')
+      .from('product_videos')
       .upload(testFileName, testBlob)
     results.uploadTest = { data: uploadData, error: uploadError }
     console.log('結果:', results.uploadTest)
@@ -476,7 +586,7 @@ export const testBucketAccess = async () => {
     if (!uploadError) {
       console.log('🧪 テスト4: テストファイル削除')
       const { data: deleteData, error: deleteError } = await supabase.storage
-        .from('product-videos')
+        .from('product_videos')
         .remove([testFileName])
       results.deleteTest = { data: deleteData, error: deleteError }
       console.log('結果:', results.deleteTest)

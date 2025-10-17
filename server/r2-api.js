@@ -4,6 +4,8 @@ import cors from 'cors'
 import { config } from 'dotenv'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import multer from 'multer'
+import path from 'path'
 
 // 環境変数を読み込み
 config()
@@ -23,6 +25,24 @@ const r2Client = new S3Client({
     accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
     secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
   },
+})
+
+// multerでファイルアップロード設定
+const storage = multer.memoryStorage()
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/mov'
+    ]
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error(`許可されていないファイル形式: ${file.mimetype}`), false)
+    }
+  }
 })
 
 // 署名付きURLを生成するAPI
@@ -142,26 +162,20 @@ app.post('/api/r2/upload', async (req, res) => {
     // ファイルタイプの検証
     const allowedTypes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
-      'video/mp4', 'video/webm', 'video/quicktime',
-      'text/plain' // テスト用
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/mov'
     ]
-    
+
     if (!allowedTypes.includes(contentType)) {
       return res.status(400).json({ 
         error: `許可されていないファイルタイプ: ${contentType}` 
       })
     }
 
-    // 直接R2にアップロード
     const command = new PutObjectCommand({
       Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
       Key: key,
-      Body: fileBuffer,
+      Body: Buffer.from(fileBuffer, 'base64'),
       ContentType: contentType,
-      Metadata: {
-        'upload-timestamp': Date.now().toString(),
-        'uploaded-by': 'sus-ec-site'
-      }
     })
 
     await r2Client.send(command)
@@ -184,6 +198,131 @@ app.post('/api/r2/upload', async (req, res) => {
   }
 })
 
+// R2直接アップロードAPI (multer使用)
+app.post('/api/r2-upload', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file
+    const { type, productId = 'general' } = req.body
+
+    if (!file) {
+      return res.status(400).json({ error: 'ファイルが選択されていません' })
+    }
+
+    // ファイル拡張子を取得
+    const fileExt = path.extname(file.originalname).toLowerCase()
+    
+    // 現在の年月を取得
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    
+    // ファイル名を生成（年月ベース + タイムスタンプ + ランダム文字列）
+    const timestamp = Date.now()
+    const randomStr = Math.random().toString(36).substring(2, 15)
+    const typeFolder = type === 'video' ? 'videos' : 'images'
+    const fileName = `products/${year}/${month}/${typeFolder}/${timestamp}-${randomStr}${fileExt}`
+
+    // R2にアップロード
+    const uploadCommand = new PutObjectCommand({
+      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    })
+
+    await r2Client.send(uploadCommand)
+
+    // 公開URLを生成
+    const publicUrl = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}${fileName}`
+
+    console.log(`✅ ファイルアップロード成功: ${fileName}`)
+    
+    res.status(200).json({
+      success: true,
+      url: publicUrl,
+      fileName: fileName,
+      type: type || 'image'
+    })
+
+  } catch (error) {
+    console.error('❌ R2アップロードエラー:', error)
+    
+    // 環境変数の確認
+    console.error('Environment variables check:')
+    console.error('CLOUDFLARE_ACCOUNT_ID:', process.env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'NOT SET')
+    console.error('CLOUDFLARE_R2_ACCESS_KEY_ID:', process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ? 'SET' : 'NOT SET')
+    console.error('CLOUDFLARE_R2_SECRET_ACCESS_KEY:', process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ? 'SET' : 'NOT SET')
+    console.error('CLOUDFLARE_R2_BUCKET_NAME:', process.env.CLOUDFLARE_R2_BUCKET_NAME)
+    console.error('CLOUDFLARE_R2_PUBLIC_URL:', process.env.CLOUDFLARE_R2_PUBLIC_URL)
+    
+    res.status(500).json({
+      error: 'アップロードに失敗しました',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
+  }
+})
+
+// R2削除API - ヘルスチェック
+app.get('/api/r2-delete/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'R2削除APIサーバーは正常に動作しています',
+    timestamp: new Date().toISOString()
+  })
+})
+
+// R2ファイル削除API
+app.delete('/api/r2-delete', async (req, res) => {
+  try {
+    const { fileKey } = req.body
+
+    if (!fileKey) {
+      return res.status(400).json({ error: 'fileKeyが必要です' })
+    }
+
+    console.log('🗑️ R2からファイルを削除:', fileKey)
+
+    // バケット名を取得
+    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || process.env.VITE_CLOUDFLARE_R2_BUCKET_NAME
+
+    // R2から削除
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+    })
+
+    await r2Client.send(deleteCommand)
+
+    console.log('✅ R2削除成功:', fileKey)
+    
+    res.status(200).json({
+      success: true,
+      message: 'ファイルを削除しました',
+      fileKey: fileKey
+    })
+
+  } catch (error) {
+    console.error('❌ R2削除エラー:', error)
+    
+    // ファイルが存在しない場合は成功として扱う
+    if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
+      console.log('📄 ファイルが存在しないため削除完了:', req.body.fileKey)
+      return res.status(200).json({
+        success: true,
+        message: 'ファイルは既に存在しないため削除完了',
+        fileKey: req.body.fileKey
+      })
+    }
+    
+    res.status(500).json({
+      error: 'ファイル削除に失敗しました',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
+  }
+})
+
 // ヘルスチェック
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -200,6 +339,8 @@ app.listen(PORT, () => {
   console.log(`   POST http://localhost:${PORT}/api/r2/presigned-url`)
   console.log(`   DELETE http://localhost:${PORT}/api/r2/delete-file`)
   console.log(`   POST http://localhost:${PORT}/api/r2/upload`)
+  console.log(`   POST http://localhost:${PORT}/api/r2-upload`)
+  console.log(`   DELETE http://localhost:${PORT}/api/r2-delete`)
   console.log(`   GET http://localhost:${PORT}/api/health`)
 })
 

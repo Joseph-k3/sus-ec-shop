@@ -3,7 +3,16 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
+  "functions": {
+    "api/r2-upload.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
