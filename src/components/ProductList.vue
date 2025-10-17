@@ -34,9 +34,15 @@
               :src="product.videos[0].thumbnail_url" 
               :alt="`${product.name} 動画サムネイル`"
               class="product-image video-thumbnail-image"
-              @error="handleImageError"
+              @error="(e) => e.target.style.display = 'none'"
               @load="handleImageLoad"
             >
+            <!-- サムネイル読み込みエラー時のフォールバック -->
+            <div class="video-icon-fallback">
+              <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="white">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+            </div>
             <!-- 再生アイコンオーバーレイ -->
             <div class="play-icon-overlay-main">
               <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="white">
@@ -908,14 +914,37 @@ div[class~="admin-grid"] {
   cursor: pointer;
   overflow: hidden;
   border-radius: 8px;
-  background-color: #000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .video-thumbnail-main .video-thumbnail-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
+  z-index: 2;
+}
+
+/* サムネイル読み込みエラー時のフォールバック */
+.video-icon-fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 1;
+}
+
+/* 画像が非表示になった場合、フォールバックを確実に表示 */
+.video-thumbnail-main .video-thumbnail-image[style*="display: none"] {
+  z-index: 0;
 }
 
 .play-icon-overlay-main {

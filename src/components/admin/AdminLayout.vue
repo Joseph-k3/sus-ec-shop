@@ -3,15 +3,15 @@
     <header class="admin-header">
       <h1>管理画面</h1>
       <nav class="admin-nav">
-        <router-link to="/admin/orders" class="nav-link">
+        <router-link to="/admin/orders" class="nav-link" @click="handleNavClick">
           <i class="fas fa-shopping-cart"></i>
           注文管理
         </router-link>
-        <router-link to="/admin/products" class="nav-link">
+        <router-link to="/admin/products" class="nav-link" @click="handleNavClick">
           <i class="fas fa-leaf"></i>
           商品管理
         </router-link>
-        <router-link to="/" class="nav-link">
+        <router-link to="/" class="nav-link store-link" @click="handleNavClick">
           <i class="fas fa-store"></i>
           ストアへ戻る
         </router-link>
@@ -25,7 +25,21 @@
 </template>
 
 <script setup>
-// レイアウトコンポーネントのロジックがあれば追加
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+// ナビゲーションのクリックハンドラ
+const handleNavClick = (event) => {
+  // タッチデバイスでの確実な動作のため、明示的にナビゲーション
+  const link = event.currentTarget
+  const to = link.getAttribute('href')
+  
+  if (to && to !== router.currentRoute.value.path) {
+    event.preventDefault()
+    router.push(to)
+  }
+}
 </script>
 
 <style scoped>
@@ -81,6 +95,10 @@
   font-weight: 500;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid #dee2e6;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .nav-link:hover {
@@ -88,6 +106,11 @@
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(44, 95, 45, 0.3);
+}
+
+.nav-link:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(44, 95, 45, 0.2);
 }
 
 .nav-link.router-link-active {
@@ -106,10 +129,37 @@
 @media (max-width: 768px) {
   .admin-nav {
     flex-direction: column;
+    gap: 0.75rem;
   }
 
   .nav-link {
     width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(44, 95, 45, 0.2);
+  }
+  
+  /* ストアへ戻るボタンを強調 */
+  .nav-link.store-link {
+    background: rgba(44, 95, 45, 0.1);
+    border-color: #2c5f2d;
+    font-weight: 600;
+  }
+  
+  .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  
+  .admin-content {
+    padding: 1rem;
   }
 }
 </style>

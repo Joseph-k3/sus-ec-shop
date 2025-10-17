@@ -374,16 +374,24 @@
       <div v-else class="product-grid">
         <div v-for="product in products" :key="product.id" class="product-item">
           <div class="product-image-container">
-            <!-- 動画がある場合はサムネイルを全面表示 -->
-            <div v-if="product.videos && product.videos.length > 0 && product.videos[0].thumbnail_url" 
+            <!-- 動画がある場合はサムネイルを全面表示（サムネイルURLがなくても動画アイコンを表示） -->
+            <div v-if="product.videos && product.videos.length > 0" 
                  class="video-thumbnail-main" 
                  @click="playVideoFromList(product, product.videos[0])" 
                  title="動画を再生">
               <img 
+                v-if="product.videos[0].thumbnail_url"
                 :src="product.videos[0].thumbnail_url" 
                 :alt="`${product.name} 動画サムネイル`"
                 class="product-thumb video-thumbnail-image"
+                @error="(e) => e.target.style.display = 'none'"
               >
+              <!-- サムネイル読み込みエラー時またはURLがない場合のフォールバック -->
+              <div class="video-icon-fallback">
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="white">
+                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                </svg>
+              </div>
               <!-- 再生アイコンオーバーレイ -->
               <div class="play-icon-overlay-main">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white">
@@ -2358,14 +2366,37 @@ onMounted(() => {
   cursor: pointer;
   overflow: hidden;
   border-radius: 8px;
-  background-color: #000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .video-thumbnail-main .video-thumbnail-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
+  z-index: 2;
+}
+
+/* サムネイル読み込みエラー時のフォールバック */
+.video-icon-fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 1;
+}
+
+/* 画像が非表示になった場合、フォールバックを確実に表示 */
+.video-thumbnail-main .video-thumbnail-image[style*="display: none"] {
+  z-index: 0;
 }
 
 .play-icon-overlay-main {
