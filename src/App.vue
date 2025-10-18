@@ -204,6 +204,7 @@ const handleLogout = async () => {
 <style>
 * {
   box-sizing: border-box;
+  max-width: 100%;
 }
 
 html, body {
@@ -212,6 +213,9 @@ html, body {
   scroll-behavior: smooth;
   position: relative;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -388,8 +392,13 @@ button.logout:hover {
   min-height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
   width: 100%;
-  max-width: 100%;
+  max-width: 100vw;
   overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.app-content * {
+  max-width: 100%;
   box-sizing: border-box;
 }
 

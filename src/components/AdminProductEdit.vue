@@ -1670,8 +1670,14 @@ onMounted(() => {
   position: relative;
   z-index: 1;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+}
+
+.admin-panel * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .admin-panel h2 {
@@ -1707,7 +1713,7 @@ onMounted(() => {
 
 .form-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 1.5rem;
   margin-bottom: 1rem;
   width: 100%;
@@ -1947,7 +1953,7 @@ onMounted(() => {
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 2rem;
   width: 100%;
   max-width: 100%;
@@ -1957,50 +1963,57 @@ onMounted(() => {
 
 @media (max-width: 1024px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
     gap: 1.5rem;
   }
 }
 
 @media (max-width: 768px) {
   .admin-panel {
-    padding: 1rem;
-    margin: 0 auto !important;
-    width: calc(100% - 2rem) !important;
-    max-width: 100% !important;
+    padding: 1rem !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
     left: 0 !important;
     right: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
   
   .product-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem;
     padding: 0;
-    margin: 0 auto;
+    margin: 0;
     width: 100%;
+    max-width: 100%;
   }
   
   .edit-form {
-    padding: 1rem;
-    margin: 0 auto !important;
+    padding: 1rem !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   
   .form-row {
     grid-template-columns: 1fr !important;
     gap: 1rem;
     width: 100%;
+    max-width: 100%;
   }
   
   .form-group {
     width: 100%;
+    max-width: 100%;
     grid-template-columns: 1fr;
     gap: 0.5rem;
   }
   
   .form-group label {
     text-align: left;
+    width: 100%;
   }
   
   .form-group input,
@@ -2008,46 +2021,63 @@ onMounted(() => {
   .form-group select {
     width: 100% !important;
     max-width: 100% !important;
-    box-sizing: border-box;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
   
   .form-actions {
     flex-direction: column;
     gap: 0.75rem;
     width: 100%;
+    max-width: 100%;
   }
   
   .btn-primary,
   .btn-secondary {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     min-height: 48px;
   }
   
   .images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
     gap: 0.5rem;
     width: 100%;
+    max-width: 100%;
   }
   
   .temp-images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
     gap: 0.5rem;
     width: 100%;
+    max-width: 100%;
   }
   
   .multiple-image-upload-section,
   .upload-options {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
     padding: 1rem;
+    box-sizing: border-box !important;
   }
   
   .file-upload-btn {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
   
   .product-item {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
     padding: 1rem;
+    box-sizing: border-box !important;
+  }
+  
+  .upload-info {
+    width: 100%;
+    word-wrap: break-word;
   }
 }
 
@@ -2413,7 +2443,7 @@ onMounted(() => {
 
 .images-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
   gap: 1rem;
   min-height: 100px;
   width: 100%;

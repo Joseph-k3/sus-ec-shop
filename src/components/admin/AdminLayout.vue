@@ -48,8 +48,13 @@ const handleNavClick = (event) => {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   position: relative;
   width: 100%;
-  max-width: 100%;
+  max-width: 100vw;
   overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.admin-layout * {
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -72,6 +77,7 @@ const handleNavClick = (event) => {
   backdrop-filter: blur(10px);
   border-bottom: 3px solid #2c5f2d;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -131,10 +137,11 @@ const handleNavClick = (event) => {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 100%;
+  max-width: 100vw;
   box-sizing: border-box;
   margin: 0 auto;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {

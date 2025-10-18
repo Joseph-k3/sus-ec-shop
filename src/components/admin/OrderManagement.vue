@@ -874,7 +874,10 @@ watch(() => route.path, (newPath) => {
   background: white;
   color: #495057;
   font-size: 1rem;
-  min-width: 200px;
+  min-width: 150px;
+  width: 100%;
+  max-width: 200px;
+  box-sizing: border-box;
 }
 
 .filter-section select:focus {
@@ -1219,7 +1222,8 @@ watch(() => route.path, (newPath) => {
   font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 140px;
+  min-width: 120px;
+  box-sizing: border-box;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -1278,7 +1282,8 @@ watch(() => route.path, (newPath) => {
   padding: 1rem 1.5rem;
   border-radius: 8px;
   font-weight: 600;
-  min-width: 140px;
+  min-width: 120px;
+  box-sizing: border-box;
   justify-content: center;
 }
 
@@ -1327,12 +1332,13 @@ watch(() => route.path, (newPath) => {
 
 .tracking-input {
   flex: 2;
-  min-width: 200px;
+  min-width: min(200px, 100%);
   padding: 0.5rem 0.75rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9rem;
   font-family: monospace;
+  box-sizing: border-box;
 }
 
 .tracking-input:focus {
@@ -1343,12 +1349,13 @@ watch(() => route.path, (newPath) => {
 
 .carrier-select {
   flex: 1;
-  min-width: 120px;
+  min-width: min(120px, 100%);
   padding: 0.5rem 0.75rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9rem;
   background: white;
+  box-sizing: border-box;
 }
 
 .carrier-select:focus {
