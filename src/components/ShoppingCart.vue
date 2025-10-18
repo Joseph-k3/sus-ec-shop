@@ -26,8 +26,7 @@
           </div>
           <div class="item-quantity">
             <button 
-              @click="updateQuantity(item.id, item.quantity - 1)"
-              @touchstart.passive
+              @click.stop="updateQuantity(item.id, item.quantity - 1)"
               :disabled="item.quantity <= 1"
               class="quantity-btn"
             >
@@ -42,8 +41,7 @@
               class="quantity-input"
             />
             <button 
-              @click="updateQuantity(item.id, item.quantity + 1)"
-              @touchstart.passive
+              @click.stop="updateQuantity(item.id, item.quantity + 1)"
               :disabled="item.quantity >= item.maxQuantity"
               class="quantity-btn"
             >
@@ -54,8 +52,7 @@
             ¥{{ (item.price * item.quantity).toLocaleString() }}
           </div>
           <button 
-            @click="removeItem(item.id)"
-            @touchstart.passive
+            @click.stop="removeItem(item.id)"
             class="remove-btn"
             title="カートから削除"
           >
@@ -67,8 +64,7 @@
       <div class="cart-actions">
         <div class="action-buttons">
           <button 
-            @click="clearAllItems" 
-            @touchstart.passive
+            @click.stop="clearAllItems" 
             class="clear-cart-btn"
           >
             カートを空にする
@@ -77,7 +73,7 @@
             買い物を続ける
           </router-link>
           <button 
-            @click="proceedToCheckout"
+            @click.stop="proceedToCheckout"
             class="checkout-btn"
             :disabled="cart.items.length === 0"
           >
@@ -289,30 +285,24 @@ const showMessage = (text, type = 'success') => {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: rgba(44, 95, 45, 0.3);
+  transition: all 0.15s ease;
 }
 
 .quantity-btn:hover:not(:disabled) {
   background: #1e4220;
 }
 
-.quantity-btn:active:not(:disabled),
-.quantity-btn:focus:not(:disabled) {
-  background: #1e4220;
-  transform: scale(0.95);
+.quantity-btn:active:not(:disabled) {
+  background: #1e4220 !important;
+  transform: scale(0.92) !important;
   outline: none;
 }
 
 .quantity-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
-}
-
-/* タッチデバイス用の追加スタイル */
-@media (hover: none) and (pointer: coarse) {
-  .quantity-btn:active:not(:disabled) {
-    background: #1e4220;
-    transform: scale(0.9);
-  }
+  opacity: 0.6;
 }
 
 .quantity-input {
@@ -343,32 +333,24 @@ const showMessage = (text, type = 'success') => {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  transition: background-color 0.3s ease;
+  transition: all 0.15s ease;
   min-width: 80px;
   min-height: 44px;
   touch-action: manipulation;
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: rgba(220, 53, 69, 0.3);
 }
 
 .remove-btn:hover {
   background: #c82333;
 }
 
-.remove-btn:active,
-.remove-btn:focus {
-  background: #c82333;
-  transform: scale(0.98);
+.remove-btn:active {
+  background: #c82333 !important;
+  transform: scale(0.95) !important;
   outline: none;
-}
-
-/* タッチデバイス用の追加スタイル */
-@media (hover: none) and (pointer: coarse) {
-  .remove-btn:active {
-    background: #c82333;
-    transform: scale(0.95);
-  }
 }
 
 .cart-actions {
@@ -393,7 +375,7 @@ const showMessage = (text, type = 'success') => {
   text-decoration: none;
   display: inline-block;
   text-align: center;
-  transition: background-color 0.3s;
+  transition: all 0.15s ease;
   min-height: 44px;
   touch-action: manipulation;
   user-select: none;
@@ -404,49 +386,56 @@ const showMessage = (text, type = 'success') => {
 .clear-cart-btn {
   background: #6c757d;
   color: white;
+  -webkit-tap-highlight-color: rgba(108, 117, 125, 0.3);
 }
 
 .clear-cart-btn:hover {
   background: #5a6268;
 }
 
-.clear-cart-btn:active,
-.clear-cart-btn:focus {
-  background: #5a6268;
-  transform: scale(0.98);
+.clear-cart-btn:active {
+  background: #5a6268 !important;
+  transform: scale(0.95) !important;
   outline: none;
-}
-
-/* タッチデバイス用の追加スタイル */
-@media (hover: none) and (pointer: coarse) {
-  .clear-cart-btn:active {
-    background: #5a6268;
-    transform: scale(0.95);
-  }
 }
 
 .continue-shopping-btn {
   background: #28a745;
   color: white;
+  -webkit-tap-highlight-color: rgba(40, 167, 69, 0.3);
 }
 
 .continue-shopping-btn:hover {
   background: #218838;
 }
 
+.continue-shopping-btn:active {
+  background: #218838 !important;
+  transform: scale(0.95) !important;
+  outline: none;
+}
+
 .checkout-btn {
   background: #2c5f2d;
   color: white;
   font-size: 1.1rem;
+  -webkit-tap-highlight-color: rgba(44, 95, 45, 0.3);
 }
 
 .checkout-btn:hover:not(:disabled) {
   background: #1e4220;
 }
 
+.checkout-btn:active:not(:disabled) {
+  background: #1e4220 !important;
+  transform: scale(0.95) !important;
+  outline: none;
+}
+
 .checkout-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .loading-overlay {
@@ -502,7 +491,10 @@ const showMessage = (text, type = 'success') => {
 @media (max-width: 768px) {
   .shopping-cart-container {
     padding: 1rem;
-    margin: 1rem;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
   }
 
   .cart-header {
@@ -511,10 +503,14 @@ const showMessage = (text, type = 'success') => {
     gap: 1rem;
   }
 
+  .cart-header h2 {
+    font-size: 1.5rem;
+  }
+
   .cart-item {
-    grid-template-columns: 80px 1fr auto;
-    grid-template-rows: auto auto auto;
-    gap: 0.75rem;
+    grid-template-columns: 80px 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 1rem;
     position: relative;
     padding: 1rem;
   }
@@ -522,6 +518,7 @@ const showMessage = (text, type = 'success') => {
   .item-image {
     width: 80px;
     height: 80px;
+    grid-column: 1;
     grid-row: 1 / 3;
   }
 
@@ -530,38 +527,67 @@ const showMessage = (text, type = 'success') => {
     grid-row: 1;
   }
 
+  .item-name {
+    font-size: 1rem;
+  }
+
   .item-quantity {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     justify-self: center;
     margin-top: 0.5rem;
+    gap: 1rem;
   }
 
   .item-subtotal {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 4;
     text-align: center;
     font-weight: bold;
     color: #2c5f2d;
     margin-top: 0.5rem;
+    font-size: 1.2rem;
   }
 
   .remove-btn {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: flex-start;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
     font-size: 0.8rem;
     padding: 0.6rem 1rem;
-    min-width: 60px;
+    min-width: 70px;
     min-height: 44px;
   }
 
   .action-buttons {
     flex-direction: column;
+    gap: 1rem;
   }
 
   .clear-cart-btn, .continue-shopping-btn, .checkout-btn {
     width: 100%;
+    min-height: 50px;
+    font-size: 1.05rem;
+  }
+  
+  .quantity-btn {
+    min-width: 50px;
+    min-height: 50px;
+    font-size: 1.3rem;
+  }
+
+  .quantity-input {
+    width: 60px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .shopping-cart-container {
+    padding: 0.75rem;
+    margin: 0.25rem;
+    width: calc(100% - 0.5rem);
   }
 }
 </style>

@@ -127,21 +127,42 @@ const handleNavClick = (event) => {
 }
 
 @media (max-width: 768px) {
+  .admin-header {
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .admin-header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.75rem 0;
+  }
+
   .admin-nav {
     flex-direction: column;
     gap: 0.75rem;
+    width: 100%;
   }
 
   .nav-link {
     width: 100%;
-    min-height: 48px;
+    min-height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1rem;
     padding: 1rem 1.5rem;
     touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(44, 95, 45, 0.2);
+    -webkit-tap-highlight-color: rgba(44, 95, 45, 0.3);
+    box-sizing: border-box;
+  }
+  
+  .nav-link:active {
+    background: #2c5f2d !important;
+    color: white !important;
+    transform: scale(0.98);
   }
   
   /* ストアへ戻るボタンを強調 */
@@ -151,15 +172,34 @@ const handleNavClick = (event) => {
     font-weight: 600;
   }
   
-  .admin-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-  }
-  
   .admin-content {
     padding: 1rem;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-header {
+    padding: 0.75rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .admin-nav {
+    gap: 0.5rem;
+  }
+
+  .nav-link {
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .admin-content {
+    padding: 0.75rem;
   }
 }
 </style>

@@ -1362,14 +1362,31 @@ div[class~="admin-grid"] {
   div[class~="admin-grid"] {
     grid-template-columns: 1fr !important;
     gap: 1rem;
+    padding: 1rem;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .product-list-container {
     padding: 0.5rem;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
   }
 
   .controls-section {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
-    padding: 0 0.5rem;
+    padding: 1rem;
+    margin: 0 auto;
+    width: calc(100% - 1rem);
+    max-width: 100%;
+  }
+  
+  .controls-section > :first-child {
+    margin-left: 0;
   }
 
   .action-buttons {
@@ -1381,10 +1398,20 @@ div[class~="admin-grid"] {
   .purchase-button {
     width: 100%;
     flex: none;
+    min-height: 48px;
   }
 
   .user-actions {
     justify-content: center;
+    width: 100%;
+    gap: 0.75rem;
+  }
+  
+  .cart-link,
+  .order-history-link {
+    flex: 1;
+    justify-content: center;
+    min-height: 48px;
   }
   
   .order-history-link {
@@ -1402,12 +1429,20 @@ div[class~="admin-grid"] {
 
 @media screen and (max-width: 480px) {
   .product-list {
+    padding: 0.5rem;
+    gap: 1rem;
+    margin: 0 auto;
+    width: calc(100% - 1rem);
+  }
+  
+  .product-list-container {
     padding: 0.25rem;
-    gap: 0.75rem;
   }
   
   .controls-section {
-    padding: 0 0.25rem;
+    padding: 0.75rem;
+    width: calc(100% - 0.5rem);
+    margin: 0 auto;
   }
   
   .order-history-link .icon {
@@ -1415,6 +1450,12 @@ div[class~="admin-grid"] {
   }
   
   .product-card {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .product-info {
     padding: 1rem;
   }
   
@@ -1425,12 +1466,12 @@ div[class~="admin-grid"] {
   }
   
   .image-container {
-    height: 200px; /* モバイルでは元のサイズに戻す */
+    height: 200px;
   }
   
   .product-swiper-container,
   .single-image-container {
-    height: 200px; /* モバイルでは元のサイズに戻す */
+    height: 200px;
   }
   
   /* 非常に小さな画面での売約済み表示調整 */
