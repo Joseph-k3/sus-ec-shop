@@ -51,6 +51,8 @@ const handleNavClick = (event) => {
   max-width: 100vw;
   overflow-x: hidden;
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 .admin-layout * {
@@ -79,6 +81,7 @@ const handleNavClick = (event) => {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  margin: 0;
 }
 
 .admin-header h1 {
@@ -145,12 +148,20 @@ const handleNavClick = (event) => {
 }
 
 @media (max-width: 768px) {
+  .admin-layout {
+    margin: 0;
+    padding: 0;
+  }
+  
   .admin-header {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
     position: sticky;
     top: 0;
     z-index: 100;
     backdrop-filter: blur(10px);
+    margin: 0;
+    width: 100vw;
+    max-width: 100vw;
   }
 
   .admin-header h1 {

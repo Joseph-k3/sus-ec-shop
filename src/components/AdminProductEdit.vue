@@ -1990,7 +1990,7 @@ onMounted(() => {
 
 /* 商品一覧のスタイル */
 .products-list {
-  background: rgba(255, 255, 255, 0.98);
+  background: white;
   padding: 2rem;
   border-radius: 12px;
   border: 1px solid #e9ecef;
@@ -2031,9 +2031,9 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .admin-panel {
-    padding: 1rem !important;
+    padding: 0 !important;
     margin: 0 !important;
-    width: calc(100vw - 0px) !important;
+    width: 100vw !important;
     max-width: 100vw !important;
     min-width: 0 !important;
     left: 0 !important;
@@ -2042,6 +2042,7 @@ onMounted(() => {
     overflow-x: hidden !important;
     border-radius: 0 !important;
     position: relative !important;
+    background: transparent !important;
   }
 
   .admin-panel *,
@@ -2059,11 +2060,13 @@ onMounted(() => {
     height: auto !important;
     touch-action: none !important;
     pointer-events: none !important;
+    background: transparent !important;
   }
 
   .admin-panel h2 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
   }
 
   /* すべてのコンテナ要素にoverflow制御 */
@@ -2086,32 +2089,41 @@ onMounted(() => {
     max-width: 100% !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .products-list {
-    padding: 1rem !important;
+    padding: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    border-radius: 8px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
   
   .product-grid {
     grid-template-columns: 1fr !important;
-    gap: 1rem !important;
+    gap: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 
   .product-item {
     width: 100% !important;
     max-width: 100% !important;
     padding: 1rem !important;
+    margin: 0 0 1rem 0 !important;
     box-sizing: border-box !important;
+    border-radius: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid #e9ecef !important;
   }
 
   .product-image-container {
@@ -2119,20 +2131,27 @@ onMounted(() => {
     max-width: 100% !important;
     touch-action: none !important;
     overflow: hidden !important;
+    margin: 0 0 0.5rem 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border-radius: 0 !important;
   }
 
   .product-image-container * {
     width: 100% !important;
     max-width: 100% !important;
     touch-action: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   .edit-form {
-    padding: 1rem !important;
-    margin: 0 !important;
+    padding: 0.75rem !important;
+    margin: 0 0 0.5rem 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    border-radius: 8px !important;
   }
   
   .form-row {
@@ -2333,7 +2352,7 @@ onMounted(() => {
 }
 
 .product-item {
-  background: rgba(255, 255, 255, 0.95);
+  background: white;
   border: 1px solid #e9ecef;
   border-radius: 12px;
   padding: 1.5rem;
@@ -2358,7 +2377,9 @@ onMounted(() => {
   margin-bottom: 1rem;
   border-radius: 8px;
   overflow: hidden;
-  background: #f8f9fa;
+  background: transparent;
+  box-sizing: border-box;
+}
   box-sizing: border-box;
   touch-action: none;
   -webkit-user-select: none;
@@ -2401,7 +2422,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9fa;
+  background: transparent;
   touch-action: none !important;
   -webkit-user-select: none;
   user-select: none;
@@ -2848,7 +2869,7 @@ onMounted(() => {
   cursor: pointer;
   overflow: hidden;
   border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: transparent;
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
