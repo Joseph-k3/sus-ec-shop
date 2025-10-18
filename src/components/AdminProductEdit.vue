@@ -1670,29 +1670,28 @@ onMounted(() => {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.admin-panel * {
-  max-width: 100%;
-  box-sizing: border-box;
+.admin-panel *,
+.admin-panel *::before,
+.admin-panel *::after {
+  box-sizing: border-box !important;
   touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
-.admin-panel img {
-  touch-action: none;
-  pointer-events: auto;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+.admin-panel img,
+.admin-panel video {
+  touch-action: none !important;
+  pointer-events: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
 }
 
 .admin-panel h2 {
@@ -1724,6 +1723,13 @@ onMounted(() => {
   margin-right: auto;
   width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .edit-form {
+    max-width: 100% !important;
+  }
 }
 
 .form-row {
@@ -1993,13 +1999,26 @@ onMounted(() => {
   .admin-panel {
     padding: 1rem !important;
     margin: 0 !important;
-    width: 100% !important;
+    width: 100vw !important;
     max-width: 100vw !important;
     left: 0 !important;
     right: 0 !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
     border-radius: 0 !important;
+    position: relative !important;
+  }
+
+  .admin-panel *,
+  .admin-panel *::before,
+  .admin-panel *::after {
+    max-width: 100% !important;
+  }
+
+  .admin-panel img,
+  .admin-panel video {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .admin-panel h2 {
@@ -2009,19 +2028,26 @@ onMounted(() => {
 
   .products-list {
     padding: 1rem !important;
-    margin-top: 1rem !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     border-radius: 8px !important;
+    box-sizing: border-box !important;
   }
   
   .product-grid {
     grid-template-columns: 1fr !important;
-    gap: 1rem;
-    padding: 0;
-    margin: 0;
+    gap: 1rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  .product-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
   }
   
   .edit-form {
@@ -2120,42 +2146,64 @@ onMounted(() => {
   .admin-panel {
     padding: 0.5rem !important;
     margin: 0 !important;
-    width: 100% !important;
+    width: 100vw !important;
     max-width: 100vw !important;
     border-radius: 0 !important;
+    overflow-x: hidden !important;
   }
 
-  .admin-panel img {
+  .admin-panel *,
+  .admin-panel *::before,
+  .admin-panel *::after {
+    max-width: 100% !important;
+  }
+
+  .admin-panel img,
+  .admin-panel video {
     touch-action: none !important;
     pointer-events: none !important;
     -webkit-user-select: none !important;
     user-select: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .products-list {
     padding: 0.75rem !important;
-    margin-top: 0.75rem !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
   
   .product-grid {
-    gap: 0.75rem;
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
+    gap: 0.75rem !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .product-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.75rem !important;
   }
 
   .product-image-container {
     touch-action: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .product-image-container img {
     touch-action: none !important;
     pointer-events: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   .edit-form {
     padding: 0.75rem !important;
     width: 100% !important;
+    max-width: 100% !important;
   }
   
   .form-group {

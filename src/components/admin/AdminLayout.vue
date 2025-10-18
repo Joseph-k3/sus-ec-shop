@@ -191,11 +191,11 @@ const handleNavClick = (event) => {
   }
   
   .admin-content {
-    padding: 0.5rem;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 }
 
@@ -218,9 +218,10 @@ const handleNavClick = (event) => {
   }
 
   .admin-content {
-    padding: 0.25rem;
-    width: 100%;
-    overflow-x: hidden;
+    padding: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 }
 </style>
