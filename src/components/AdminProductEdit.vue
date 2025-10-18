@@ -1673,11 +1673,14 @@ onMounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-panel * {
   max-width: 100%;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .admin-panel h2 {
@@ -1945,6 +1948,7 @@ onMounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .products-list h3 {
@@ -1963,6 +1967,7 @@ onMounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   margin: 0 auto;
+  touch-action: pan-y;
 }
 
 @media (max-width: 1024px) {
@@ -1982,6 +1987,20 @@ onMounted(() => {
     right: 0 !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-panel h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .products-list {
+    padding: 1rem !important;
+    margin-top: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 8px !important;
   }
   
   .product-grid {
@@ -1989,8 +2008,8 @@ onMounted(() => {
     gap: 1rem;
     padding: 0;
     margin: 0;
-    width: 100%;
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   .edit-form {
@@ -2163,6 +2182,7 @@ onMounted(() => {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .product-item:hover {

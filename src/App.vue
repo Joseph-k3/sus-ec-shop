@@ -205,6 +205,7 @@ const handleLogout = async () => {
 * {
   box-sizing: border-box;
   max-width: 100%;
+  touch-action: manipulation;
 }
 
 html, body {
@@ -216,6 +217,8 @@ html, body {
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -395,11 +398,14 @@ button.logout:hover {
   max-width: 100vw;
   overflow-x: hidden;
   box-sizing: border-box;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-content * {
   max-width: 100%;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .app-content.fade-in {

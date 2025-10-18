@@ -852,11 +852,14 @@ watch(() => route.path, (newPath) => {
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .order-management * {
   max-width: 100%;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .order-management h2 {
@@ -1044,16 +1047,27 @@ watch(() => route.path, (newPath) => {
   border-radius: 8px;
   padding: 1rem;
   margin: 1rem 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow: hidden;
 }
 
 .customer-info p {
   margin: 0.5rem 0;
   color: #495057;
   font-weight: 500;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .customer-info strong {
   color: #2c3e50;
+  word-break: break-word;
 }
 
 .customer-id {
@@ -1065,6 +1079,10 @@ watch(() => route.path, (newPath) => {
   color: #1565c0;
   border: 1px solid #bbdefb;
   font-weight: 600;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .payment-info {
@@ -1073,11 +1091,21 @@ watch(() => route.path, (newPath) => {
   border-radius: 8px;
   padding: 1rem;
   margin: 1rem 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow: hidden;
 }
 
 .payment-info p {
   margin: 0.5rem 0;
   color: #495057;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
   font-weight: 500;
 }
 
@@ -1431,12 +1459,17 @@ watch(() => route.path, (newPath) => {
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .order-management {
-    margin: 0.5rem auto;
-    padding: 1rem;
-    width: 100%;
-    max-width: 100%;
-    border-radius: 0;
-    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 1rem !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .order-management h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
   }
 
   .order-group {
