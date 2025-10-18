@@ -1673,14 +1673,26 @@ onMounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
-  touch-action: pan-y pinch-zoom;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .admin-panel * {
   max-width: 100%;
   box-sizing: border-box;
   touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.admin-panel img {
+  touch-action: none;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .admin-panel h2 {
@@ -2107,15 +2119,38 @@ onMounted(() => {
 @media (max-width: 480px) {
   .admin-panel {
     padding: 0.5rem !important;
-    margin: 0 auto !important;
-    width: calc(100% - 1rem) !important;
-    max-width: 100% !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-panel img {
+    touch-action: none !important;
+    pointer-events: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+
+  .products-list {
+    padding: 0.75rem !important;
+    margin-top: 0.75rem !important;
   }
   
   .product-grid {
     gap: 0.75rem;
-    padding: 0.25rem;
+    padding: 0;
     width: 100%;
+    max-width: 100%;
+  }
+
+  .product-image-container {
+    touch-action: none !important;
+  }
+
+  .product-image-container img {
+    touch-action: none !important;
+    pointer-events: none !important;
   }
   
   .edit-form {
@@ -2200,6 +2235,18 @@ onMounted(() => {
   overflow: hidden;
   background: #f8f9fa;
   box-sizing: border-box;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.product-image-container img {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 /* Swiper用のスタイル */
@@ -2208,6 +2255,9 @@ onMounted(() => {
   max-width: 100%;
   height: 100%;
   box-sizing: border-box;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .swiper-slide {
@@ -2215,6 +2265,17 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: #f8f9fa;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.swiper-slide img {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 .swiper-button-next,
@@ -2253,6 +2314,11 @@ onMounted(() => {
   transition: object-fit 0.3s ease;
   cursor: pointer;
   border: 1px solid transparent;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 .product-thumb:hover {
@@ -2645,6 +2711,10 @@ onMounted(() => {
   overflow: hidden;
   border-radius: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .video-thumbnail-main .video-thumbnail-image {
@@ -2656,6 +2726,11 @@ onMounted(() => {
   object-fit: contain;
   display: block;
   z-index: 2;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 /* サムネイル読み込みエラー時のフォールバック */
