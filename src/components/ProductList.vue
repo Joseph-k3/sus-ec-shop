@@ -536,7 +536,17 @@ const playVideo = (product, video) => {
   currentProduct.value = product
   currentVideoUrl.value = video.video_url || video
   showVideoModal.value = true
-  document.body.style.overflow = 'hidden' // スクロールを無効化
+  
+  // スクロールとスワイプを完全に無効化
+  document.body.style.overflow = 'hidden'
+  document.body.style.position = 'fixed'
+  document.body.style.width = '100%'
+  document.body.style.height = '100%'
+  document.body.style.touchAction = 'none'
+  document.body.classList.add('video-playing')
+  
+  // iOS Safariでのスクロール防止
+  document.documentElement.style.overflow = 'hidden'
 }
 
 // 動画モーダルを閉じる
@@ -544,7 +554,17 @@ const closeVideoModal = () => {
   showVideoModal.value = false
   currentVideoUrl.value = ''
   currentProduct.value = null
-  document.body.style.overflow = '' // スクロールを復元
+  
+  // スクロールとスワイプの制限を解除
+  document.body.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.width = ''
+  document.body.style.height = ''
+  document.body.style.touchAction = ''
+  document.body.classList.remove('video-playing')
+  
+  // iOS Safariでのスクロール復元
+  document.documentElement.style.overflow = ''
 }
 </script>
 
@@ -996,51 +1016,62 @@ div[class~="admin-grid"] {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: #000;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  padding: 1rem;
+  padding: 0;
   box-sizing: border-box;
   animation: fadeIn 0.3s ease-out;
+  overflow: hidden;
+  touch-action: none; /* スワイプを完全に無効化 */
+  -webkit-overflow-scrolling: none;
 }
 
 .video-content {
   position: relative;
   background: #000;
-  border-radius: 12px;
   overflow: hidden;
-  width: 90vw;
-  height: 90vh;
-  max-width: 1200px;
-  max-height: 800px;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* スワイプを完全に無効化 */
 }
 
 .video-content .modal-close {
-  position: absolute;
-  top: 1rem;
+  position: fixed;
+  top: env(safe-area-inset-top, 1rem);
   right: 1rem;
   background: rgba(0, 0, 0, 0.8);
   color: white;
-  border: none;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  font-size: 28px;
   cursor: pointer;
   z-index: 10001;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  touch-action: manipulation;
 }
 
 .video-content .modal-close:hover {
-  background: rgba(255, 0, 0, 0.8);
+  background: rgba(220, 53, 69, 0.9);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+.video-content .modal-close:active {
+  transform: scale(0.95);
 }
 
 /* ポップアップメッセージ表示 */
@@ -1647,12 +1678,27 @@ div[class~="admin-grid"] {
     padding: 4px 10px;
   }
   
-  /* モバイルで動画モーダルを全画面に */
+  /* モバイルで動画モーダルを全画面フルスクリーンに */
+  .video-modal {
+    padding: 0;
+    background-color: #000;
+  }
+  
   .video-content {
-    width: 95vw;
-    height: 95vh;
-    max-width: none;
-    max-height: none;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .video-content .modal-close {
+    top: max(env(safe-area-inset-top, 0.5rem), 0.5rem);
+    right: 0.5rem;
+    width: 48px;
+    height: 48px;
+    font-size: 32px;
+    background: rgba(0, 0, 0, 0.9);
   }
 }
 
@@ -1676,13 +1722,24 @@ div[class~="admin-grid"] {
     padding: 0.75rem;
   }
   
-  /* 非常に小さな画面での動画サムネイルバッジ調整（重複防止） */
+  /* 動画モーダルは完全に画面いっぱい（スワイプ不可） */
+  .video-modal {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   
-  /* 動画モーダルを完全に画面いっぱいに */
   .video-content {
     width: 100vw;
     height: 100vh;
     border-radius: 0;
+    overflow: hidden;
+  }
+  
+  body.video-playing {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
   }
 }
 
