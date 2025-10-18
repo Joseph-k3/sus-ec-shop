@@ -1671,6 +1671,7 @@ onMounted(() => {
   z-index: 1;
   width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .admin-panel h2 {

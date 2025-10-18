@@ -125,16 +125,24 @@ const handleQuantityInput = async (productId, value) => {
 }
 
 const removeItem = async (productId) => {
+  console.log('removeItem called with productId:', productId)
   if (confirm('この商品をカートから削除しますか？')) {
+    console.log('User confirmed deletion')
     await cart.removeFromCart(productId)
     showMessage('商品をカートから削除しました', 'success')
+  } else {
+    console.log('User cancelled deletion')
   }
 }
 
 const clearAllItems = async () => {
+  console.log('clearAllItems called')
   if (confirm('カート内のすべての商品を削除しますか？')) {
+    console.log('User confirmed clear all')
     await cart.clearCart()
     showMessage('カートを空にしました', 'success')
+  } else {
+    console.log('User cancelled clear all')
   }
 }
 
@@ -297,6 +305,9 @@ const showMessage = (text, type = 'success') => {
   -webkit-user-select: none;
   -webkit-tap-highlight-color: rgba(44, 95, 45, 0.3);
   transition: all 0.15s ease;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
 }
 
 .quantity-btn:hover:not(:disabled) {
@@ -313,6 +324,7 @@ const showMessage = (text, type = 'success') => {
   background: #ccc;
   cursor: not-allowed;
   opacity: 0.6;
+  pointer-events: none;
 }
 
 .quantity-input {
@@ -354,7 +366,8 @@ const showMessage = (text, type = 'success') => {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: rgba(220, 53, 69, 0.3);
-  z-index: 10;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .remove-btn:hover {
@@ -395,6 +408,9 @@ const showMessage = (text, type = 'success') => {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
 }
 
 .clear-cart-btn {
@@ -569,11 +585,13 @@ const showMessage = (text, type = 'success') => {
 
   .remove-btn {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 0.5rem;
+    right: 0.5rem;
     width: 48px;
     height: 48px;
     font-size: 1.4rem;
+    z-index: 100;
+    pointer-events: auto;
   }
 
   .action-buttons {

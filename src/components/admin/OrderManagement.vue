@@ -848,6 +848,8 @@ watch(() => route.path, (newPath) => {
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   min-height: 80vh;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .order-management h2 {
@@ -1371,6 +1373,14 @@ watch(() => route.path, (newPath) => {
 
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
+  .order-management {
+    margin: 1rem auto;
+    padding: 1rem;
+    width: calc(100% - 2rem);
+    max-width: 100%;
+    border-radius: 0;
+  }
+
   .order-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1379,24 +1389,30 @@ watch(() => route.path, (newPath) => {
 
   .order-actions {
     flex-direction: column;
+    width: 100%;
   }
 
   .action-button {
     width: 100%;
+    min-height: 48px;
   }
 
   .action-buttons {
     flex-direction: column;
+    width: 100%;
   }
 
   .unified-btn,
   .status-info {
     width: 100%;
     min-width: auto;
+    min-height: 48px;
   }
 
   .cart-unified-actions {
     padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .action-title {
@@ -1406,12 +1422,34 @@ watch(() => route.path, (newPath) => {
 
   .tracking-input-group {
     flex-direction: column;
+    width: 100%;
   }
   
   .tracking-input,
   .carrier-select {
     width: 100%;
     min-width: auto;
+    box-sizing: border-box;
+  }
+
+  .filter-section {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filter-section select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .orders-list {
+    width: 100%;
+  }
+
+  .order-card,
+  .order-group {
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 </style>
