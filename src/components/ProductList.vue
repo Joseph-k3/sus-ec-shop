@@ -578,6 +578,7 @@ const closeVideoModal = () => {
   box-sizing: border-box;
   min-height: 100vh;
   position: relative;
+  overflow-x: hidden;
 }
 
 /* 全画面固定背景 */
@@ -631,6 +632,8 @@ const closeVideoModal = () => {
   position: relative;
   z-index: 10;
   min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .controls-section > :first-child {

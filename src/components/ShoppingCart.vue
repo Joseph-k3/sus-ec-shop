@@ -26,7 +26,8 @@
           </div>
           <div class="item-quantity">
             <button 
-              @click.stop="updateQuantity(item.id, item.quantity - 1)"
+              @click="updateQuantity(item.id, item.quantity - 1)"
+              @touchend.prevent="updateQuantity(item.id, item.quantity - 1)"
               :disabled="item.quantity <= 1"
               class="quantity-btn"
             >
@@ -41,7 +42,8 @@
               class="quantity-input"
             />
             <button 
-              @click.stop="updateQuantity(item.id, item.quantity + 1)"
+              @click="updateQuantity(item.id, item.quantity + 1)"
+              @touchend.prevent="updateQuantity(item.id, item.quantity + 1)"
               :disabled="item.quantity >= item.maxQuantity"
               class="quantity-btn"
             >
@@ -52,11 +54,12 @@
             ¥{{ (item.price * item.quantity).toLocaleString() }}
           </div>
           <button 
-            @click.stop="removeItem(item.id)"
+            @click="removeItem(item.id)"
+            @touchend.prevent="removeItem(item.id)"
             class="remove-btn"
             title="カートから削除"
           >
-            削除🗑️
+            🗑️
           </button>
         </div>
       </div>
@@ -64,7 +67,8 @@
       <div class="cart-actions">
         <div class="action-buttons">
           <button 
-            @click.stop="clearAllItems" 
+            @click="clearAllItems"
+            @touchend.prevent="clearAllItems"
             class="clear-cart-btn"
           >
             カートを空にする
@@ -73,7 +77,8 @@
             買い物を続ける
           </router-link>
           <button 
-            @click.stop="proceedToCheckout"
+            @click="proceedToCheckout"
+            @touchend.prevent="proceedToCheckout"
             class="checkout-btn"
             :disabled="cart.items.length === 0"
           >
@@ -220,9 +225,10 @@ const showMessage = (text, type = 'success') => {
 
 .cart-item {
   display: grid;
-  grid-template-columns: 100px 1fr auto auto auto;
+  grid-template-columns: 100px 1fr auto;
+  grid-template-rows: auto auto auto;
   gap: 1rem;
-  align-items: center;
+  align-items: start;
   padding: 1rem;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
@@ -236,6 +242,8 @@ const showMessage = (text, type = 'success') => {
   height: 100px;
   border-radius: 8px;
   overflow: hidden;
+  grid-column: 1;
+  grid-row: 1 / 3;
 }
 
 .item-image img {
@@ -248,7 +256,10 @@ const showMessage = (text, type = 'success') => {
 .item-details {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  grid-column: 2;
+  grid-row: 1;
+  padding-right: 60px; /* 削除ボタン分のスペースを確保 */
 }
 
 .item-name {
@@ -267,6 +278,10 @@ const showMessage = (text, type = 'success') => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  grid-column: 1 / 3;
+  grid-row: 2;
+  justify-self: center;
+  margin-top: 0.5rem;
 }
 
 .quantity-btn {
@@ -317,30 +332,34 @@ const showMessage = (text, type = 'success') => {
   font-weight: bold;
   color: #2c5f2d;
   font-size: 1.1rem;
-  text-align: right;
+  text-align: center;
+  grid-column: 1 / 3;
+  grid-row: 3;
+  margin-top: 0.5rem;
 }
 
 .remove-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
   background: #dc3545;
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.25rem;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: bold;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  white-space: nowrap;
   transition: all 0.15s ease;
-  min-width: 80px;
-  min-height: 44px;
   touch-action: manipulation;
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: rgba(220, 53, 69, 0.3);
+  z-index: 10;
 }
 
 .remove-btn:hover {
@@ -349,7 +368,7 @@ const showMessage = (text, type = 'success') => {
 
 .remove-btn:active {
   background: #c82333 !important;
-  transform: scale(0.95) !important;
+  transform: scale(0.9) !important;
   outline: none;
 }
 
@@ -509,54 +528,57 @@ const showMessage = (text, type = 'success') => {
 
   .cart-item {
     grid-template-columns: 80px 1fr;
-    grid-template-rows: auto auto auto auto;
-    gap: 1rem;
-    position: relative;
+    grid-template-rows: auto auto auto;
+    gap: 0.75rem;
     padding: 1rem;
+    padding-top: 3.5rem; /* 削除ボタン分の余白 */
   }
 
   .item-image {
     width: 80px;
     height: 80px;
     grid-column: 1;
-    grid-row: 1 / 3;
+    grid-row: 1;
   }
 
   .item-details {
     grid-column: 2;
     grid-row: 1;
+    padding-right: 0;
   }
 
   .item-name {
     font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .item-price {
+    font-size: 0.9rem;
   }
 
   .item-quantity {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
     justify-self: center;
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
     gap: 1rem;
   }
 
   .item-subtotal {
     grid-column: 1 / -1;
-    grid-row: 4;
+    grid-row: 3;
     text-align: center;
-    font-weight: bold;
-    color: #2c5f2d;
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
     font-size: 1.2rem;
   }
 
   .remove-btn {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    font-size: 0.8rem;
-    padding: 0.6rem 1rem;
-    min-width: 70px;
-    min-height: 44px;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 48px;
+    height: 48px;
+    font-size: 1.4rem;
   }
 
   .action-buttons {
