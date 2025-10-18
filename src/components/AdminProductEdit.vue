@@ -1707,9 +1707,12 @@ onMounted(() => {
 
 .form-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group {
@@ -1734,12 +1737,14 @@ onMounted(() => {
 .form-group input[type="url"],
 .form-group textarea {
   width: 100%;
+  max-width: 100%;
   padding: 0.75rem;
   border: 1px solid #ced4da;
   border-radius: 6px;
   font-size: 1rem;
   background: rgba(255, 255, 255, 0.9);
   color: #495057;
+  box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -1837,6 +1842,9 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .file-upload-btn {
@@ -1979,6 +1987,12 @@ onMounted(() => {
     max-width: 100% !important;
   }
   
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+    width: 100%;
+  }
+  
   .form-group {
     width: 100%;
     grid-template-columns: 1fr;
@@ -1993,6 +2007,7 @@ onMounted(() => {
   .form-group textarea,
   .form-group select {
     width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box;
   }
   
@@ -2009,17 +2024,30 @@ onMounted(() => {
   }
   
   .images-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    gap: 0.5rem;
+    width: 100%;
   }
   
   .temp-images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+    gap: 0.5rem;
+    width: 100%;
   }
   
   .multiple-image-upload-section,
   .upload-options {
     width: 100%;
+    padding: 1rem;
+  }
+  
+  .file-upload-btn {
+    width: 100%;
+  }
+  
+  .product-item {
+    width: 100%;
+    padding: 1rem;
   }
 }
 
@@ -2051,17 +2079,24 @@ onMounted(() => {
     font-size: 0.9rem;
   }
   
+  .form-row {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+  
   .form-group input,
   .form-group textarea {
     font-size: 1rem;
     padding: 0.75rem;
     width: 100% !important;
+    max-width: 100% !important;
   }
   
   .images-grid,
   .temp-images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
     gap: 0.5rem;
+    width: 100%;
   }
   
   .btn-primary,
@@ -2075,6 +2110,12 @@ onMounted(() => {
   .multiple-image-upload-section,
   .upload-options {
     width: 100%;
+    padding: 0.75rem;
+  }
+  
+  .product-item {
+    width: 100%;
+    padding: 0.75rem;
   }
 }
 
@@ -2085,6 +2126,9 @@ onMounted(() => {
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .product-item:hover {
@@ -2352,6 +2396,9 @@ onMounted(() => {
   border-radius: 8px;
   padding: 1.5rem;
   background: #fafafa;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .images-gallery {
@@ -2366,9 +2413,12 @@ onMounted(() => {
 
 .images-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1rem;
   min-height: 100px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .image-item {

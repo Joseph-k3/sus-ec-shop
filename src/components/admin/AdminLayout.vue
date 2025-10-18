@@ -134,6 +134,7 @@ const handleNavClick = (event) => {
   max-width: 100%;
   box-sizing: border-box;
   margin: 0 auto;
+  overflow-x: hidden;
 }
 
 @media (max-width: 768px) {
@@ -183,10 +184,11 @@ const handleNavClick = (event) => {
   }
   
   .admin-content {
-    padding: 1rem;
+    padding: 0.5rem;
     margin: 0 auto;
     width: 100%;
     max-width: 100%;
+    overflow-x: hidden;
   }
 }
 
@@ -209,7 +211,9 @@ const handleNavClick = (event) => {
   }
 
   .admin-content {
-    padding: 0.75rem;
+    padding: 0.25rem;
+    width: 100%;
+    overflow-x: hidden;
   }
 }
 </style>
