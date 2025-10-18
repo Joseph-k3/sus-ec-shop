@@ -27,7 +27,6 @@
           <div class="item-quantity">
             <button 
               @click="updateQuantity(item.id, item.quantity - 1)"
-              @touchend.prevent="updateQuantity(item.id, item.quantity - 1)"
               :disabled="item.quantity <= 1"
               class="quantity-btn"
             >
@@ -43,7 +42,6 @@
             />
             <button 
               @click="updateQuantity(item.id, item.quantity + 1)"
-              @touchend.prevent="updateQuantity(item.id, item.quantity + 1)"
               :disabled="item.quantity >= item.maxQuantity"
               class="quantity-btn"
             >
@@ -55,7 +53,6 @@
           </div>
           <button 
             @click="removeItem(item.id)"
-            @touchend.prevent="removeItem(item.id)"
             class="remove-btn"
             title="カートから削除"
           >
@@ -68,7 +65,6 @@
         <div class="action-buttons">
           <button 
             @click="clearAllItems"
-            @touchend.prevent="clearAllItems"
             class="clear-cart-btn"
           >
             カートを空にする
@@ -78,7 +74,6 @@
           </router-link>
           <button 
             @click="proceedToCheckout"
-            @touchend.prevent="proceedToCheckout"
             class="checkout-btn"
             :disabled="cart.items.length === 0"
           >

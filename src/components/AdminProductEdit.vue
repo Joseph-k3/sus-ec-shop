@@ -1717,6 +1717,9 @@ onMounted(() => {
   grid-template-columns: 120px 1fr;
   gap: 1rem;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .form-group label {
@@ -1937,6 +1940,10 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 2rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
 }
 
 @media (max-width: 1024px) {
@@ -1949,33 +1956,42 @@ onMounted(() => {
 @media (max-width: 768px) {
   .admin-panel {
     padding: 1rem;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100%;
+    margin: 0 auto !important;
+    width: calc(100% - 2rem) !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
   }
   
   .product-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 1rem;
     padding: 0;
     margin: 0 auto;
+    width: 100%;
   }
   
   .edit-form {
     padding: 1rem;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100%;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   .form-group {
     width: 100%;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .form-group label {
+    text-align: left;
   }
   
   .form-group input,
   .form-group textarea,
   .form-group select {
-    width: 100%;
+    width: 100% !important;
     box-sizing: border-box;
   }
   
@@ -1999,25 +2015,35 @@ onMounted(() => {
   .temp-images-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
+  
+  .multiple-image-upload-section,
+  .upload-options {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
   .admin-panel {
-    padding: 0.5rem;
-    margin: 0 auto;
+    padding: 0.5rem !important;
+    margin: 0 auto !important;
+    width: calc(100% - 1rem) !important;
+    max-width: 100% !important;
   }
   
   .product-grid {
     gap: 0.75rem;
     padding: 0.25rem;
+    width: 100%;
   }
   
   .edit-form {
-    padding: 0.75rem;
+    padding: 0.75rem !important;
+    width: 100% !important;
   }
   
   .form-group {
     margin-bottom: 1rem;
+    grid-template-columns: 1fr;
   }
   
   .form-group label {
@@ -2028,6 +2054,7 @@ onMounted(() => {
   .form-group textarea {
     font-size: 1rem;
     padding: 0.75rem;
+    width: 100% !important;
   }
   
   .images-grid,
@@ -2041,6 +2068,12 @@ onMounted(() => {
   .file-upload-btn {
     min-height: 50px;
     font-size: 1rem;
+    width: 100%;
+  }
+  
+  .multiple-image-upload-section,
+  .upload-options {
+    width: 100%;
   }
 }
 

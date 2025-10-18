@@ -387,6 +387,10 @@ button.logout:hover {
   position: relative;
   min-height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .app-content.fade-in {
@@ -398,8 +402,10 @@ button.logout:hover {
   .main-content {
     margin-top: 70px; /* ヘッダー高さに合わせて調整 */
     padding: 1rem;
-    margin-left: 0.5rem;
-    margin-right: 0.5rem;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .admin-fixed-controls {

@@ -47,6 +47,10 @@ const handleNavClick = (event) => {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .admin-layout::before {
@@ -67,6 +71,8 @@ const handleNavClick = (event) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   border-bottom: 3px solid #2c5f2d;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .admin-header h1 {
@@ -124,6 +130,10 @@ const handleNavClick = (event) => {
   padding: 2rem;
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
 }
 
 @media (max-width: 768px) {
