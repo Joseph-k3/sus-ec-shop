@@ -1941,6 +1941,10 @@ onMounted(() => {
   border: 1px solid #e9ecef;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin-top: 2rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .products-list h3 {
@@ -2169,17 +2173,21 @@ onMounted(() => {
 .product-image-container {
   position: relative;
   width: 100%;
+  max-width: 100%;
   height: 200px;
   margin-bottom: 1rem;
   border-radius: 8px;
   overflow: hidden;
   background: #f8f9fa;
+  box-sizing: border-box;
 }
 
 /* Swiper用のスタイル */
 .swiper-container {
   width: 100%;
+  max-width: 100%;
   height: 100%;
+  box-sizing: border-box;
 }
 
 .swiper-slide {
@@ -2275,6 +2283,10 @@ onMounted(() => {
 
 .product-details {
   margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .product-details h4 {
@@ -2283,6 +2295,9 @@ onMounted(() => {
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .product-details .price {
@@ -2308,6 +2323,9 @@ onMounted(() => {
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-edit,
@@ -2321,6 +2339,8 @@ onMounted(() => {
   transition: all 0.2s ease;
   font-size: 0.9rem;
   min-height: 44px; /* タッチターゲット最小サイズ */
+  max-width: 100%;
+  box-sizing: border-box;
   touch-action: manipulation; /* タッチ操作の最適化 */
   user-select: none; /* テキスト選択防止 */
   -webkit-user-select: none;

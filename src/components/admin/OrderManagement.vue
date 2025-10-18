@@ -849,6 +849,13 @@ watch(() => route.path, (newPath) => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   min-height: 80vh;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.order-management * {
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -865,6 +872,9 @@ watch(() => route.path, (newPath) => {
   padding: 1rem;
   border-radius: 8px;
   border: 1px solid #dee2e6;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-section select {
@@ -889,6 +899,9 @@ watch(() => route.path, (newPath) => {
 .orders-list {
   display: grid;
   gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .order-card {
@@ -897,6 +910,10 @@ watch(() => route.path, (newPath) => {
   padding: 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .order-header {
@@ -1075,6 +1092,10 @@ watch(() => route.path, (newPath) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   border: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .cart-order-header {
@@ -1088,6 +1109,12 @@ watch(() => route.path, (newPath) => {
   margin: -1.5rem -1.5rem 1rem -1.5rem;
   padding: 1rem 1.5rem;
   border-radius: 12px 12px 0 0;
+  width: calc(100% + 3rem);
+  max-width: calc(100% + 3rem);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .cart-order-header h3 {
@@ -1095,6 +1122,9 @@ watch(() => route.path, (newPath) => {
   margin: 0;
   font-size: 1.3rem;
   font-weight: 700;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .cart-summary {
@@ -1104,6 +1134,7 @@ watch(() => route.path, (newPath) => {
   font-size: 0.9rem;
   color: #495057;
   font-weight: 500;
+  flex-wrap: wrap;
 }
 
 .total-amount {
@@ -1118,6 +1149,10 @@ watch(() => route.path, (newPath) => {
   border-radius: 8px;
   border: 1px solid #dee2e6;
   padding: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .cart-item {
@@ -1126,6 +1161,10 @@ watch(() => route.path, (newPath) => {
   gap: 1rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .cart-item:last-child {
@@ -1143,22 +1182,29 @@ watch(() => route.path, (newPath) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .product-name {
   font-weight: bold;
   color: #333;
   margin-bottom: 0.25rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .product-price {
   color: #666;
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .item-total {
   font-weight: bold;
   color: #2c5f2d;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .cart-customer-info {
@@ -1169,6 +1215,10 @@ watch(() => route.path, (newPath) => {
   padding: 1rem;
   background: #f8f9fa;
   border-radius: 6px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .cart-actions {
@@ -1381,11 +1431,79 @@ watch(() => route.path, (newPath) => {
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .order-management {
-    margin: 1rem auto;
+    margin: 0.5rem auto;
     padding: 1rem;
-    width: calc(100% - 2rem);
+    width: 100%;
     max-width: 100%;
     border-radius: 0;
+    overflow-x: hidden;
+  }
+
+  .order-group {
+    padding: 1rem;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .cart-order-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: -1rem -1rem 1rem -1rem;
+    padding: 1rem;
+    width: calc(100% + 2rem);
+    max-width: calc(100% + 2rem);
+  }
+
+  .cart-order-header h3 {
+    font-size: 1.1rem;
+    width: 100%;
+  }
+
+  .cart-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cart-items {
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+  }
+
+  .cart-item {
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+
+  .product-thumbnail-small {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .cart-item-details {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .product-name {
+    font-size: 0.9rem;
+    line-height: 1.3;
+  }
+
+  .product-price {
+    font-size: 0.85rem;
+  }
+
+  .item-total {
+    font-size: 0.9rem;
+  }
+
+  .cart-customer-info {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0.75rem;
   }
 
   .order-header {
