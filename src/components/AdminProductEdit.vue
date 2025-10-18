@@ -672,6 +672,12 @@ const initProductSwipers = () => {
           },
           slidesPerView: 1,
           spaceBetween: 0,
+          allowTouchMove: false,
+          simulateTouch: false,
+          touchRatio: 0,
+          preventInteractionOnTransition: true,
+          noSwiping: true,
+          noSwipingClass: 'swiper-slide',
         })
       }
     }
@@ -1683,15 +1689,21 @@ onMounted(() => {
 .admin-panel *::after {
   box-sizing: border-box !important;
   touch-action: manipulation;
+  max-width: 100%;
 }
 
 .admin-panel img,
-.admin-panel video {
+.admin-panel video,
+.admin-panel canvas,
+.admin-panel iframe {
   touch-action: none !important;
   pointer-events: none !important;
   -webkit-user-select: none !important;
   user-select: none !important;
   -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+  max-width: 100% !important;
+  height: auto !important;
 }
 
 .admin-panel h2 {
@@ -1700,6 +1712,28 @@ onMounted(() => {
   margin-bottom: 2rem;
   font-size: 2rem;
   font-weight: 700;
+}
+
+/* すべてのコンテナ要素にoverflow制御 */
+.admin-panel > *,
+.edit-form > *,
+.products-list > *,
+.product-grid > *,
+.product-item > * {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* 画像を含む要素の完全制御 */
+.product-image-container,
+.video-thumbnail-main,
+.swiper-container,
+.swiper-wrapper,
+.swiper-slide {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .admin-panel h3 {
@@ -1999,8 +2033,9 @@ onMounted(() => {
   .admin-panel {
     padding: 1rem !important;
     margin: 0 !important;
-    width: 100vw !important;
+    width: calc(100vw - 0px) !important;
     max-width: 100vw !important;
+    min-width: 0 !important;
     left: 0 !important;
     right: 0 !important;
     box-sizing: border-box !important;
@@ -2013,17 +2048,44 @@ onMounted(() => {
   .admin-panel *::before,
   .admin-panel *::after {
     max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .admin-panel img,
-  .admin-panel video {
+  .admin-panel video,
+  .admin-panel canvas {
     max-width: 100% !important;
     width: 100% !important;
+    height: auto !important;
+    touch-action: none !important;
+    pointer-events: none !important;
   }
 
   .admin-panel h2 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
+  }
+
+  /* すべてのコンテナ要素にoverflow制御 */
+  .admin-panel > *,
+  .edit-form > *,
+  .products-list > *,
+  .product-grid > *,
+  .product-item > * {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 画像を含む要素の完全制御 */
+  .product-image-container,
+  .video-thumbnail-main,
+  .swiper-container,
+  .swiper-wrapper,
+  .swiper-slide {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   .products-list {
@@ -2033,6 +2095,7 @@ onMounted(() => {
     max-width: 100% !important;
     border-radius: 8px !important;
     box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
   
   .product-grid {
@@ -2048,6 +2111,20 @@ onMounted(() => {
     width: 100% !important;
     max-width: 100% !important;
     padding: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .product-image-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    touch-action: none !important;
+    overflow: hidden !important;
+  }
+
+  .product-image-container * {
+    width: 100% !important;
+    max-width: 100% !important;
+    touch-action: none !important;
   }
   
   .edit-form {
@@ -2303,9 +2380,21 @@ onMounted(() => {
   max-width: 100%;
   height: 100%;
   box-sizing: border-box;
-  touch-action: pan-y;
+  touch-action: none !important;
   -webkit-user-select: none;
   user-select: none;
+  overflow: hidden !important;
+}
+
+@media (max-width: 768px) {
+  .swiper-container {
+    touch-action: none !important;
+    pointer-events: auto !important;
+  }
+  
+  .swiper-wrapper {
+    touch-action: none !important;
+  }
 }
 
 .swiper-slide {
@@ -2313,17 +2402,18 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: #f8f9fa;
-  touch-action: none;
+  touch-action: none !important;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .swiper-slide img {
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  pointer-events: none;
+  touch-action: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  pointer-events: none !important;
+  -webkit-user-drag: none !important;
 }
 
 .swiper-button-next,
@@ -2842,107 +2932,7 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* モバイル対応調整 */
-@media screen and (max-width: 768px) {
-  .play-icon-overlay-main {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .play-icon-overlay-main svg {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .video-count-badge {
-    font-size: 0.7rem;
-    padding: 3px 6px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .play-icon-overlay-main {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .play-icon-overlay-main svg {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .video-count-badge {
-    font-size: 0.65rem;
-    padding: 2px 5px;
-  }
-}
-
-/* 動画モーダル */
-.video-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 0;
-  box-sizing: border-box;
-  animation: fadeIn 0.3s ease-out;
-  overflow: hidden;
-  touch-action: none;
-  -webkit-overflow-scrolling: none;
-}
-
-.video-content {
-  position: relative;
-  background: #000;
-  overflow: hidden;
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-}
-
-.video-content .modal-close {
-  position: fixed;
-  top: env(safe-area-inset-top, 1rem);
-  right: 1rem;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  font-size: 28px;
-  cursor: pointer;
-  z-index: 10001;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  touch-action: manipulation;
-}
-
-.video-content .modal-close:hover {
-  background: rgba(220, 53, 69, 0.9);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.1);
-}
-
-.video-content .modal-close:active {
-  transform: scale(0.95);
-}
-
-/* スマホでのフルスクリーン最適化 */
+/* モバイルでのフルスクリーン最適化 */
 @media screen and (max-width: 768px) {
   .video-modal {
     padding: 0;
