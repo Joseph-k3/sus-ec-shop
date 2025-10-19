@@ -841,12 +841,12 @@ watch(() => route.path, (newPath) => {
 
 <style scoped>
 .order-management {
-  max-width: 100%;
-  margin: 0;
-  padding: 1rem;
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 2rem;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   min-height: 80vh;
   width: 100%;
   box-sizing: border-box;

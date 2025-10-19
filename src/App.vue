@@ -241,15 +241,15 @@ body {
 
 .main-content {
   margin-top: 80px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 1rem 2rem;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
   position: relative;
   z-index: 1;
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* 管理者用右端固定ボタン */
@@ -415,11 +415,12 @@ button.logout:hover {
 
 @media (max-width: 768px) {
   .main-content {
-    margin-top: 70px; /* ヘッダー高さに合わせて調整 */
-    padding: 1rem;
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
+    margin-top: 0;
+    padding: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
     box-sizing: border-box;
   }
 

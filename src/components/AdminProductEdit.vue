@@ -1667,12 +1667,12 @@ onMounted(() => {
 
 <style scoped>
 .admin-panel {
-  max-width: 100%;
-  margin: 0;
-  padding: 1rem;
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 2rem;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 1;
   width: 100%;
@@ -1692,7 +1692,7 @@ onMounted(() => {
   max-width: 100%;
 }
 
-.admin-panel img,
+.admin-panel img:not(.video-thumbnail-image),
 .admin-panel video,
 .admin-panel canvas,
 .admin-panel iframe {
@@ -1704,6 +1704,72 @@ onMounted(() => {
   -webkit-user-drag: none !important;
   max-width: 100% !important;
   height: auto !important;
+}
+
+/* 動画サムネイルコンテナはクリック可能に */
+.video-thumbnail-main {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.video-thumbnail-main * {
+  pointer-events: none !important;
+}
+
+/* 動画再生アイコンオーバーレイ */
+.play-icon-overlay-main {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.video-thumbnail-main:hover .play-icon-overlay-main {
+  background: rgba(0, 0, 0, 0.85);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.play-icon-overlay-main svg {
+  width: 48px;
+  height: 48px;
+  margin-left: 4px;
+}
+
+/* 動画フォールバックアイコン */
+.video-icon-fallback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 動画カウントバッジ */
+.video-count-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  z-index: 11;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 .admin-panel h2 {
@@ -1761,8 +1827,82 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .admin-panel {
+    margin: 0 !important;
+    padding: 1rem !important;
+    border-radius: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .admin-panel h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-panel h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+
   .edit-form {
-    max-width: 100% !important;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    text-align: left;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  .products-list {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .product-image-container {
+    height: 200px;
+  }
+
+  .product-details {
+    padding: 1rem;
+  }
+
+  .product-details h4 {
+    font-size: 1rem;
+  }
+
+  .product-details .price {
+    font-size: 1.1rem;
+  }
+
+  .product-actions {
+    flex-direction: column;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    width: 100%;
+  }
+
+  .play-icon-overlay-main {
+    width: 60px;
+    height: 60px;
+  }
+
+  .play-icon-overlay-main svg {
+    width: 36px;
+    height: 36px;
   }
 }
 
@@ -2013,7 +2153,7 @@ onMounted(() => {
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2rem;
   width: 100%;
   max-width: 100%;
@@ -2022,342 +2162,110 @@ onMounted(() => {
   touch-action: pan-y;
 }
 
-@media (max-width: 1024px) {
+/* 大画面では3列表示 */
+@media (min-width: 1400px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 中画面では2列表示 */
+@media (min-width: 769px) and (max-width: 1399px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
   }
 }
 
+/* スマホ表示では1列 */
 @media (max-width: 768px) {
   .admin-panel {
-    padding: 0 !important;
     margin: 0 !important;
+    padding: 1rem !important;
+    border-radius: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
-    min-width: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-    border-radius: 0 !important;
-    position: relative !important;
-    background: transparent !important;
-  }
-
-  .admin-panel *,
-  .admin-panel *::before,
-  .admin-panel *::after {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .admin-panel img,
-  .admin-panel video,
-  .admin-panel canvas {
-    max-width: 100% !important;
-    width: 100% !important;
-    height: auto !important;
-    touch-action: none !important;
-    pointer-events: none !important;
-    background: transparent !important;
   }
 
   .admin-panel h2 {
     font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    padding: 0 0.5rem;
+    margin-bottom: 1rem;
   }
 
-  /* すべてのコンテナ要素にoverflow制御 */
-  .admin-panel > *,
-  .edit-form > *,
-  .products-list > *,
-  .product-grid > *,
-  .product-item > * {
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
+  .admin-panel h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
   }
 
-  /* 画像を含む要素の完全制御 */
-  .product-image-container,
-  .video-thumbnail-main,
-  .swiper-container,
-  .swiper-wrapper,
-  .swiper-slide {
-    max-width: 100% !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .products-list {
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    border-radius: 0 !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-  
-  .product-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-
-  .product-item {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 1rem !important;
-    margin: 0 0 1rem 0 !important;
-    box-sizing: border-box !important;
-    border-radius: 0 !important;
-    background: white !important;
-    box-shadow: none !important;
-    border-bottom: 1px solid #e9ecef !important;
-  }
-
-  .product-image-container {
-    width: 100% !important;
-    max-width: 100% !important;
-    touch-action: none !important;
-    overflow: hidden !important;
-    margin: 0 0 0.5rem 0 !important;
-    padding: 0 !important;
-    background: transparent !important;
-    border-radius: 0 !important;
-  }
-
-  .product-image-container * {
-    width: 100% !important;
-    max-width: 100% !important;
-    touch-action: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
   .edit-form {
-    padding: 0.75rem !important;
-    margin: 0 0 0.5rem 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    border-radius: 8px !important;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
   }
-  
-  .form-row {
-    grid-template-columns: 1fr !important;
-    gap: 1rem;
-    width: 100%;
-    max-width: 100%;
-  }
-  
+
   .form-group {
-    width: 100%;
-    max-width: 100%;
     grid-template-columns: 1fr;
     gap: 0.5rem;
   }
-  
+
   .form-group label {
     text-align: left;
-    width: 100%;
-  }
-  
-  .form-group input,
-  .form-group textarea,
-  .form-group select {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-  
-  .form-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .btn-primary,
-  .btn-secondary {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    min-height: 48px;
-  }
-  
-  .images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .temp-images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .multiple-image-upload-section,
-  .upload-options {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 1rem;
-    box-sizing: border-box !important;
-  }
-  
-  .file-upload-btn {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-  
-  .product-item {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 1rem;
-    box-sizing: border-box !important;
-  }
-  
-  .upload-info {
-    width: 100%;
-    word-wrap: break-word;
-  }
-}
-
-@media (max-width: 480px) {
-  .admin-panel {
-    padding: 0.5rem !important;
-    margin: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    border-radius: 0 !important;
-    overflow-x: hidden !important;
   }
 
-  .admin-panel *,
-  .admin-panel *::before,
-  .admin-panel *::after {
-    max-width: 100% !important;
-  }
-
-  .admin-panel img,
-  .admin-panel video {
-    touch-action: none !important;
-    pointer-events: none !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
-    max-width: 100% !important;
-    width: 100% !important;
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+    padding: 0.5rem;
   }
 
   .products-list {
-    padding: 0.75rem !important;
-    margin: 0 !important;
-    width: 100% !important;
-  }
-  
-  .product-grid {
-    gap: 0.75rem !important;
-    padding: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .product-item {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 0.75rem !important;
+    padding: 1rem;
+       margin-top: 1rem;
   }
 
   .product-image-container {
-    touch-action: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    height: 200px;
   }
 
-  .product-image-container img {
-    touch-action: none !important;
-    pointer-events: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
+  .product-details {
+    padding: 1rem;
   }
-  
-  .edit-form {
-    padding: 0.75rem !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  .form-group {
-    margin-bottom: 1rem;
-    grid-template-columns: 1fr;
-  }
-  
-  .form-group label {
-    font-size: 0.9rem;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr !important;
-    width: 100%;
-  }
-  
-  .form-group input,
-  .form-group textarea {
+
+  .product-details h4 {
     font-size: 1rem;
-    padding: 0.75rem;
-    width: 100% !important;
-    max-width: 100% !important;
   }
-  
-  .images-grid,
-  .temp-images-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
-    gap: 0.5rem;
+
+  .product-details .price {
+    font-size: 1.1rem;
+  }
+
+  .product-actions {
+    flex-direction: column;
+  }
+
+  .btn-edit,
+  .btn-delete {
     width: 100%;
   }
-  
-  .btn-primary,
-  .btn-secondary,
-  .file-upload-btn {
-    min-height: 50px;
-    font-size: 1rem;
-    width: 100%;
+
+  .play-icon-overlay-main {
+    width: 60px;
+    height: 60px;
   }
-  
-  .multiple-image-upload-section,
-  .upload-options {
-    width: 100%;
-    padding: 0.75rem;
-  }
-  
-  .product-item {
-    width: 100%;
-    padding: 0.75rem;
+
+  .play-icon-overlay-main svg {
+    width: 36px;
+    height: 36px;
   }
 }
 
 .product-item {
-  background: white;
-  border: 1px solid #e9ecef;
+  position: relative;
+  background: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  transition: all 0.3s ease;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -2365,17 +2273,14 @@ onMounted(() => {
 }
 
 .product-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .product-image-container {
   position: relative;
   width: 100%;
-  max-width: 100%;
-  height: 200px;
-  margin-bottom: 1rem;
-  border-radius: 8px;
+  height: 250px;
   overflow: hidden;
   background: transparent;
   box-sizing: border-box;
@@ -2386,189 +2291,44 @@ onMounted(() => {
 }
 
 .product-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   pointer-events: none;
-}
-
-/* Swiper用のスタイル */
-.swiper-container {
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  touch-action: none !important;
-  -webkit-user-select: none;
-  user-select: none;
-  overflow: hidden !important;
-}
-
-@media (max-width: 768px) {
-  .swiper-container {
-    touch-action: none !important;
-    pointer-events: auto !important;
-  }
-  
-  .swiper-wrapper {
-    touch-action: none !important;
-  }
-}
-
-.swiper-slide {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  touch-action: none !important;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.swiper-slide img {
-  touch-action: none !important;
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
-  pointer-events: none !important;
-  -webkit-user-drag: none !important;
-}
-
-.swiper-button-next,
-.swiper-button-prev {
-  color: #fff !important;
-  background: rgba(0, 0, 0, 0.5);
-  width: 30px !important;
-  height: 30px !important;
-  border-radius: 50%;
-}
-
-.swiper-button-next::after,
-.swiper-button-prev::after {
-  font-size: 14px !important;
-}
-
-.swiper-pagination {
-  bottom: 10px !important;
-}
-
-.swiper-pagination-bullet {
-  background: #fff !important;
-  opacity: 0.7;
-}
-
-.swiper-pagination-bullet-active {
-  opacity: 1;
-  background: #007bff !important;
-}
-
-.product-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #f8f9fa;
-  transition: object-fit 0.3s ease;
-  cursor: pointer;
-  border: 1px solid transparent;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  pointer-events: none;
-}
-
-.product-thumb:hover {
-  border: 1px solid #007bff;
-  transform: scale(1.02);
-}
-
-/* 画像のフォールバック表示 */
-.product-thumb:not([src]), 
-.product-thumb[src=""], 
-.product-thumb[src="#"] {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  position: relative;
-}
-
-.product-thumb:not([src])::before, 
-.product-thumb[src=""]::before, 
-.product-thumb[src="#"]::before {
-  content: "📷";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2rem;
-  color: #6c757d;
-}
-
-.status-badge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.status-badge.reserved {
-  background: rgba(255, 193, 7, 0.9);
-  color: #212529;
-}
-
-.status-badge.sold-out {
-  background: rgba(108, 117, 125, 0.9);
 }
 
 .product-details {
-  margin-bottom: 1.5rem;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
+  padding: 1.5rem;
 }
 
 .product-details h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
   color: #2c3e50;
-  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  max-width: 100%;
 }
 
 .product-details .price {
+  font-size: 1.25rem;
   color: #2c5f2d;
-  font-size: 1.4rem;
   font-weight: 700;
-  margin: 0.5rem 0;
+  margin-bottom: 0.5rem;
 }
 
 .product-details .stock-info {
-  color: #495057;
   font-size: 0.9rem;
-  font-weight: 500;
-  margin: 0;
-}
-
-.product-details .stock-info.low-stock {
-  color: #dc3545;
-  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 1rem;
 }
 
 .product-actions {
   display: flex;
   gap: 0.75rem;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+  margin-top: 1rem;
 }
 
 .btn-edit,
@@ -2577,17 +2337,10 @@ onMounted(() => {
   padding: 0.75rem 1rem;
   border: none;
   border-radius: 6px;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-  min-height: 44px; /* タッチターゲット最小サイズ */
-  max-width: 100%;
-  box-sizing: border-box;
-  touch-action: manipulation; /* タッチ操作の最適化 */
-  user-select: none; /* テキスト選択防止 */
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* タッチ時のハイライト */
+  transition: all 0.2s;
 }
 
 .btn-edit {
@@ -2600,12 +2353,6 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.btn-edit:active {
-  background: #004085;
-  transform: translateY(0);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
 .btn-delete {
   background: #dc3545;
   color: white;
@@ -2616,401 +2363,108 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.btn-delete:active {
-  background: #bd2130;
-  transform: translateY(0);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* フォームボタンのスタイル */
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.btn-primary,
-.btn-secondary {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1rem;
-  min-width: 120px;
-}
-
-.btn-primary {
-  background: #2c5f2d;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #1e4220;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(44, 95, 45, 0.3);
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #545b62;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
-}
-
-/* 数量グループのスタイル */
-.quantity-group {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.quantity-group input[type="number"] {
-  max-width: 120px;
-}
-
-.quantity-group .checkbox-label {
-  color: #2c3e50;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-/* 複数画像アップロード用スタイル */
-.multiple-image-upload-section {
-  border: 2px dashed #ddd;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background: #fafafa;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.images-gallery {
-  margin-top: 1.5rem;
-}
-
-.images-gallery h4 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-size: 1.1rem;
-}
-
-.images-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
-  gap: 1rem;
-  min-height: 100px;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.image-item {
-  position: relative;
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: move;
-  transition: all 0.3s ease;
-}
-
-.image-item:hover {
-  border-color: #2c5f2d;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.image-item.primary {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
-}
-
-.image-item img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  background-color: #f8f9fa;
-}
-
-.image-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 4px;
-}
-
-.primary-btn, .delete-btn {
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.primary-btn:hover {
-  background: rgba(255, 215, 0, 0.9);
-}
-
-.primary-btn.active {
-  background: #ffd700;
-  color: #333;
-}
-
-.delete-btn:hover {
-  background: rgba(220, 53, 69, 0.9);
-}
-
-.image-order {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.primary-badge {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #ffd700;
-  color: #333;
-  text-align: center;
-  font-size: 11px;
-  font-weight: bold;
-  padding: 4px;
-  z-index: 5;
-}
-
-.manual-input {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.manual-input input {
-  flex: 1;
-}
-
-.add-url-btn {
-  background: #2c5f2d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.add-url-btn:hover {
-  background: #1e4220;
-}
-
-/* 一時画像用のスタイル */
-.temp-image-item {
-  position: relative;
-}
-
-.temp-badge {
-  position: absolute;
+/* 動画モーダルのスタイル */
+.video-modal {
+  position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  background: #f0ad4e;
-  color: white;
-  text-align: center;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 2px;
-}
-
-.temp-images-grid .image-item {
-  border-color: #f0ad4e;
-}
-
-.temp-images-grid .image-item:hover {
-  border-color: #ec971f;
-  box-shadow: 0 4px 12px rgba(240, 173, 78, 0.3);
-}
-
-/* 動画サムネイルをメイン画像として表示 */
-.video-thumbnail-main {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 0;
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
   overflow: hidden;
-  border-radius: 8px;
-  background: transparent;
-  touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.video-thumbnail-main .video-thumbnail-image {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  z-index: 2;
   touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  pointer-events: none;
+  -webkit-overflow-scrolling: none;
 }
 
-/* サムネイル読み込みエラー時のフォールバック */
-.video-icon-fallback {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.video-content {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: 1;
+  touch-action: none;
 }
 
-/* 画像が非表示になった場合、フォールバックを確実に表示 */
-.video-thumbnail-main .video-thumbnail-image[style*="display: none"] {
-  z-index: 0;
-}
-
-.play-icon-overlay-main {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 60px;
-  height: 60px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 10;
-  transition: all 0.3s ease;
-}
-
-.video-thumbnail-main:hover .play-icon-overlay-main {
-  background: rgba(0, 0, 0, 0.85);
-  transform: translate(-50%, -50%) scale(1.1);
-}
-
-.play-icon-overlay-main svg {
-  width: 36px;
-  height: 36px;
-  margin-left: 2px;
-}
-
-.video-count-badge {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(220, 53, 69, 0.9);
+.video-content .modal-close,
+.modal-close {
+  position: fixed;
+  top: env(safe-area-inset-top, 1rem);
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.8);
   color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  z-index: 11;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  touch-action: manipulation;
+  line-height: 1;
+  padding: 0;
 }
 
-/* モバイルでのフルスクリーン最適化 */
-@media screen and (max-width: 768px) {
+.video-content .modal-close:hover,
+.modal-close:hover {
+  background: rgba(220, 53, 69, 0.9);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+.video-content .modal-close:active,
+.modal-close:active {
+  transform: scale(0.95);
+}
+
+/* スマホ用：動画モーダルの最適化 */
+@media (max-width: 768px) {
   .video-modal {
-    padding: 0;
+    padding: 0 !important;
   }
   
   .video-content {
-    width: 100vw;
-    height: 100vh;
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
   }
   
-  .video-content .modal-close {
-    top: max(env(safe-area-inset-top, 0.5rem), 0.5rem);
-    right: 0.5rem;
-    width: 48px;
-    height: 48px;
-    font-size: 32px;
-    background: rgba(0, 0, 0, 0.9);
+  .video-content .modal-close,
+  .modal-close {
+    top: max(env(safe-area-inset-top, 1rem), 1rem) !important;
+    right: 1rem !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 36px !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    border: 3px solid white !important;
+    z-index: 10002 !important;
   }
 }
 
-/* アニメーションキーフレーム */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* モバイル対応：動画モーダル */
-@media screen and (max-width: 768px) {
-  .video-content {
-    width: 95vw;
-    height: 95vh;
-    max-width: none;
-    max-height: none;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .video-content {
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
+@media (max-width: 480px) {
+  .video-content .modal-close,
+  .modal-close {
+    top: max(env(safe-area-inset-top, 0.75rem), 0.75rem) !important;
+    right: 0.75rem !important;
   }
 }
 </style>

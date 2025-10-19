@@ -136,7 +136,7 @@ const handleNavClick = (event) => {
 }
 
 .admin-content {
-  padding: 1rem 0;
+  padding: 2rem;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -145,6 +145,12 @@ const handleNavClick = (event) => {
   margin: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+@media (min-width: 769px) and (max-width: 1600px) {
+  .admin-content {
+    padding: 2rem 1rem;
+  }
 }
 
 @media (max-width: 768px) {
