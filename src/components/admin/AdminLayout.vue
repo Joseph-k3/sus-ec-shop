@@ -47,7 +47,7 @@ const handleNavClick = (event) => {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   position: relative;
-  width: 100%;
+  width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -74,7 +74,7 @@ const handleNavClick = (event) => {
 
 .admin-header {
   background: rgba(255, 255, 255, 0.95);
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   border-bottom: 3px solid #2c5f2d;
@@ -136,32 +136,34 @@ const handleNavClick = (event) => {
 }
 
 .admin-content {
-  padding: 2rem;
+  padding: 1rem 0;
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 100vw;
   box-sizing: border-box;
-  margin: 0 auto;
+  margin: 0;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
 @media (max-width: 768px) {
   .admin-layout {
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
   
   .admin-header {
-    padding: 1rem 0.5rem;
+    padding: 1rem 0.5rem !important;
     position: sticky;
     top: 0;
     z-index: 100;
     backdrop-filter: blur(10px);
-    margin: 0;
-    width: 100vw;
-    max-width: 100vw;
+    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 
   .admin-header h1 {

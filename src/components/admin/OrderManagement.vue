@@ -841,15 +841,14 @@ watch(() => route.path, (newPath) => {
 
 <style scoped>
 .order-management {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 2rem;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
   min-height: 80vh;
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
   touch-action: pan-y;
@@ -1460,11 +1459,13 @@ watch(() => route.path, (newPath) => {
 @media (max-width: 768px) {
   .order-management {
     margin: 0 !important;
-    padding: 1rem !important;
-    width: 100% !important;
+    padding: 0.5rem !important;
+    width: 100vw !important;
     max-width: 100vw !important;
     border-radius: 0 !important;
     overflow-x: hidden !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   .order-management h2 {

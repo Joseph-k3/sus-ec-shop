@@ -1667,12 +1667,12 @@ onMounted(() => {
 
 <style scoped>
 .admin-panel {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 2rem;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2378,8 +2378,6 @@ onMounted(() => {
   border-radius: 8px;
   overflow: hidden;
   background: transparent;
-  box-sizing: border-box;
-}
   box-sizing: border-box;
   touch-action: none;
   -webkit-user-select: none;
