@@ -1708,12 +1708,37 @@ onMounted(() => {
 
 /* 動画サムネイルコンテナはクリック可能に */
 .video-thumbnail-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   pointer-events: auto !important;
   cursor: pointer !important;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .video-thumbnail-main * {
   pointer-events: none !important;
+}
+
+.video-thumbnail-main .video-thumbnail-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  z-index: 2;
+}
+
+/* サムネイル読み込みエラー時、フォールバックを確実に表示 */
+.video-thumbnail-main .video-thumbnail-image[style*="display: none"] {
+  z-index: 0;
 }
 
 /* 動画再生アイコンオーバーレイ */
@@ -1748,12 +1773,20 @@ onMounted(() => {
 /* 動画フォールバックアイコン */
 .video-icon-fallback {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.3;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   pointer-events: none;
-  z-index: 5;
+  z-index: 1;
+}
+
+.video-icon-fallback svg {
+  opacity: 0.3;
 }
 
 /* 動画カウントバッジ */

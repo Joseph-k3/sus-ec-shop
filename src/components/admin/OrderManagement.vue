@@ -1130,14 +1130,12 @@ watch(() => route.path, (newPath) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  padding: 1rem 1.5rem;
   border-bottom: 2px solid #2c5f2d;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  margin: -1.5rem -1.5rem 1rem -1.5rem;
-  padding: 1rem 1.5rem;
-  border-radius: 12px 12px 0 0;
-  width: calc(100% + 3rem);
-  max-width: calc(100% + 3rem);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
   flex-wrap: wrap;
@@ -1484,10 +1482,10 @@ watch(() => route.path, (newPath) => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
-    margin: -1rem -1rem 1rem -1rem;
+    margin: 0;
     padding: 1rem;
-    width: calc(100% + 2rem);
-    max-width: calc(100% + 2rem);
+    width: 100%;
+    max-width: 100%;
   }
 
   .cart-order-header h3 {
