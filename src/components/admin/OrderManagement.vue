@@ -842,7 +842,7 @@ watch(() => route.path, (newPath) => {
 <style scoped>
 .order-management {
   max-width: 1400px;
-  margin: 2rem auto;
+  margin: 0 auto;
   padding: 2rem;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 15px;
@@ -1456,14 +1456,14 @@ watch(() => route.path, (newPath) => {
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .order-management {
-    margin: 0.5rem !important;
+    margin: 0 !important;
     padding: 0.5rem !important;
-    width: calc(100vw - 1rem) !important;
-    max-width: calc(100vw - 1rem) !important;
-    border-radius: 8px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
     overflow-x: hidden !important;
     background: rgba(255, 255, 255, 0.95) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: none !important;
   }
 
   .order-management h2 {

@@ -405,29 +405,31 @@
             <!-- 動画がない場合は従来通りの画像表示 -->
             <template v-else>
               <!-- 複数画像の場合はSwiper表示 -->
-              <div v-if="product.images && product.images.length > 1" class="swiper-container" :class="`product-swiper-${product.id}`">
-                <div class="swiper-wrapper">
-                  <div 
-                    v-for="(image, index) in product.images" 
-                    :key="index"
-                    class="swiper-slide"
-                  >
-                    <img 
-                      :src="getPublicImageUrl(image.image_url)" 
-                      :alt="`${product.name} ${index + 1}`"
-                      class="product-thumb"
+              <div v-if="product.images && product.images.length > 1" class="product-swiper-container">
+                <div class="swiper product-swiper" :data-product-id="product.id">
+                  <div class="swiper-wrapper">
+                    <div 
+                      v-for="(image, index) in product.images" 
+                      :key="index"
+                      class="swiper-slide"
                     >
+                      <img 
+                        :src="getPublicImageUrl(image.image_url)" 
+                        :alt="`${product.name} ${index + 1}`"
+                        class="product-image"
+                      >
+                    </div>
                   </div>
+                  <!-- ナビゲーション矢印 -->
+                  <div class="swiper-button-next product-swiper-next"></div>
+                  <div class="swiper-button-prev product-swiper-prev"></div>
+                  <!-- ページネーション -->
+                  <div class="swiper-pagination product-swiper-pagination"></div>
                 </div>
-                <!-- ナビゲーション矢印 -->
-                <div class="swiper-button-next"></div>
-                <div class="swiper-button-prev"></div>
-                <!-- ページネーション -->
-                <div class="swiper-pagination"></div>
               </div>
               <!-- 単一画像の場合 -->
-              <div v-else>
-                <img :src="getPublicImageUrl(product.image)" :alt="product.name" class="product-thumb">
+              <div v-else class="single-image-container">
+                <img :src="getPublicImageUrl(product.image)" :alt="product.name" class="product-image">
               </div>
             </template>
             
@@ -656,22 +658,23 @@ const loadProducts = async () => {
 const initProductSwipers = () => {
   products.value.forEach((product) => {
     if (product.images && product.images.length > 1) {
-      const swiperEl = document.querySelector(`.product-swiper-${product.id}`)
-      if (swiperEl) {
+      const swiperEl = document.querySelector(`.product-swiper[data-product-id="${product.id}"]`)
+      if (swiperEl && !swiperEl.swiper) {
         new Swiper(swiperEl, {
           modules: [Navigation, Pagination],
+          slidesPerView: 1,
           loop: true,
           navigation: {
-            nextEl: `.product-swiper-${product.id} .swiper-button-next`,
-            prevEl: `.product-swiper-${product.id} .swiper-button-prev`,
+            nextEl: swiperEl.querySelector('.product-swiper-next'),
+            prevEl: swiperEl.querySelector('.product-swiper-prev'),
           },
           pagination: {
-            el: `.product-swiper-${product.id} .swiper-pagination`,
+            el: swiperEl.querySelector('.product-swiper-pagination'),
             clickable: true,
-            type: 'bullets',
           },
-          slidesPerView: 1,
-          spaceBetween: 0,
+          touchRatio: 1,
+          simulateTouch: true,
+          grabCursor: true,
         })
       }
     }
@@ -1662,7 +1665,7 @@ onMounted(() => {
 <style scoped>
 .admin-panel {
   max-width: 1400px;
-  margin: 2rem auto;
+  margin: 0 auto;
   padding: 2rem;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 15px;
@@ -1829,19 +1832,82 @@ onMounted(() => {
   box-sizing: border-box !important;
 }
 
-/* Swiperスタイルの追加 */
-.swiper-container {
-  width: 100%;
-  height: 100%;
+/* 商品Swiperスタイル */
+.product-swiper-container {
   position: relative;
-}
-
-.swiper-wrapper {
   width: 100%;
   height: 100%;
 }
 
-.swiper-slide {
+.product-swiper {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.product-swiper .swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-swiper .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #f8f9fa;
+  display: block;
+}
+
+/* 商品カード用矢印ボタン */
+.product-swiper-next,
+.product-swiper-prev {
+  color: white !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  margin-top: -15px !important;
+  opacity: 0 !important;
+  transition: all 0.3s ease !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+.product-swiper-container:hover .product-swiper-next,
+.product-swiper-container:hover .product-swiper-prev {
+  opacity: 1 !important;
+}
+
+.product-swiper-next:after,
+.product-swiper-prev:after {
+  font-size: 12px !important;
+  font-weight: bold !important;
+}
+
+/* 商品カード用ページネーション */
+.product-swiper-pagination {
+  bottom: 8px !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+.product-swiper-pagination .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1 !important;
+  width: 6px !important;
+  height: 6px !important;
+  pointer-events: auto !important;
+}
+
+.product-swiper-pagination .swiper-pagination-bullet-active {
+  background: white !important;
+  transform: scale(1.2);
+}
+
+/* 単一画像コンテナ */
+.single-image-container {
   width: 100%;
   height: 100%;
   display: flex;
@@ -1850,38 +1916,11 @@ onMounted(() => {
   background: #f8f9fa;
 }
 
-.swiper-slide img {
+.single-image-container .product-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.swiper-button-next,
-.swiper-button-prev {
-  color: white !important;
-  background: rgba(0, 0, 0, 0.5);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  pointer-events: auto !important;
-  z-index: 10;
-}
-
-.swiper-button-next::after,
-.swiper-button-prev::after {
-  font-size: 20px;
-}
-
-.swiper-pagination {
-  pointer-events: auto !important;
-  z-index: 10;
-}
-
-.swiper-pagination-bullet {
-  background: white;
-  opacity: 0.7;
-  pointer-events: auto !important;
 }
 
 .admin-panel h3 {
@@ -1908,14 +1947,6 @@ onMounted(() => {
   overflow-x: hidden;
 }
 
-.product-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  background: #f8f9fa;
-}
-
 .product-image-container img {
   width: 100%;
   height: 100%;
@@ -1929,11 +1960,11 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .admin-panel {
-    margin: 0.5rem !important;
+    margin: 0 !important;
     padding: 1rem !important;
-    border-radius: 8px !important;
-    width: calc(100vw - 1rem) !important;
-    max-width: calc(100vw - 1rem) !important;
+    border-radius: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 
   .admin-panel h2 {
