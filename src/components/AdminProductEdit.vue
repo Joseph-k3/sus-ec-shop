@@ -662,22 +662,16 @@ const initProductSwipers = () => {
           modules: [Navigation, Pagination],
           loop: true,
           navigation: {
-            nextEl: '.swiper-button-next',
-            prevEl: '.swiper-button-prev',
+            nextEl: `.product-swiper-${product.id} .swiper-button-next`,
+            prevEl: `.product-swiper-${product.id} .swiper-button-prev`,
           },
           pagination: {
-            el: '.swiper-pagination',
+            el: `.product-swiper-${product.id} .swiper-pagination`,
             clickable: true,
             type: 'bullets',
           },
           slidesPerView: 1,
           spaceBetween: 0,
-          allowTouchMove: false,
-          simulateTouch: false,
-          touchRatio: 0,
-          preventInteractionOnTransition: true,
-          noSwiping: true,
-          noSwipingClass: 'swiper-slide',
         })
       }
     }
@@ -1835,6 +1829,61 @@ onMounted(() => {
   box-sizing: border-box !important;
 }
 
+/* Swiperスタイルの追加 */
+.swiper-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.swiper-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.swiper-slide {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+}
+
+.swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: white !important;
+  background: rgba(0, 0, 0, 0.5);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  pointer-events: auto !important;
+  z-index: 10;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 20px;
+}
+
+.swiper-pagination {
+  pointer-events: auto !important;
+  z-index: 10;
+}
+
+.swiper-pagination-bullet {
+  background: white;
+  opacity: 0.7;
+  pointer-events: auto !important;
+}
+
 .admin-panel h3 {
   text-align: center;
   color: #2c5f2d;
@@ -1857,6 +1906,25 @@ onMounted(() => {
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+}
+
+.product-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #f8f9fa;
+}
+
+.product-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {

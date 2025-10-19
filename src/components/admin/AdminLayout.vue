@@ -139,7 +139,7 @@ const handleNavClick = (event) => {
 }
 
 .admin-content {
-  padding: 1rem 2rem 2rem 2rem;
+  padding: 2rem 2rem 2rem 2rem;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -213,7 +213,7 @@ const handleNavClick = (event) => {
   }
   
   .admin-content {
-    padding: 0.5rem !important;
+    padding: 1rem 0.5rem 0.5rem 0.5rem !important;
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -240,7 +240,7 @@ const handleNavClick = (event) => {
   }
 
   .admin-content {
-    padding: 0.5rem !important;
+    padding: 1rem 0.5rem 0.5rem 0.5rem !important;
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
