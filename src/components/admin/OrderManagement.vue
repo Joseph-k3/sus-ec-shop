@@ -1456,14 +1456,14 @@ watch(() => route.path, (newPath) => {
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
   .order-management {
-    margin: 0 !important;
+    margin: 0.5rem !important;
     padding: 0.5rem !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    border-radius: 0 !important;
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    border-radius: 8px !important;
     overflow-x: hidden !important;
-    background: transparent !important;
-    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
   }
 
   .order-management h2 {

@@ -82,6 +82,9 @@ const handleNavClick = (event) => {
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .admin-header h1 {
@@ -136,7 +139,7 @@ const handleNavClick = (event) => {
 }
 
 .admin-content {
-  padding: 2rem;
+  padding: 1rem 2rem 2rem 2rem;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -210,7 +213,7 @@ const handleNavClick = (event) => {
   }
   
   .admin-content {
-    padding: 0 !important;
+    padding: 0.5rem !important;
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -237,7 +240,7 @@ const handleNavClick = (event) => {
   }
 
   .admin-content {
-    padding: 0 !important;
+    padding: 0.5rem !important;
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;

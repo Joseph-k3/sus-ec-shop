@@ -1714,11 +1714,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000;
   pointer-events: auto !important;
   cursor: pointer !important;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .video-thumbnail-main * {
@@ -1780,7 +1780,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000;
   pointer-events: none;
   z-index: 1;
 }
@@ -1861,11 +1861,11 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .admin-panel {
-    margin: 0 !important;
+    margin: 0.5rem !important;
     padding: 1rem !important;
-    border-radius: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
+    border-radius: 8px !important;
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
   }
 
   .admin-panel h2 {
@@ -2207,87 +2207,6 @@ onMounted(() => {
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
-  }
-}
-
-/* スマホ表示では1列 */
-@media (max-width: 768px) {
-  .admin-panel {
-    margin: 0 !important;
-    padding: 1rem !important;
-    border-radius: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-
-  .admin-panel h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .admin-panel h3 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-  }
-
-  .edit-form {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .form-group {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-
-  .form-group label {
-    text-align: left;
-  }
-
-  .product-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1rem;
-    padding: 0.5rem;
-  }
-
-  .products-list {
-    padding: 1rem;
-       margin-top: 1rem;
-  }
-
-  .product-image-container {
-    height: 200px;
-  }
-
-  .product-details {
-    padding: 1rem;
-  }
-
-  .product-details h4 {
-    font-size: 1rem;
-  }
-
-  .product-details .price {
-    font-size: 1.1rem;
-  }
-
-  .product-actions {
-    flex-direction: column;
-  }
-
-  .btn-edit,
-  .btn-delete {
-    width: 100%;
-  }
-
-  .play-icon-overlay-main {
-    width: 60px;
-    height: 60px;
-  }
-
-  .play-icon-overlay-main svg {
-    width: 36px;
-    height: 36px;
   }
 }
 
