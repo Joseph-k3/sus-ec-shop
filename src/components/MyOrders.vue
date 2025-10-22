@@ -222,7 +222,7 @@ import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
 import getPublicImageUrl from '../lib/imageUtils.js'
 import { getOrCreateCustomerId, fetchCustomerOrders } from '../lib/customer.js'
-import { sendPaymentConfirmationEmail } from '../lib/postmark.js' // メール送信機能を有効化
+import { sendPaymentConfirmationEmail } from '../lib/mailgun.js' // Mailgunを使用したメール送信
 import { getShippingRegion, calculateShippingFee as getShippingFee, extractShippingInfoFromAddress } from '../lib/shipping.js' // 送料計算機能
 
 const router = useRouter()

@@ -215,7 +215,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customerUtils'
-import { sendCartOrderEmail } from '../lib/postmark' // メール送信機能を有効化
+import { sendCartOrderEmail } from '../lib/mailgun' // Mailgunを使用したメール送信
 import { useAddressLookup } from '../composables/useAddressLookup'
 import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
 
