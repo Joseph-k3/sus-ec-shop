@@ -140,7 +140,7 @@ const handleNavClick = (event) => {
 
 .admin-content {
   padding: 2rem 2rem 2rem 2rem;
-  padding-top: 1rem; /* ヘッダーがstickyなので、少し余白を追加 */
+  padding-top: 1.5rem; /* PCでヘッダーがstickyなので、適切な余白を追加 */
   position: relative;
   z-index: 1;
   width: 100%;
@@ -174,7 +174,7 @@ const handleNavClick = (event) => {
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
-    min-height: 140px; /* スマホでのヘッダー最小高さを保証 */
+    min-height: 180px; /* スマホでのヘッダー最小高さを保証 */
   }
 
   .admin-header h1 {
@@ -186,6 +186,7 @@ const handleNavClick = (event) => {
     flex-direction: column;
     gap: 0.75rem;
     width: 100%;
+    padding-bottom: 0.5rem; /* ナビゲーション下部に余白追加 */
   }
 
   .nav-link {
@@ -216,7 +217,7 @@ const handleNavClick = (event) => {
   
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
-    padding-top: 3rem !important; /* スマホでのヘッダー下余白を十分確保 */
+    padding-top: 4rem !important; /* メインヘッダー(80px)+Adminヘッダー(180px)を考慮 */
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -244,7 +245,7 @@ const handleNavClick = (event) => {
 
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
-    padding-top: 3.5rem !important; /* 小さなスマホでのヘッダー下余白をさらに確保 */
+    padding-top: 4.5rem !important; /* メインヘッダー+Adminヘッダーを考慮し、小さなスマホで十分な余白確保 */
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
