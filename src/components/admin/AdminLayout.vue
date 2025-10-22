@@ -1,6 +1,7 @@
 <template>
   <div class="admin-layout">
-    <header class="admin-header">
+    <!-- AdminLayout.vueのヘッダーを非表示（メインのHeader.vueを使用） -->
+    <!-- <header class="admin-header">
       <h1>管理画面</h1>
       <nav class="admin-nav">
         <router-link to="/admin/orders" class="nav-link" @click="handleNavClick">
@@ -16,7 +17,7 @@
           ストアへ戻る
         </router-link>
       </nav>
-    </header>
+    </header> -->
 
     <main class="admin-content">
       <router-view></router-view>
@@ -140,7 +141,7 @@ const handleNavClick = (event) => {
 
 .admin-content {
   padding: 2rem 2rem 2rem 2rem;
-  padding-top: 1.5rem; /* PCでヘッダーがstickyなので、適切な余白を追加 */
+  padding-top: 100px; /* メインのHeader.vue(80px)分の余白を確保 */
   position: relative;
   z-index: 1;
   width: 100%;
@@ -217,7 +218,7 @@ const handleNavClick = (event) => {
   
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
-    padding-top: 4rem !important; /* メインヘッダー(80px)+Adminヘッダー(180px)を考慮 */
+    padding-top: 120px !important; /* メインのHeader.vue(80px)分の余白を確保（スマホ） */
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -245,7 +246,7 @@ const handleNavClick = (event) => {
 
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
-    padding-top: 4.5rem !important; /* メインヘッダー+Adminヘッダーを考慮し、小さなスマホで十分な余白確保 */
+    padding-top: 130px !important; /* メインのHeader.vue(80px)分の余白を確保（小さなスマホ） */
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
