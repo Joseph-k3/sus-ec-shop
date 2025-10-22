@@ -140,6 +140,7 @@ const handleNavClick = (event) => {
 
 .admin-content {
   padding: 2rem 2rem 2rem 2rem;
+  padding-top: 1rem; /* ヘッダーがstickyなので、少し余白を追加 */
   position: relative;
   z-index: 1;
   width: 100%;
@@ -173,6 +174,7 @@ const handleNavClick = (event) => {
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
+    min-height: 140px; /* スマホでのヘッダー最小高さを保証 */
   }
 
   .admin-header h1 {
@@ -214,6 +216,7 @@ const handleNavClick = (event) => {
   
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
+    padding-top: 3rem !important; /* スマホでのヘッダー下余白を十分確保 */
     margin: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -241,6 +244,7 @@ const handleNavClick = (event) => {
 
   .admin-content {
     padding: 1rem 0.5rem 0.5rem 0.5rem !important;
+    padding-top: 3.5rem !important; /* 小さなスマホでのヘッダー下余白をさらに確保 */
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;

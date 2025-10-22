@@ -316,22 +316,93 @@ const initProductSwipers = () => {
     if (product.images && product.images.length > 1) {
       const swiperEl = document.querySelector(`.product-swiper[data-product-id="${product.id}"]`)
       if (swiperEl && !swiperEl.swiper) {
-        new Swiper(swiperEl, {
-          modules: [Navigation, Pagination],
-          slidesPerView: 1,
-          loop: true,
-          navigation: {
-            nextEl: swiperEl.querySelector('.product-swiper-next'),
-            prevEl: swiperEl.querySelector('.product-swiper-prev'),
-          },
-          pagination: {
-            el: swiperEl.querySelector('.product-swiper-pagination'),
-            clickable: true,
-          },
-          // タッチ操作を有効化
-          touchRatio: 1,
-          simulateTouch: true,
-          grabCursor: true,
+        console.log(`Initializing Swiper for product ${product.id}`)
+        
+        // 画像の読み込みを待つ
+        const images = swiperEl.querySelectorAll('img')
+        const imagePromises = Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve()
+          return new Promise(resolve => {
+            img.onload = resolve
+            img.onerror = resolve
+          })
+        })
+        
+        Promise.all(imagePromises).then(() => {
+          // 既存のSwiperインスタンスがある場合は削除
+          if (swiperEl.swiper) {
+            console.log(`[ProductList] Destroying existing Swiper for product ${product.id}`)
+            swiperEl.swiper.destroy(true, true)
+          }
+          
+          // ナビゲーションボタンの存在を確認
+          const nextEl = swiperEl.querySelector('.product-swiper-next')
+          const prevEl = swiperEl.querySelector('.product-swiper-prev')
+          const paginationEl = swiperEl.querySelector('.product-swiper-pagination')
+          
+          console.log(`[ProductList] Navigation elements for product ${product.id}:`, { nextEl, prevEl, paginationEl })
+          
+          const swiperInstance = new Swiper(swiperEl, {
+            modules: [Navigation, Pagination],
+            slidesPerView: 1,
+            loop: product.images.length > 2, // 3枚以上の場合のみループ
+            navigation: {
+              nextEl: nextEl,
+              prevEl: prevEl,
+            },
+            pagination: {
+              el: paginationEl,
+              clickable: true,
+            },
+            // タッチ操作を有効化
+            touchRatio: 1,
+            simulateTouch: true,
+            grabCursor: true,
+            // Swiperの自動高さ調整
+            autoHeight: false,
+            // スライド切り替え時の処理
+            on: {
+              init: function() {
+                console.log(`[ProductList] Swiper initialized for product ${product.id}, slides count: ${this.slides.length}`)
+                // 初期化後に画像の可視性を確認・修正
+                this.slides.forEach((slide, index) => {
+                  const img = slide.querySelector('img')
+                  if (img) {
+                    img.style.display = 'block'
+                    img.style.visibility = 'visible'
+                    img.style.opacity = '1'
+                    console.log(`[ProductList] Image ${index} visibility reset for product ${product.id}`)
+                  }
+                })
+                this.update()
+              },
+              slideChange: function() {
+                console.log(`[ProductList] Slide changed for product ${product.id}, current index: ${this.activeIndex}, real index: ${this.realIndex}`)
+                // スライド変更時に現在の画像の可視性を確認・修正
+                const activeSlide = this.slides[this.activeIndex]
+                if (activeSlide) {
+                  const img = activeSlide.querySelector('img')
+                  if (img) {
+                    img.style.display = 'block'
+                    img.style.visibility = 'visible'
+                    img.style.opacity = '1'
+                    console.log(`[ProductList] Active slide image visibility reset for product ${product.id}`)
+                  }
+                }
+                this.update()
+              }
+            }
+          })
+          
+          console.log(`[ProductList] Swiper instance created for product ${product.id}:`, swiperInstance)
+          
+          // 初期化後に強制的にupdate
+          setTimeout(() => {
+            swiperInstance.update()
+            console.log(`[ProductList] Forced update executed for product ${product.id}`)
+          }, 100)
+        }).catch(error => {
+          console.error(`[ProductList] Error initializing Swiper for product ${product.id}:`, error)
         })
       }
     }
@@ -575,6 +646,7 @@ const closeVideoModal = () => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  padding-top: 100px; /* ヘッダー(80px)分の余白 + 追加マージン */
   box-sizing: border-box;
   min-height: 100vh;
   position: relative;
@@ -1267,6 +1339,7 @@ div[class~="admin-grid"] {
   position: relative;
   width: 100%;
   height: 290px;
+  background-color: #f8f9fa; /* デフォルト背景 */
 }
 
 .product-swiper {
@@ -1274,13 +1347,25 @@ div[class~="admin-grid"] {
   height: 100%;
   border-radius: 8px;
   overflow: hidden;
+  background-color: #f8f9fa; /* 画像読み込み中の背景 */
 }
 
 .product-swiper .swiper-slide {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  background-color: #f8f9fa; /* スライドの背景 */
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.product-swiper .swiper-slide img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .product-swiper .product-image {
@@ -1288,6 +1373,7 @@ div[class~="admin-grid"] {
   height: 100%;
   object-fit: contain;
   background-color: #f8f9fa;
+  display: block; /* 確実に表示 */
 }
 
 /* 商品カード用矢印ボタン */
@@ -1299,13 +1385,17 @@ div[class~="admin-grid"] {
   width: 30px !important;
   height: 30px !important;
   margin-top: -15px !important;
-  opacity: 0 !important;
+  opacity: 0.7 !important; /* 常に表示（半透明） */
   transition: all 0.3s ease !important;
+  z-index: 10 !important;
+  pointer-events: auto !important;
 }
 
-.product-swiper-container:hover .product-swiper-next,
-.product-swiper-container:hover .product-swiper-prev {
+.product-swiper-next:hover,
+.product-swiper-prev:hover {
   opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  transform: scale(1.1) !important;
 }
 
 .product-swiper-next:after,
@@ -1373,6 +1463,7 @@ div[class~="admin-grid"] {
 
   .product-list-container {
     padding: 0.5rem;
+    padding-top: 120px !important; /* スマホでヘッダー分の余白を十分確保 */
     margin: 0 auto;
     width: 100%;
     max-width: 100%;
@@ -1440,6 +1531,7 @@ div[class~="admin-grid"] {
   
   .product-list-container {
     padding: 0.25rem;
+    padding-top: 130px !important; /* 小さなスマホでヘッダー分の余白を十分確保 */
   }
   
   .controls-section {

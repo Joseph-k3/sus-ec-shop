@@ -410,13 +410,14 @@
                   <div class="swiper-wrapper">
                     <div 
                       v-for="(image, index) in product.images" 
-                      :key="index"
+                      :key="image.id || index"
                       class="swiper-slide"
                     >
                       <img 
                         :src="getPublicImageUrl(image.image_url)" 
                         :alt="`${product.name} ${index + 1}`"
                         class="product-image"
+                        @error="handleImageError"
                       >
                     </div>
                   </div>
@@ -429,7 +430,7 @@
               </div>
               <!-- 単一画像の場合 -->
               <div v-else class="single-image-container">
-                <img :src="getPublicImageUrl(product.image)" :alt="product.name" class="product-image">
+                <img :src="product.image" :alt="product.name" class="product-image" @error="handleImageError">
               </div>
             </template>
             
@@ -567,6 +568,12 @@ const currentProduct = ref({
   image: ''
 })
 
+// 画像エラーハンドラー
+const handleImageError = (event) => {
+  console.error('画像読み込みエラー:', event.target.src)
+  event.target.style.display = 'none'
+}
+
 // 商品一覧を取得
 const loadProducts = async () => {
   
@@ -609,15 +616,19 @@ const loadProducts = async () => {
           if (!imageError && productImages && productImages.length > 0) {
             // プライマリ画像があればそれを使用、なければ最初の画像
             const primaryImage = productImages.find(img => img.is_primary) || productImages[0]
-            displayImage = primaryImage.image_url
-            images = productImages // 画像配列を保存
+            displayImage = getPublicImageUrl(primaryImage.image_url)
+            // 画像配列を保存（URLを変換）
+            images = productImages.map(img => ({
+              ...img,
+              image_url: getPublicImageUrl(img.image_url)
+            }))
           } else {
             // product_imagesになければ、succulents.imageを使用
             if (product.image) {
-              displayImage = product.image
+              displayImage = getPublicImageUrl(product.image)
               // 単一画像の場合も配列形式で保存
               images = [{
-                image_url: product.image,
+                image_url: getPublicImageUrl(product.image),
                 is_primary: true,
                 display_order: 0
               }]
@@ -643,10 +654,9 @@ const loadProducts = async () => {
     
     products.value = productsWithImages
     
-    // Swiper初期化（DOMが更新された後に実行）
-    nextTick(() => {
-      initProductSwipers()
-    })
+    // DOM更新後にSwiperを初期化
+    await nextTick()
+    initProductSwipers()
     
   } catch (error) {
     console.error('❌ 商品読み込み時にエラーが発生しました:', error)
@@ -656,25 +666,116 @@ const loadProducts = async () => {
 
 // 商品一覧のSwiper初期化
 const initProductSwipers = () => {
+  console.log('[Admin] Starting Swiper initialization for all products')
   products.value.forEach((product) => {
+    console.log(`[Admin] Checking product ${product.id}, images:`, product.images)
     if (product.images && product.images.length > 1) {
       const swiperEl = document.querySelector(`.product-swiper[data-product-id="${product.id}"]`)
-      if (swiperEl && !swiperEl.swiper) {
-        new Swiper(swiperEl, {
-          modules: [Navigation, Pagination],
-          slidesPerView: 1,
-          loop: true,
-          navigation: {
-            nextEl: swiperEl.querySelector('.product-swiper-next'),
-            prevEl: swiperEl.querySelector('.product-swiper-prev'),
-          },
-          pagination: {
-            el: swiperEl.querySelector('.product-swiper-pagination'),
-            clickable: true,
-          },
-          touchRatio: 1,
-          simulateTouch: true,
-          grabCursor: true,
+      console.log(`[Admin] Swiper element found for product ${product.id}:`, swiperEl)
+      if (swiperEl) {
+        // 既存のSwiperインスタンスを破棄
+        if (swiperEl.swiper) {
+          console.log(`[Admin] Destroying existing Swiper for product ${product.id}`)
+          swiperEl.swiper.destroy(true, true)
+        }
+        
+        console.log(`[Admin] Initializing new Swiper for product ${product.id}`)
+        
+        // 画像の読み込みを待つ
+        const images = swiperEl.querySelectorAll('img')
+        console.log(`[Admin] Found ${images.length} images in swiper for product ${product.id}`)
+        images.forEach((img, index) => {
+          console.log(`[Admin] Image ${index} src:`, img.src)
+        })
+        
+        const imagePromises = Array.from(images).map((img, index) => {
+          if (img.complete) {
+            console.log(`[Admin] Image ${index} already loaded for product ${product.id}`)
+            return Promise.resolve()
+          }
+          return new Promise(resolve => {
+            const originalSrc = img.src
+            console.log(`[Admin] Waiting for image ${index} to load for product ${product.id}: ${originalSrc}`)
+            
+            img.onload = () => {
+              console.log(`[Admin] Image ${index} loaded successfully for product ${product.id}`)
+              resolve()
+            }
+            img.onerror = () => {
+              console.warn(`[Admin] Image ${index} failed to load for product ${product.id}: ${originalSrc}`)
+              resolve() // 失敗してもSwiper初期化は続行
+            }
+          })
+        })
+        
+        Promise.all(imagePromises).then(() => {
+          // ナビゲーションボタンの存在を確認
+          const nextEl = swiperEl.querySelector('.product-swiper-next')
+          const prevEl = swiperEl.querySelector('.product-swiper-prev')
+          const paginationEl = swiperEl.querySelector('.product-swiper-pagination')
+          
+          console.log(`[Admin] Navigation elements for product ${product.id}:`, { nextEl, prevEl, paginationEl })
+          
+          const swiperInstance = new Swiper(swiperEl, {
+            modules: [Navigation, Pagination],
+            slidesPerView: 1,
+            loop: product.images.length > 2, // 3枚以上の場合のみループ
+            navigation: {
+              nextEl: nextEl,
+              prevEl: prevEl,
+            },
+            pagination: {
+              el: paginationEl,
+              clickable: true,
+            },
+            touchRatio: 1,
+            simulateTouch: true,
+            grabCursor: true,
+            // Swiperの自動高さ調整
+            autoHeight: false,
+            // スライド切り替え時の処理
+            on: {
+              init: function() {
+                console.log(`[Admin] Swiper initialized for product ${product.id}, slides count: ${this.slides.length}`)
+                // 初期化後に画像の可視性を確認・修正
+                this.slides.forEach((slide, index) => {
+                  const img = slide.querySelector('img')
+                  if (img) {
+                    img.style.display = 'block'
+                    img.style.visibility = 'visible'
+                    img.style.opacity = '1'
+                    console.log(`[Admin] Image ${index} visibility reset for product ${product.id}`)
+                  }
+                })
+                this.update()
+              },
+              slideChange: function() {
+                console.log(`[Admin] Slide changed for product ${product.id}, current index: ${this.activeIndex}, real index: ${this.realIndex}`)
+                // スライド変更時に現在の画像の可視性を確認・修正
+                const activeSlide = this.slides[this.activeIndex]
+                if (activeSlide) {
+                  const img = activeSlide.querySelector('img')
+                  if (img) {
+                    img.style.display = 'block'
+                    img.style.visibility = 'visible'
+                    img.style.opacity = '1'
+                    console.log(`[Admin] Active slide image visibility reset for product ${product.id}`)
+                  }
+                }
+                this.update()
+              }
+            }
+          })
+          
+          console.log(`[Admin] Swiper instance created for product ${product.id}:`, swiperInstance)
+          
+          // 初期化後に強制的にupdate
+          setTimeout(() => {
+            swiperInstance.update()
+            console.log(`[Admin] Forced update executed for product ${product.id}`)
+          }, 100)
+        }).catch(error => {
+          console.error(`[Admin] Error initializing Swiper for product ${product.id}:`, error)
         })
       }
     }
@@ -1667,6 +1768,7 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  padding-top: 100px; /* ヘッダー(80px)分の余白 + 追加マージン */
   background: rgba(255, 255, 255, 0.95);
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -1836,7 +1938,8 @@ onMounted(() => {
 .product-swiper-container {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 269px; /* 明示的に高さを設定 */
+  background-color: #f8f9fa; /* デフォルト背景 */
 }
 
 .product-swiper {
@@ -1844,20 +1947,32 @@ onMounted(() => {
   height: 100%;
   border-radius: 0;
   overflow: hidden;
+  background-color: #f8f9fa; /* 画像読み込み中の背景 */
 }
 
 .product-swiper .swiper-slide {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
+  background-color: #f8f9fa;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.product-swiper .swiper-slide img {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .product-swiper .product-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* containに変更して画像全体を表示 */
   background-color: #f8f9fa;
-  display: block;
+  display: block; /* 確実に表示 */
 }
 
 /* 商品カード用矢印ボタン */
@@ -1869,15 +1984,17 @@ onMounted(() => {
   width: 30px !important;
   height: 30px !important;
   margin-top: -15px !important;
-  opacity: 0 !important;
+  opacity: 0.7 !important; /* 常に表示（半透明） */
   transition: all 0.3s ease !important;
   pointer-events: auto !important;
   z-index: 10 !important;
 }
 
-.product-swiper-container:hover .product-swiper-next,
-.product-swiper-container:hover .product-swiper-prev {
+.product-swiper-next:hover,
+.product-swiper-prev:hover {
   opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  transform: scale(1.1) !important;
 }
 
 .product-swiper-next:after,
@@ -1962,6 +2079,7 @@ onMounted(() => {
   .admin-panel {
     margin: 0 !important;
     padding: 1rem !important;
+    padding-top: 100px !important; /* ヘッダー分の余白を確保 */
     border-radius: 0 !important;
     width: 100vw !important;
     max-width: 100vw !important;
@@ -2331,10 +2449,13 @@ onMounted(() => {
 .product-image-container {
   position: relative;
   width: 100%;
-  height: 250px;
+  height: 269px; /* ProductList.vueと同じ高さに統一 */
   overflow: hidden;
-  background: transparent;
+  background: #f8f9fa; /* 背景色を設定 */
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -2344,7 +2465,7 @@ onMounted(() => {
 .product-image-container img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* containに変更 */
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;

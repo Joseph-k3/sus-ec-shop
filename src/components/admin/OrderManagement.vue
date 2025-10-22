@@ -844,6 +844,7 @@ watch(() => route.path, (newPath) => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  padding-top: 100px; /* ヘッダー(80px)分の余白 + 追加マージン */
   background: rgba(255, 255, 255, 0.95);
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -1458,6 +1459,7 @@ watch(() => route.path, (newPath) => {
   .order-management {
     margin: 0 !important;
     padding: 0.5rem !important;
+    padding-top: 100px !important; /* ヘッダー分の余白を確保 */
     width: 100vw !important;
     max-width: 100vw !important;
     border-radius: 0 !important;
