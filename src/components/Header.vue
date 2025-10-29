@@ -238,7 +238,7 @@ const isAdminRoute = computed(() => {
     align-items: center;
   }
   .nav-links {
-    gap: 0.5rem;
+    gap: 1.2rem; /* FAQとインスタの間を広げる */
     font-size: 0.8rem;
     justify-self: end;
     flex-direction: row;
@@ -246,23 +246,16 @@ const isAdminRoute = computed(() => {
   }
   .faq-combined-link {
     order: 1;
-    margin-right: 0.2em;
+    margin-right: 0.5em; /* インスタとの間に余白 */
     min-width: 32px;
     justify-content: center;
-    padding: 0 0.2em;
-  }
-  .faq-combined-link .faq-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .faq-combined-text {
-    display: none;
+    padding: 0 0.3em;
   }
   .seller-info {
     order: 2;
     flex-direction: row;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.5rem; /* アイコン内の余白も広げる */
     margin-left: 0;
   }
 }
@@ -284,19 +277,20 @@ const isAdminRoute = computed(() => {
     margin-left: 6px;
   }
   .nav-links {
+    gap: 0.8rem; /* FAQとインスタの間を広げる */
     flex-direction: row;
-    gap: 0.3rem;
     align-items: center;
   }
   .faq-combined-link {
     min-width: 28px;
-    padding: 0 0.1em;
-    margin-right: 0.1em;
+    padding: 0 0.2em;
+    margin-right: 0.4em; /* インスタとの間に余白 */
     order: 1;
   }
   .seller-info {
     margin-left: 0;
     order: 2;
+    gap: 0.4rem; /* アイコン内の余白も広げる */
   }
 }
 
