@@ -10,6 +10,14 @@
       <nav class="nav-links">
         <!-- 管理者でない場合：通常のナビゲーション -->
         <template v-if="!isAdmin">
+          <router-link to="/faq" class="nav-link faq-combined-link" title="よくある質問">
+            <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span class="faq-combined-text">FAQ（よくある質問）</span>
+          </router-link>
           <a href="https://www.instagram.com/ryo_suke_071210/" target="_blank" class="nav-link seller-info">
             <span class="seller-text">出品者情報はこちら</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -146,9 +154,52 @@ const isAdminRoute = computed(() => {
   transform: scale(1.1);
 }
 
+.faq-icon-link {
+  display: flex;
+  align-items: center;
+  padding: 0 0.2rem;
+  transition: background 0.2s;
+  border-radius: 50%;
+  height: 36px;
+  width: 36px;
+  justify-content: center;
+}
 
+.faq-icon-link:hover {
+  background: #e8f5e9;
+}
 
-/* タブレット用のスタイル */
+.faq-icon {
+  width: 22px;
+  height: 22px;
+  stroke: #2e7d32;
+  fill: none;
+}
+
+.faq-combined-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0 0.5em;
+  border-radius: 20px;
+  transition: background 0.2s, color 0.2s;
+}
+.faq-combined-link:hover {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.faq-combined-link .faq-icon {
+  width: 22px;
+  height: 22px;
+  stroke: #2e7d32;
+  fill: none;
+}
+.faq-combined-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: inherit;
+}
+
 @media (max-width: 1024px) {
   .header-content {
     padding: 1rem 1.5rem;
@@ -199,6 +250,33 @@ const isAdminRoute = computed(() => {
 
   .seller-text {
     font-size: 0.7rem;
+  }
+
+  .faq-text-link {
+    display: none;
+  }
+
+  .faq-icon-link {
+    height: 32px;
+    width: 32px;
+  }
+
+  .faq-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .faq-combined-text {
+    display: none;
+  }
+  .faq-combined-link {
+    padding: 0 0.2em;
+    min-width: 32px;
+    justify-content: center;
+  }
+  .faq-combined-link .faq-icon {
+    width: 20px;
+    height: 20px;
   }
 }
 
