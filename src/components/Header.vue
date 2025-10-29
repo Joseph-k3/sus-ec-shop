@@ -16,7 +16,7 @@
               <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span class="faq-combined-text">FAQ（よくある質問）</span>
+            <span class="faq-combined-text faq-combined-text-responsive">FAQ</span>
           </router-link>
           <a href="https://www.instagram.com/ryo_suke_071210/" target="_blank" class="nav-link seller-info">
             <span class="seller-text">出品者情報はこちら</span>
@@ -200,18 +200,6 @@ const isAdminRoute = computed(() => {
   color: inherit;
 }
 
-@media (max-width: 1024px) {
-  .header-content {
-    padding: 1rem 1.5rem;
-    gap: 1.5rem;
-  }
-  
-  .logo-text {
-    font-size: 1.8rem;
-    margin-left: -60px;
-  }
-}
-
 /* スマートフォン用のスタイル */
 @media (max-width: 768px) {
   .header-content {
@@ -258,6 +246,12 @@ const isAdminRoute = computed(() => {
     gap: 0.5rem; /* アイコン内の余白も広げる */
     margin-left: 0;
   }
+  .faq-combined-text-responsive {
+    display: inline !important;
+  }
+  .faq-combined-text {
+    display: none !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -291,6 +285,12 @@ const isAdminRoute = computed(() => {
     margin-left: 0;
     order: 2;
     gap: 0.4rem; /* アイコン内の余白も広げる */
+  }
+}
+
+@media (min-width: 769px) {
+  .faq-combined-text-responsive {
+    display: none !important;
   }
 }
 
