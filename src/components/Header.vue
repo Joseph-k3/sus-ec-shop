@@ -16,7 +16,7 @@
               <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span class="faq-combined-text faq-combined-text-responsive">FAQ</span>
+            <span class="faq-combined-text faq-combined-text-responsive">よくある質問</span>
           </router-link>
           <a href="https://www.instagram.com/ryo_suke_071210/" target="_blank" class="nav-link seller-info">
             <span class="seller-text">出品者情報はこちら</span>
