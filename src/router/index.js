@@ -99,12 +99,12 @@ const routes = [
     component: CartCheckout,
     beforeEnter: siteAuthGuard
   },
-  {
-    path: '/payment-complete',
-    name: 'payment-complete',
-    component: PaymentComplete,
-    beforeEnter: siteAuthGuard
-  },
+  //{
+   // path: '/payment-complete',
+   // name: 'payment-complete',
+   // component: PaymentComplete,
+   // beforeEnter: siteAuthGuard
+  //},
   {
     path: '/faq',
     name: 'faq',
