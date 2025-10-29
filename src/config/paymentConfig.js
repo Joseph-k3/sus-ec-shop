@@ -1,7 +1,7 @@
 // 決済方法の設定
 export const paymentConfig = {
   // クレジットカード決済の有効/無効
-  creditCardEnabled: false, // 一時的に無効化
+  creditCardEnabled: true, // 一時的に無効化
 
   // 将来的に他の決済方法を追加する場合
   bankTransferEnabled: true,
