@@ -214,14 +214,28 @@ const isAdminRoute = computed(() => {
 
 /* スマートフォン用のスタイル */
 @media (max-width: 768px) {
-  .header {
-    height: 70px;
-  }
-  
   .header-content {
     grid-template-columns: auto 1fr auto;
     gap: 0.8rem;
     padding: 0.5rem 1rem;
+  }
+  .header-left {
+    flex-direction: row;
+    align-items: center;
+    min-width: 40px;
+  }
+  .logo-image {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+  }
+  .logo-text {
+    font-size: 1.2rem;
+    margin-left: 8px;
+    white-space: nowrap;
+    position: static;
+    display: flex;
+    align-items: center;
   }
   .nav-links {
     gap: 0.5rem;
@@ -231,7 +245,7 @@ const isAdminRoute = computed(() => {
     align-items: center;
   }
   .faq-combined-link {
-    order: 0;
+    order: 1;
     margin-right: 0.2em;
     min-width: 32px;
     justify-content: center;
@@ -245,7 +259,7 @@ const isAdminRoute = computed(() => {
     display: none;
   }
   .seller-info {
-    order: 1;
+    order: 2;
     flex-direction: row;
     align-items: center;
     gap: 0.2rem;
@@ -258,6 +272,17 @@ const isAdminRoute = computed(() => {
     grid-template-columns: auto 1fr auto;
     gap: 0.5rem;
   }
+  .header-left {
+    min-width: 35px;
+  }
+  .logo-image {
+    width: 35px;
+    height: 35px;
+  }
+  .logo-text {
+    font-size: 1rem;
+    margin-left: 6px;
+  }
   .nav-links {
     flex-direction: row;
     gap: 0.3rem;
@@ -267,9 +292,11 @@ const isAdminRoute = computed(() => {
     min-width: 28px;
     padding: 0 0.1em;
     margin-right: 0.1em;
+    order: 1;
   }
   .seller-info {
     margin-left: 0;
+    order: 2;
   }
 }
 
