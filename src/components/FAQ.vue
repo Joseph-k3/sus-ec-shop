@@ -149,7 +149,7 @@ const toggle = (i) => {
 @media (max-width: 768px) {
   .faq-container {
     padding: 10px 2vw;
-    margin: 16px 0 0 0;
+    margin: 70px 0 0 0; /* ←ヘッダー分の余白を必ず確保 */
     max-width: 100vw;
     border-radius: 0;
     box-shadow: none;
@@ -181,7 +181,7 @@ const toggle = (i) => {
 @media (max-width: 480px) {
   .faq-container {
     padding: 4px 1vw;
-    margin: 8px 0 0 0;
+    margin: 70px 0 0 0; /* ←ヘッダー分の余白を必ず確保 */
   }
   .faq-title {
     font-size: 1.1rem;
