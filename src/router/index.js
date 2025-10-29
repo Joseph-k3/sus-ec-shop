@@ -7,6 +7,8 @@ import AdminProductEdit from '../components/AdminProductEdit.vue'
 import OrderManagement from '../components/admin/OrderManagement.vue'
 import BankTransferForm from '../components/BankTransferForm.vue'
 import SquarePaymentForm from '../components/SquarePaymentForm.vue'
+import PaymentComplete from '../components/PaymentComplete.vue'
+import FAQ from '../components/FAQ.vue'
 
 import ShoppingCart from '../components/ShoppingCart.vue'
 import CartCheckout from '../components/CartCheckout.vue'
@@ -95,6 +97,18 @@ const routes = [
     path: '/cart-checkout',
     name: 'cart-checkout',
     component: CartCheckout,
+    beforeEnter: siteAuthGuard
+  },
+  {
+    path: '/payment-complete',
+    name: 'payment-complete',
+    component: PaymentComplete,
+    beforeEnter: siteAuthGuard
+  },
+  {
+    path: '/faq',
+    name: 'faq',
+    component: FAQ,
     beforeEnter: siteAuthGuard
   }
 ]
