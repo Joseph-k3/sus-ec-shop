@@ -145,4 +145,63 @@ const toggle = (i) => {
   border-radius: 6px;
   padding: 12px;
 }
+
+@media (max-width: 768px) {
+  .faq-container {
+    padding: 10px 2vw;
+    margin: 16px 0 0 0;
+    max-width: 100vw;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .faq-title {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+  .faq-home-link {
+    font-size: 0.95rem;
+    padding: 5px 10px;
+    margin-bottom: 12px;
+  }
+  .faq-list {
+    gap: 10px;
+  }
+  .faq-item {
+    padding-bottom: 8px;
+  }
+  .faq-question {
+    font-size: 1rem;
+    padding: 6px 0;
+  }
+  .faq-answer {
+    font-size: 0.95rem;
+    padding: 10px;
+  }
+}
+@media (max-width: 480px) {
+  .faq-container {
+    padding: 4px 1vw;
+    margin: 8px 0 0 0;
+  }
+  .faq-title {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+  }
+  .faq-home-link {
+    font-size: 0.9rem;
+    padding: 4px 6px;
+    margin-bottom: 8px;
+  }
+  .faq-list {
+    gap: 6px;
+  }
+  .faq-question {
+    font-size: 0.95rem;
+    padding: 4px 0;
+  }
+  .faq-answer {
+    font-size: 0.9rem;
+    padding: 7px;
+  }
+}
 </style>

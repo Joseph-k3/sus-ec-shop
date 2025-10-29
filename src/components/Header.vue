@@ -219,64 +219,57 @@ const isAdminRoute = computed(() => {
   }
   
   .header-content {
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: auto 1fr auto;
     gap: 0.8rem;
     padding: 0.5rem 1rem;
   }
-
-  .logo-image {
-    width: 40px;
-    height: 40px;
-  }
-
-  .logo-text {
-    display: flex;
-    font-size: 1.4rem;
-    margin-left: 0;
-    white-space: nowrap;
-  }
-
   .nav-links {
     gap: 0.5rem;
     font-size: 0.8rem;
     justify-self: end;
-  }
-
-  .seller-info {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.2rem;
-  }
-
-  .seller-text {
-    font-size: 0.7rem;
-  }
-
-  .faq-text-link {
-    display: none;
-  }
-
-  .faq-icon-link {
-    height: 32px;
-    width: 32px;
-  }
-
-  .faq-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .faq-combined-text {
-    display: none;
   }
   .faq-combined-link {
-    padding: 0 0.2em;
+    order: 0;
+    margin-right: 0.2em;
     min-width: 32px;
     justify-content: center;
+    padding: 0 0.2em;
   }
   .faq-combined-link .faq-icon {
     width: 20px;
     height: 20px;
+  }
+  .faq-combined-text {
+    display: none;
+  }
+  .seller-info {
+    order: 1;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
+  }
+  .nav-links {
+    flex-direction: row;
+    gap: 0.3rem;
+    align-items: center;
+  }
+  .faq-combined-link {
+    min-width: 28px;
+    padding: 0 0.1em;
+    margin-right: 0.1em;
+  }
+  .seller-info {
+    margin-left: 0;
   }
 }
 
