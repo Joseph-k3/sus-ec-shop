@@ -10,13 +10,13 @@
       <nav class="nav-links">
         <!-- 管理者でない場合：通常のナビゲーション -->
         <template v-if="!isAdmin">
-          <router-link to="/faq" class="nav-link faq-combined-link" title="よくある質問">
+          <router-link to="/faq" class="nav-link faq-combined-link" title="FAQ（よくある質問）">
             <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span class="faq-combined-text faq-combined-text-responsive">よくある質問</span>
+            <span class="faq-combined-text faq-combined-text-responsive">よくある質問（FAQ）</span>
           </router-link>
           <a href="https://www.instagram.com/ryo_suke_071210/" target="_blank" class="nav-link seller-info">
             <span class="seller-text">出品者情報はこちら</span>
@@ -198,6 +198,11 @@ const isAdminRoute = computed(() => {
   font-size: 1rem;
   font-weight: 500;
   color: inherit;
+  display: inline !important; /* デフォルトで表示 */
+}
+
+.faq-combined-text-responsive {
+  display: none !important; /* デフォルトで非表示 */
 }
 
 /* スマートフォン用のスタイル */
@@ -254,43 +259,12 @@ const isAdminRoute = computed(() => {
   }
 }
 
-@media (max-width: 480px) {
-  .header-content {
-    grid-template-columns: auto 1fr auto;
-    gap: 0.5rem;
-  }
-  .header-left {
-    min-width: 35px;
-  }
-  .logo-image {
-    width: 35px;
-    height: 35px;
-  }
-  .logo-text {
-    font-size: 1rem;
-    margin-left: 6px;
-  }
-  .nav-links {
-    gap: 0.8rem; /* FAQとインスタの間を広げる */
-    flex-direction: row;
-    align-items: center;
-  }
-  .faq-combined-link {
-    min-width: 28px;
-    padding: 0 0.2em;
-    margin-right: 0.4em; /* インスタとの間に余白 */
-    order: 1;
-  }
-  .seller-info {
-    margin-left: 0;
-    order: 2;
-    gap: 0.4rem; /* アイコン内の余白も広げる */
-  }
-}
-
 @media (min-width: 769px) {
   .faq-combined-text-responsive {
     display: none !important;
+  }
+  .faq-combined-text {
+    display: inline !important;
   }
 }
 
