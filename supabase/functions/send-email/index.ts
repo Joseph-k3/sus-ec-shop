@@ -41,7 +41,7 @@ serve(async (req) => {
 
       to, 
       subject: subject.substring(0, 50),
-      recipientType: to.includes('ryosk8er1026@yahoo.co.jp') ? '管理者' : '購入者'
+      recipientType: to.includes('k3.ns.208_b50@icloud.com') ? '管理者' : '購入者'
     })
 
     // メール送信

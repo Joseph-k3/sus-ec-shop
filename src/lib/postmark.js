@@ -148,7 +148,7 @@ export async function sendPaymentConfirmationEmail(order) {
       <div style="background-color: #e8f5e9; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #c8e6c9;">
         <p style="color: #2e7d32; margin: 0;">
           <strong>ご入金の確認が完了いたしました。</strong><br>
-          商品の発送準備を進めさせていただきます。
+          商品の発送作業を進めさせていただきます。
         </p>
       </div>
       
@@ -198,7 +198,7 @@ export async function sendPaymentConfirmationEmail(order) {
       </div>
 
       <p style="margin-top: 2rem;">
-        商品の発送準備をお願いいたします。
+        商品の発送をお願いいたします。
       </p>
     `
   }
@@ -322,7 +322,7 @@ export async function sendCartOrderEmail(orderData) {
       </div>
 
       <p style="margin-top: 2rem;">
-        商品の発送準備をお願いいたします。
+        商品の発送作業をお願いいたします。
       </p>
     `
   }

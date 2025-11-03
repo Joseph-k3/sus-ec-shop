@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [vue()],
   envPrefix: 'VITE_',  // 環境変数のプレフィックスを明示的に設定
   base: '/',
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+    __VUE_OPTIONS_API__: 'true',
+    __VUE_PROD_DEVTOOLS__: 'false'
+  },
   server: {
     proxy: {
       '/api': {

@@ -216,6 +216,30 @@
               >
                 発送完了＆追跡番号送信
               </button>
+              <!-- Square決済かつ決済完了時のみ返金ボタン表示 -->
+              <RefundButton
+                v-if="orderGroup.orders[0].payment_method === 'square' && 
+                      orderGroup.orders[0].status === 'paid' && 
+                      !orderGroup.orders[0].refunded"
+                :orderId="orderGroup.orders[0].id"
+                reason="管理画面からの返金"
+                style="margin-left: 1rem;"
+                @success="handleRefundSuccess"
+                @error="handleRefundError"
+              />
+              <!-- デバッグ情報表示 -->
+              <small v-if="orderGroup.orders[0].payment_method === 'square' && 
+                           orderGroup.orders[0].status === 'paid' && 
+                           !orderGroup.orders[0].square_payment_id" 
+                     style="color: #ff9800; font-size: 0.85rem;">
+                ⚠️ square_payment_id未設定
+              </small>
+              <span v-else-if="orderGroup.orders[0].refunded" class="refunded-badge">
+                返金済み
+                <small v-if="orderGroup.orders[0].refunded_at">
+                  ({{ new Date(orderGroup.orders[0].refunded_at).toLocaleDateString('ja-JP') }})
+                </small>
+              </span>
             </template>
 
             <template v-if="orderGroup.orders[0].status === 'shipped'">
@@ -257,6 +281,7 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../../lib/supabase'
 import getPublicImageUrl from '../../lib/imageUtils.js'
 import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を有効化
+import RefundButton from '../RefundButton.vue'
 
 const route = useRoute()
 const orders = ref([])
@@ -302,6 +327,17 @@ const groupedOrders = computed(() => {
   const processedCartGroups = new Set()
   
   for (const order of filteredOrders.value) {
+    // デバッグ: 特定注文の処理を追跡
+    if (order.order_number === 'ORD1762178272595254') {
+      console.log('🔄 グループ化処理中:', {
+        order_number: order.order_number,
+        status: order.status,
+        payment_method: order.payment_method,
+        square_payment_id: order.square_payment_id,
+        refunded: order.refunded
+      })
+    }
+    
     // カート注文（order_numberがCARTで始まる）の場合
     if (order.order_number && order.order_number.startsWith('CART')) {
       // addressフィールドからカートグループIDを抽出
@@ -418,6 +454,27 @@ const fetchOrders = async () => {
     
     orders.value = ordersWithProductInfo
     
+    // デバッグ: 特定の注文番号を確認
+    console.log(`📦 注文データ取得成功: ${orders.value.length}件`)
+    const targetOrder = orders.value.find(o => o.order_number === 'ORD1762178272595254')
+    if (targetOrder) {
+      console.log('🎯 対象注文が見つかりました (OrderManagement):', {
+        order_number: targetOrder.order_number,
+        status: targetOrder.status,
+        payment_method: targetOrder.payment_method,
+        square_payment_id: targetOrder.square_payment_id,
+        square_order_id: targetOrder.square_order_id,
+        refunded: targetOrder.refunded,
+        paid_at: targetOrder.paid_at,
+        返金ボタン表示可能: targetOrder.payment_method === 'square' && 
+                         targetOrder.status === 'paid' && 
+                         targetOrder.square_payment_id && 
+                         !targetOrder.refunded
+      })
+    } else {
+      console.log('❌ 注文番号 ORD1762178272595254 が見つかりません')
+    }
+    
   } catch (error) {
     console.error('❌ 注文データの取得に失敗しました:', error)
     alert('注文データの取得に失敗しました。\n\nエラー: ' + (error.message || '不明なエラー'))
@@ -445,6 +502,17 @@ const confirmPayment = async (order) => {
     console.error('入金確認処理に失敗しました:', error)
     alert('エラーが発生しました。もう一度お試しください。')
   }
+}
+
+// 返金成功ハンドラー
+const handleRefundSuccess = async (data) => {
+  alert(`✅ 返金処理が完了しました\n\n返金ID: ${data.refundId}\n金額: ¥${data.amount.toLocaleString()}`)
+  await fetchOrders() // 注文リストを更新
+}
+
+// 返金エラーハンドラー
+const handleRefundError = (error) => {
+  alert(`❌ 返金処理に失敗しました\n\nエラー: ${error.message}`)
 }
 
 // 発送完了処理

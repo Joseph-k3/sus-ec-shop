@@ -114,13 +114,137 @@
 
           <div class="form-group">
             <label for="email">メールアドレス <span class="required">*</span></label>
-            <input
-              id="email"
-              v-model="formData.email"
-              type="email"
-              required
-              placeholder="例：example@example.com"
-            >
+            <small class="form-hint" style="display: block; margin-bottom: 0.5rem;">
+              💡 @の前とドメインを別々に入力してください
+            </small>
+            <div class="email-split-input">
+              <input 
+                id="emailLocal"
+                v-model="emailLocalPart" 
+                type="text" 
+                required 
+                placeholder="例: tanaka.taro"
+                @input="updateFullEmail"
+                class="email-local-part"
+              />
+              <span class="email-at">@</span>
+              <select 
+                v-model="emailDomain"
+                @change="updateFullEmail"
+                required
+                class="email-domain-select"
+              >
+                <option value="" disabled>ドメインを選択してください</option>
+                <option value="gmail.com">gmail.com</option>
+                <option value="yahoo.co.jp">yahoo.co.jp</option>
+                <option value="docomo.ne.jp">docomo.ne.jp</option>
+                <option value="ezweb.ne.jp">ezweb.ne.jp</option>
+                <option value="softbank.ne.jp">softbank.ne.jp</option>
+                <option value="icloud.com">icloud.com</option>
+                <option value="outlook.com">outlook.com</option>
+                <option value="outlook.jp">outlook.jp</option>
+                <option value="hotmail.com">hotmail.com</option>
+                <option value="live.jp">live.jp</option>
+                <option value="custom">🔧 その他（手動入力）</option>
+              </select>
+            </div>
+            
+            <!-- カスタムドメイン入力 -->
+            <div v-if="emailDomain === 'custom'" class="custom-domain-input">
+              <input 
+                v-model="customEmailDomain"
+                type="text"
+                placeholder="例: example.com"
+                @input="updateFullEmail"
+                class="custom-domain-field"
+              />
+            </div>
+            
+            <!-- 完成したメールアドレス表示 -->
+            <div v-if="formData.email" class="email-preview">
+              <span class="preview-label">📧 入力されたメールアドレス:</span>
+              <span class="preview-email" :class="{ 
+                'valid': isEmailValid && formData.email && formData.emailConfirm && formData.email === formData.emailConfirm,
+                'invalid': formData.email && formData.emailConfirm && formData.email !== formData.emailConfirm
+              }">{{ formData.email }}</span>
+              <span v-if="formData.email && formData.emailConfirm && formData.email === formData.emailConfirm" class="preview-check">✓</span>
+              <span v-else-if="formData.email && formData.emailConfirm && formData.email !== formData.emailConfirm" class="preview-error">✗</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="emailConfirm">メールアドレス（確認用） <span class="required">*</span></label>
+            <small class="form-hint" style="display: block; margin-bottom: 0.5rem;">
+              💡 上と同じように入力してください
+            </small>
+            <div class="email-split-input">
+              <input 
+                id="emailConfirmLocal"
+                v-model="emailConfirmLocalPart" 
+                type="text" 
+                required 
+                placeholder="例: tanaka.taro"
+                @input="updateFullEmailConfirm"
+                @paste="handleEmailPaste"
+                class="email-local-part"
+              />
+              <span class="email-at">@</span>
+              <select 
+                v-model="emailConfirmDomain"
+                @change="updateFullEmailConfirm"
+                required
+                class="email-domain-select"
+              >
+                <option value="" disabled>ドメインを選択してください</option>
+                <option value="gmail.com">gmail.com</option>
+                <option value="yahoo.co.jp">yahoo.co.jp</option>
+                <option value="docomo.ne.jp">docomo.ne.jp</option>
+                <option value="ezweb.ne.jp">ezweb.ne.jp</option>
+                <option value="softbank.ne.jp">softbank.ne.jp</option>
+                <option value="icloud.com">icloud.com</option>
+                <option value="outlook.com">outlook.com</option>
+                <option value="outlook.jp">outlook.jp</option>
+                <option value="hotmail.com">hotmail.com</option>
+                <option value="live.jp">live.jp</option>
+                <option value="custom">🔧 その他（手動入力）</option>
+              </select>
+            </div>
+            
+            <!-- カスタムドメイン入力（確認用） -->
+            <div v-if="emailConfirmDomain === 'custom'" class="custom-domain-input">
+              <input 
+                v-model="customEmailConfirmDomain"
+                type="text"
+                placeholder="例: example.com"
+                @input="updateFullEmailConfirm"
+                @paste="handleEmailPaste"
+                class="custom-domain-field"
+              />
+            </div>
+            
+            <!-- 完成したメールアドレス表示（確認用） -->
+            <div v-if="formData.emailConfirm" class="email-preview">
+              <span class="preview-label">📧 確認用メールアドレス:</span>
+              <span class="preview-email" :class="{ 
+                'valid': formData.email && formData.emailConfirm && formData.email === formData.emailConfirm,
+                'invalid': formData.emailConfirm && formData.email !== formData.emailConfirm
+              }">{{ formData.emailConfirm }}</span>
+              <span v-if="formData.email && formData.emailConfirm && formData.email === formData.emailConfirm" class="preview-check">✓</span>
+              <span v-else-if="formData.emailConfirm && formData.email !== formData.emailConfirm" class="preview-error">✗</span>
+            </div>
+            
+            <div v-if="emailMismatchError" class="email-error-message">
+              {{ emailMismatchError }}
+            </div>
+            <small v-if="formData.email && formData.emailConfirm && formData.email === formData.emailConfirm" class="success-text">
+              ✓ メールアドレスが一致しました
+            </small>
+            <small v-else-if="formData.email && formData.emailConfirm && formData.email !== formData.emailConfirm" class="error-text">
+              ⚠️ メールアドレスが一致しません
+            </small>
+            <small v-else class="form-hint">
+              確認のため、同じメールアドレスを再度入力してください
+            </small>
           </div>
 
           <div class="form-group">
@@ -133,7 +257,7 @@
                   v-model="formData.zipCode"
                   required
                   placeholder="例：100-0001"
-                  pattern="[0-9]{3}-[0-9]{4}"
+                  pattern="[0-9]{3}-?[0-9]{4}"
                   maxlength="8"
                   inputmode="numeric"
                   @input="formatZipCode"
@@ -389,6 +513,80 @@ const showAddressSuggestion = ref(false)
 const suggestedAddresses = ref([])
 const selectedSuggestionIndex = ref(0)
 
+// メールアドレス関連
+const emailLocalPart = ref('')
+const emailDomain = ref('')
+const customEmailDomain = ref('')
+const emailConfirmLocalPart = ref('')
+const emailConfirmDomain = ref('')
+const customEmailConfirmDomain = ref('')
+const emailMismatchError = ref('')
+
+// メールアドレスを更新
+const updateFullEmail = () => {
+  const domain = emailDomain.value === 'custom' ? customEmailDomain.value : emailDomain.value
+  if (emailLocalPart.value && domain) {
+    formData.value.email = `${emailLocalPart.value}@${domain}`
+  } else {
+    formData.value.email = ''
+  }
+  handleEmailConfirmInput()
+}
+
+// 確認用メールアドレスを更新
+const updateFullEmailConfirm = () => {
+  const domain = emailConfirmDomain.value === 'custom' ? customEmailConfirmDomain.value : emailConfirmDomain.value
+  if (emailConfirmLocalPart.value && domain) {
+    formData.value.emailConfirm = `${emailConfirmLocalPart.value}@${domain}`
+  } else {
+    formData.value.emailConfirm = ''
+  }
+  handleEmailConfirmInput()
+}
+
+const showEmailDomainSuggestions = ref(false)
+const emailDomainSuggestions = ref([])
+const commonEmailDomains = [
+  '@gmail.com',
+  '@yahoo.co.jp',
+  '@docomo.ne.jp',
+  '@ezweb.ne.jp',
+  '@softbank.ne.jp',
+  '@icloud.com',
+  '@outlook.com',
+  '@outlook.jp',
+  '@hotmail.com',
+  '@live.jp'
+]
+
+// メールアドレスのバリデーション
+const isEmailValid = computed(() => {
+  if (!formData.value.email) return false
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailPattern.test(formData.value.email)
+})
+
+// メールアドレス確認欄の入力時の処理
+const handleEmailConfirmInput = () => {
+  emailMismatchError.value = ''
+  
+  // 両方のフィールドに入力がある場合のみチェック
+  if (formData.value.email && formData.value.emailConfirm) {
+    if (formData.value.email !== formData.value.emailConfirm) {
+      emailMismatchError.value = 'メールアドレスが一致しません'
+    }
+  }
+}
+
+// ペースト防止（確認用メールアドレス）
+const handleEmailPaste = (e) => {
+  e.preventDefault()
+  emailMismatchError.value = 'セキュリティのため、メールアドレスはコピー＆ペーストではなく手入力してください'
+  setTimeout(() => {
+    emailMismatchError.value = ''
+  }, 3000)
+}
+
 // プロパティとして商品IDを受け取る
 const props = defineProps({
   id: {
@@ -402,6 +600,7 @@ const formData = ref({
   name: '',
   phone: '',
   email: '',
+  emailConfirm: '',
   zipCode: '',
   address: ''
 })
@@ -783,6 +982,7 @@ const handleSubmit = async (e) => {
     const requiredFields = {
       name: 'お名前',
       email: 'メールアドレス',
+      emailConfirm: 'メールアドレス（確認用）',
       phone: '電話番号',
       zipCode: '郵便番号',
       address: 'ご住所'
@@ -796,6 +996,16 @@ const handleSubmit = async (e) => {
       throw new Error(`以下の項目を入力してください：\n${missingFields.join('\n')}`)
     }
 
+    // メールアドレスの一致チェック
+    if (formData.value.email !== formData.value.emailConfirm) {
+      throw new Error('メールアドレスと確認用メールアドレスが一致しません。\nもう一度ご確認ください。')
+    }
+
+    // メールアドレスの形式チェック
+    if (!isEmailValid.value) {
+      throw new Error('メールアドレスの形式が正しくありません。')
+    }
+
     // 郵便番号の形式チェック（より柔軟に）
     const zipCode = formData.value.zipCode.trim()
     const zipCodePattern = /^[0-9]{3}-?[0-9]{4}$/
@@ -804,7 +1014,13 @@ const handleSubmit = async (e) => {
     }
 
     // 商品データの検証
-    if (!product.value?.id || !product.value?.name || !product.value?.price) {
+    if (!product.value?.id || !product.value?.name || product.value?.price == null) {
+      console.error('商品データが不正:', {
+        id: product.value?.id,
+        name: product.value?.name,
+        price: product.value?.price,
+        productValue: product.value
+      })
       throw new Error('商品情報が不正です。ページを更新してもう一度お試しください。')
     }
 
@@ -1099,6 +1315,8 @@ const backToForm = () => {
   border: 1px solid #dee2e6;
   border-radius: 4px;
   font-size: 1rem;
+  color: #333;
+  background-color: #fff;
 }
 
 .form-hint {
@@ -1334,6 +1552,7 @@ button:disabled {
   flex: 1;
   padding-right: 40px; /* アイコン用のスペース */
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  color: #333;
 }
 
 .input-wrapper input.valid {
@@ -1543,74 +1762,295 @@ button:disabled {
 
 .error-text {
   color: #dc3545;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-/* 送料表示のスタイル */
+/* メールアドレス入力関連のスタイル */
+/* メールアドレス分割入力 */
+.email-split-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.email-local-part {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-at {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #4CAF50;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+}
+
+.email-domain-select {
+  flex: 1.2;
+  min-width: 150px;
+  padding: 0.75rem;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+}
+
+.email-domain-select:hover {
+  border-color: #4CAF50;
+  background: #f0fff4;
+}
+
+.email-domain-select:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+  background: #f0fff4;
+}
+
+.email-domain-select option {
+  padding: 0.5rem;
+  background: white;
+  color: #333;
+  font-size: 1rem;
+}
+
+.email-domain-select option:disabled {
+  color: #999;
+  font-style: italic;
+}
+
+.custom-domain-input {
+  margin-top: 0.5rem;
+}
+
+.custom-domain-field {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: #333;
+  background-color: #fffbf0;
+}
+
+.custom-domain-field:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.email-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.preview-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.preview-email {
+  font-size: 1rem;
+  color: #4CAF50;
+  font-weight: 600;
+  flex: 1;
+}
+
+.preview-email.valid {
+  color: #28a745;
+}
+
+.preview-email.invalid {
+  color: #dc3545;
+}
+
+.preview-check {
+  color: #28a745;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.preview-error {
+  color: #dc3545;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.email-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.email-input-wrapper input {
+  flex: 1;
+  padding-right: 2.5rem;
+  color: #333;
+}
+
+.email-input-wrapper input.valid {
+  border-color: #28a745;
+  background-color: #f0fff4;
+}
+
+.email-input-wrapper input.error,
+.email-input-wrapper input.invalid {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.input-checkmark {
+  position: absolute;
+  right: 0.75rem;
+  color: #28a745;
+  font-size: 1.25rem;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.input-error-mark {
+  position: absolute;
+  right: 0.75rem;
+  color: #dc3545;
+  font-size: 1.25rem;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.email-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: -1px;
+}
+
+.email-suggestion-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+  border: none;
+  background: none;
+  width: 100%;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.email-suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+.email-suggestion-item:active {
+  background-color: #e9ecef;
+}
+
+.email-error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.success-text {
+  display: block;
+  margin-top: 0.5rem;
+  color: #28a745;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* 商品情報・送料表示のスタイル */
 .price-breakdown {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .item-price {
-  color: #666;
-  font-size: 0.9rem;
+  color: #333;
+  font-size: 1rem;
   margin: 0;
+  font-weight: 500;
 }
 
 .shipping-fee {
-  color: #666;
-  font-size: 0.9rem;
+  color: #333;
+  font-size: 1rem;
   margin: 0;
+  font-weight: 500;
 }
 
 .total-price {
-  color: #007bff;
-  font-size: 1.2rem;
+  color: #1a1a1a;
+  font-size: 1.3rem;
   font-weight: bold;
   margin: 0;
   padding-top: 0.5rem;
-  border-top: 1px solid #dee2e6;
+  border-top: 2px solid #2c5f2d;
 }
 
-.price-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.shipping-note {
+  color: #555;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
 }
 
 .item-price-small, .shipping-fee-small {
-  color: #666;
-  font-size: 0.8rem;
+  color: #333;
+  font-size: 0.9rem;
   margin: 0;
+  font-weight: 500;
 }
 
 .total-price-small {
-  color: #007bff;
+  color: #1a1a1a;
   font-weight: bold;
-  font-size: 0.9rem;
+  font-size: 1rem;
   margin: 0;
   padding-top: 0.25rem;
   border-top: 1px solid #dee2e6;
 }
 
-.shipping-note {
-  color: #666;
-  font-size: 0.8rem;
-  margin: 0.5rem 0 0 0;
-  font-style: italic;
-}
-
-/* レスポンシブ対応 */
-@media (max-width: 768px) {
-  .suggestion-actions {
-    flex-direction: column;
+@media screen and (max-width: 768px) {
+  .email-suggestions {
+    max-height: 150px;
   }
   
-  .apply-suggestion, .ignore-suggestion {
-    flex: none;
-    width: 100%;
+  .email-suggestion-item {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
   }
 }
 

@@ -1,10 +1,19 @@
 -- 在庫の競合状態（Race Condition）を防ぐためのデータベース制約とトリガー
 -- 2025-01-04作成
 
--- 1. succulentsテーブルに在庫チェック制約を追加
-ALTER TABLE succulents 
-ADD CONSTRAINT check_quantity_non_negative 
-CHECK (quantity >= 0);
+-- 1. succulentsテーブルに在庫チェック制約を追加（既存の場合はスキップ）
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'check_quantity_non_negative'
+    AND conrelid = 'succulents'::regclass
+  ) THEN
+    ALTER TABLE succulents 
+    ADD CONSTRAINT check_quantity_non_negative 
+    CHECK (quantity >= 0);
+  END IF;
+END $$;
 
 -- 2. 在庫減少を安全に行う関数を作成
 CREATE OR REPLACE FUNCTION update_stock_safely(
@@ -94,20 +103,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. ordersテーブルに重複注文防止の制約を追加（既存データとの競合を避けるため条件付き）
+-- 4. ordersテーブルに重複注文防止の制約を追加
+-- 注: 既存データに重複がある場合は追加できないため、新規注文のみに適用
+-- 既存の重複データがある場合はこの制約をスキップします
 DO $$
 BEGIN
-  -- 既に制約が存在するかチェック
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints 
-    WHERE constraint_name = 'unique_customer_product_pending'
-  ) THEN
-    -- 同一顧客が同一商品に対して同時に複数の保留中注文を作成することを防ぐ
+  -- 既存の制約またはインデックスを削除
+  BEGIN
+    ALTER TABLE orders DROP CONSTRAINT IF EXISTS unique_customer_product_pending CASCADE;
+  EXCEPTION
+    WHEN undefined_object THEN NULL;
+  END;
+  
+  -- インデックスとして存在する場合も削除
+  DROP INDEX IF EXISTS unique_customer_product_pending;
+  
+  -- 制約を作成を試みる（失敗しても継続）
+  BEGIN
     ALTER TABLE orders 
     ADD CONSTRAINT unique_customer_product_pending 
     UNIQUE (customer_id, product_id, status)
     DEFERRABLE INITIALLY DEFERRED;
-  END IF;
+    
+    RAISE NOTICE '重複注文防止の制約を追加しました';
+  EXCEPTION
+    WHEN undefined_column THEN 
+      RAISE NOTICE 'customer_id or product_id column does not exist, skipping constraint';
+    WHEN unique_violation THEN
+      RAISE NOTICE '既存データに重複があるため、unique_customer_product_pending制約をスキップしました';
+    WHEN OTHERS THEN
+      RAISE NOTICE '制約の追加に失敗しました: %', SQLERRM;
+  END;
 END $$;
 
 -- 5. 注文作成時の在庫チェックトリガー関数

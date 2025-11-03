@@ -56,7 +56,7 @@
           <!-- カート注文の商品一覧 -->
           <div class="cart-items">
             <div v-for="order in orderGroup.orders" :key="order.id" class="cart-item">
-              <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail-small">
+              <img :src="getOrderThumbnail(order.product_image)" :alt="order.product_name" class="product-thumbnail-small">
               <div class="cart-item-details">
                 <span class="product-name">{{ order.product_name }}</span>
                 <span class="product-price">¥{{ order.price.toLocaleString() }} × {{ order.quantity || 1 }}</span>
@@ -138,7 +138,7 @@
             </span>
           </div>          <div class="product-info">
             <img 
-              :src="orderGroup.orders[0].product_image" 
+              :src="getOrderThumbnail(orderGroup.orders[0].product_image)" 
               :alt="orderGroup.orders[0].product_name"
               class="product-image"
             >
@@ -716,6 +716,18 @@ const shouldShowCartCancelButton = (cartOrders) => {
     firstOrder.status !== 'cancelled' &&
     !firstOrder.payment_confirmed_by_customer
   )
+}
+
+// 画像の拡張子判定とサムネイル変換
+function getOrderThumbnail(imageUrl) {
+  if (!imageUrl) return null
+  const videoExts = ['.mp4', '.webm', '.mov']
+  const isVideo = videoExts.some(ext => imageUrl.toLowerCase().endsWith(ext))
+  if (isVideo) {
+    // 動画の場合はサムネイル画像のパスに変換（例: .mp4 → .jpg）
+    return getPublicImageUrl(imageUrl.replace(/\.(mp4|webm|mov)$/i, '.jpg'))
+  }
+  return getPublicImageUrl(imageUrl)
 }
 
 onMounted(fetchOrders)

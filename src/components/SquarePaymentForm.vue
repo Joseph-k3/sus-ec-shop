@@ -8,7 +8,7 @@
         <div class="order-summary">
           <h3>ご注文商品</h3>
           <div class="product-info">
-            <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail">
+            <img :src="getPublicImageUrl(order.product_image)" :alt="order.product_name" class="product-thumbnail">
             <div>
               <h4>{{ order.product_name }}</h4>
               <p class="price">¥{{ order.price.toLocaleString() }}</p>
@@ -82,7 +82,7 @@
       <div class="order-summary">
         <h3>ご注文内容</h3>
         <div class="product-info">
-          <img :src="order.product_image" :alt="order.product_name" class="product-thumbnail">
+          <img :src="getPublicImageUrl(order.product_image)" :alt="order.product_name" class="product-thumbnail">
           <div>
             <h4>{{ order.product_name }}</h4>
             <p class="price">¥{{ order.price.toLocaleString() }}</p>
@@ -92,8 +92,13 @@
 
       <div class="payment-form">
         <h3>クレジットカード情報入力</h3>
-        <div class="postal-code-notice">
-          <p>📮 <strong>郵便番号について：</strong> 前画面で入力された「{{ order.zip_code }}」が自動で設定されます。変更はできません。</p>
+        <div class="payment-info-message">
+          <p>以下のクレジットカード情報を入力し、決済を実行してください。</p>
+        </div>
+        <!-- 追加: 郵便番号表示欄 -->
+        <div class="custom-zip-code-field">
+          <label for="custom-zip-code"><strong>郵便番号</strong></label>
+          <input id="custom-zip-code" type="text" :value="order.zip_code" readonly style="width:120px; margin-left:8px; font-size:1.1em; background:#f8f9fa; border:1px solid #ccc; border-radius:4px; padding:4px 8px; color:#333;" />
         </div>
         <div v-if="!paymentFormLoaded" class="loading">
           カード決済フォームを読み込み中...
@@ -110,7 +115,8 @@
             <p><strong>🔧 テスト環境での動作確認用カード番号：</strong></p>
             <ul>
               <li><strong>VISA:</strong> 4111 1111 1111 1111</li>
-              <li><strong>Mastercard:</strong> 5555 5555 5555 4444</li>
+              <li><strong>Mastercard:</strong> 5105 1051 0510 5100</li>
+              <li><strong>American Express:</strong> 3714 496353 98431</li>
               <li><strong>有効期限:</strong> 未来の日付（例：12/25）</li>
               <li><strong>CVV:</strong> 任意の3桁（例：123）</li>
             </ul>
@@ -155,6 +161,10 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { initializeSquare, createCardPaymentForm, processPayment } from '../lib/square'
 import { supabase } from '../lib/supabase'
+import { decreaseProductStock } from '../lib/decreaseStock'
+import { getOrCreateCustomerId } from '../lib/customer'
+import { sendPaymentConfirmationEmail } from '../lib/postmark'
+import getPublicImageUrl from '../lib/imageUtils.js'
 
 const props = defineProps({
   order: {
@@ -221,9 +231,19 @@ const initializeSquareForm = async () => {
     const payments = await initializeSquare()
     
     card = await createCardPaymentForm(payments, props.order.zip_code)
-    
     paymentFormLoaded.value = true
-    
+
+    // --- ここからダミー郵便番号自動入力 ---
+    setTimeout(() => {
+      // Squareの郵便番号inputを探してダミー値（7桁）を自動入力
+      const postalInput = document.querySelector('input[placeholder*="ZIP"], input[placeholder*="Postal"], input[name*="postal"], input[name*="zip"]');
+      if (postalInput && postalInput.value.length < 7) {
+        postalInput.value = '1000001'; // 日本の7桁郵便番号形式
+        postalInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }, 500);
+    // --- ここまで ---
+
   } catch (err) {
     console.error('❌ Square決済フォームの初期化に失敗しました:', err)
     console.error('❌ エラー詳細:', err.message)
@@ -304,28 +324,21 @@ const handlePayment = async () => {
     }
 
 
-    // 3. Square APIで決済処理（テスト環境での模擬決済）
-    
+    // 3. Square APIで決済処理
     let paymentResult = null
     try {
-      // processPayment関数を使用してテスト決済を実行（郵便番号付き）
       paymentResult = await processPayment(card, props.order.price, formattedZipCode)
-      
       if (paymentResult.status !== 'success') {
         throw new Error('テスト決済に失敗しました')
       }
-
-      
     } catch (paymentError) {
       console.error('❌ 決済処理エラー:', paymentError)
       console.error('❌ エラースタック:', paymentError.stack)
       throw new Error(`決済処理に失敗しました: ${paymentError.message}`)
     }
 
-    // 4. 決済成功後に注文をDBに保存（30秒重複チェックのトリガーが作動）
-    
-    // 注文データを準備（zip_codeカラムの有無に対応）
-    let orderData = {
+    // 4. 注文データ保存（決済成功後のみ）
+    orderData = {
       order_number: `ORD${Date.now()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
       product_id: props.order.product_id,
       product_name: props.order.product_name,
@@ -335,35 +348,70 @@ const handlePayment = async () => {
       customer_name: props.order.customer_name,
       email: props.order.email,
       phone: props.order.phone,
-      address: `〒${formattedZipCode}\n${props.order.address}`, // フォーマットされた郵便番号を使用
+      address: `〒${formattedZipCode}\n${props.order.address}`,
       payment_method: 'square',
-      status: 'paid' // 決済完了済みステータス
+      status: 'paid',
+      customer_id: getOrCreateCustomerId() // 追加
     }
 
     // zip_codeカラムが存在する場合は別途設定
     try {
-      // テーブル構造を確認
       const { error: schemaError } = await supabase
         .from('orders')
         .select('zip_code')
         .limit(1)
-
       if (!schemaError) {
-        // zip_codeカラムが存在する場合
-        orderData.zip_code = formattedZipCode // フォーマットされた郵便番号を使用
-        orderData.address = props.order.address // 住所も元の形式に戻す
-      } else {
+        orderData.zip_code = formattedZipCode
+        orderData.address = props.order.address
       }
-    } catch (e) {
-    }
+    } catch (e) {}
 
-    
-    const { data: newOrderData, error: orderError } = await supabase
+    // 既存のpaid注文が既に存在しないかチェック（決済後に再度チェック）
+    // const { data: paidOrder, error: paidFindError } = await supabase
+    //   .from('orders')
+    //   .select('*')
+    //   .eq('customer_id', orderData.customer_id)
+    //   .eq('product_id', orderData.product_id)
+    //   .eq('status', 'paid')
+    //   .maybeSingle()
+    // if (paidOrder && !paidFindError) {
+    //   throw new Error('この商品はすでに決済済みです。ご注文履歴をご確認ください。')
+    // }
+    // paid注文があっても新規注文は常に作成できるように修正
+
+    // pending注文があればupdate
+    const { data: existingOrder, error: findError } = await supabase
       .from('orders')
-      .insert([orderData])
-      .select()
-      .single()
-
+      .select('*')
+      .eq('customer_id', orderData.customer_id)
+      .eq('product_id', orderData.product_id)
+      .eq('status', 'pending')
+      .maybeSingle()
+    let newOrderData, orderError
+    if (existingOrder && !findError) {
+      // pending注文をpaidにupdate
+      const { data: updatedOrder, error: updateError } = await supabase
+        .from('orders')
+        .update({
+          ...orderData,
+          status: 'paid',
+          payment_confirmed_at: new Date().toISOString()
+        })
+        .eq('id', existingOrder.id)
+        .select()
+        .single()
+      newOrderData = updatedOrder
+      orderError = updateError
+    } else {
+      // 新規insert
+      const insertResult = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single()
+      newOrderData = insertResult.data
+      orderError = insertResult.error
+    }
     if (orderError) {
       console.error('注文保存エラー:', orderError)
       
@@ -385,7 +433,6 @@ const handlePayment = async () => {
     if (!newOrderData) {
       throw new Error('注文データの取得に失敗しました')
     }
-
     orderData = newOrderData
 
     // 5. 注文ステータスを完了に更新
@@ -403,7 +450,23 @@ const handlePayment = async () => {
     }
 
 
-    // 7. 成功メッセージ表示とリダイレクト
+    // 6. 決済完了後に在庫を減らす
+    try {
+      await decreaseProductStock(props.order.product_id, 1)
+    } catch (stockError) {
+      console.error('在庫減少エラー:', stockError)
+      throw new Error('在庫の更新に失敗しました。管理者にご連絡ください。')
+    }
+
+    // 7. メール送信（購入者・管理者）
+    try {
+      await sendPaymentConfirmationEmail(orderData)
+    } catch (mailError) {
+      console.error('メール送信エラー:', mailError)
+      // メール送信失敗でも注文自体は完了させる
+    }
+
+    // 8. 成功メッセージ表示とリダイレクト
     alert(
       `✅ ご注文が完了しました！\n\n` +
       `注文番号: ${orderData.id}\n` +
@@ -438,27 +501,6 @@ const handlePayment = async () => {
         console.error('クリーンアップエラー:', cleanupError)
       }
     }
-    
-    // 在庫を復元（注文前に在庫を減らしているため）
-    try {
-      const { data: currentStock, error: stockError } = await supabase
-        .from('succulents')
-        .select('quantity')
-        .eq('id', props.order.product_id)
-        .single()
-      
-      if (!stockError && currentStock) {
-        await supabase
-          .from('succulents')
-          .update({ 
-            quantity: currentStock.quantity + 1 
-          })
-          .eq('id', props.order.product_id)
-      }
-    } catch (stockRestoreError) {
-      console.error('在庫復元エラー:', stockRestoreError)
-    }
-    
     error.value = err.message || '決済処理中にエラーが発生しました。もう一度お試しください。'
   } finally {
     // フラグを必ずリセット
@@ -847,20 +889,5 @@ const handlePayment = async () => {
 /* カード情報フィールドの日本語ラベル追加 */
 #card-container {
   position: relative;
-}
-
-#card-container::before {
-  content: "※ 郵便番号は前の画面で入力済みです（〒" attr(data-zip-code) "）\nカード番号、有効期限、セキュリティコードを入力してください";
-  display: block;
-  font-size: 13px;
-  color: #495057;
-  margin-bottom: 15px;
-  padding: 12px 15px;
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-  border-radius: 6px;
-  border-left: 4px solid #2196f3;
-  white-space: pre-line;
-  line-height: 1.4;
-  font-weight: 500;
 }
 </style>

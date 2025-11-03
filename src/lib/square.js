@@ -70,7 +70,6 @@ export async function createCardPaymentForm(payments, zipCode = '') {
     // 少し遅らせてもう一度確認・無効化
     setTimeout(() => {
       disablePostalCodeFields(zipCode)
-      logFormInputs() // デバッグ用
     }, 500)
     
     // さらに遅らせて最終確認
@@ -91,7 +90,6 @@ export async function createCardPaymentForm(payments, zipCode = '') {
     // 少し遅らせてもう一度確認・無効化
     setTimeout(() => {
       disablePostalCodeFields(zipCode)
-      logFormInputs() // デバッグ用
     }, 500)
     
     // さらに遅らせて最終確認

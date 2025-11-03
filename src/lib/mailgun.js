@@ -430,7 +430,7 @@ export async function sendCartOrderEmail(orderData) {
       </div>
 
       <p style="margin-top: 2rem;">
-        商品の発送準備をお願いいたします。
+        商品の発送をお願いいたします。
       </p>
     `
   }

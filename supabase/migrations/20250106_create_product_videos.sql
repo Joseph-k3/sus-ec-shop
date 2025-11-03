@@ -26,6 +26,12 @@ CREATE INDEX IF NOT EXISTS idx_product_videos_primary ON product_videos(product_
 -- RLS (Row Level Security) ポリシー
 ALTER TABLE product_videos ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除してから作成
+DROP POLICY IF EXISTS "Anyone can view product videos" ON product_videos;
+DROP POLICY IF EXISTS "Authenticated users can insert product videos" ON product_videos;
+DROP POLICY IF EXISTS "Authenticated users can update product videos" ON product_videos;
+DROP POLICY IF EXISTS "Authenticated users can delete product videos" ON product_videos;
+
 -- 読み取りポリシー（全員が閲覧可能）
 CREATE POLICY "Anyone can view product videos" ON product_videos
   FOR SELECT USING (TRUE);
@@ -56,6 +62,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_product_videos_updated_at ON product_videos;
 CREATE TRIGGER trigger_update_product_videos_updated_at
   BEFORE UPDATE ON product_videos
   FOR EACH ROW

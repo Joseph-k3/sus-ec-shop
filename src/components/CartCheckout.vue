@@ -46,13 +46,137 @@
 
         <div class="form-group">
           <label for="email">メールアドレス *</label>
-          <input 
-            id="email"
-            v-model="form.email" 
-            type="email" 
-            required 
-            placeholder="example@email.com"
-          />
+          <small class="form-hint" style="display: block; margin-bottom: 0.5rem;">
+            💡 @の前とドメインを別々に入力してください
+          </small>
+          <div class="email-split-input">
+            <input 
+              id="emailLocal"
+              v-model="emailLocalPart" 
+              type="text" 
+              required 
+              placeholder="例: tanaka.taro"
+              @input="updateFullEmail"
+              class="email-local-part"
+            />
+            <span class="email-at">@</span>
+            <select 
+              v-model="emailDomain"
+              @change="updateFullEmail"
+              required
+              class="email-domain-select"
+            >
+              <option value="" disabled>ドメインを選択してください</option>
+              <option value="gmail.com">gmail.com</option>
+              <option value="yahoo.co.jp">yahoo.co.jp</option>
+              <option value="docomo.ne.jp">docomo.ne.jp</option>
+              <option value="ezweb.ne.jp">ezweb.ne.jp</option>
+              <option value="softbank.ne.jp">softbank.ne.jp</option>
+              <option value="icloud.com">icloud.com</option>
+              <option value="outlook.com">outlook.com</option>
+              <option value="outlook.jp">outlook.jp</option>
+              <option value="hotmail.com">hotmail.com</option>
+              <option value="live.jp">live.jp</option>
+              <option value="custom">🔧 その他（手動入力）</option>
+            </select>
+          </div>
+          
+          <!-- カスタムドメイン入力 -->
+          <div v-if="emailDomain === 'custom'" class="custom-domain-input">
+            <input 
+              v-model="customEmailDomain"
+              type="text"
+              placeholder="例: example.com"
+              @input="updateFullEmail"
+              class="custom-domain-field"
+            />
+          </div>
+          
+          <!-- 完成したメールアドレス表示 -->
+          <div v-if="form.email" class="email-preview">
+            <span class="preview-label">📧 入力されたメールアドレス:</span>
+            <span class="preview-email" :class="{ 
+              'valid': isEmailValid && form.email && form.emailConfirm && form.email === form.emailConfirm,
+              'invalid': form.email && form.emailConfirm && form.email !== form.emailConfirm
+            }">{{ form.email }}</span>
+            <span v-if="form.email && form.emailConfirm && form.email === form.emailConfirm" class="preview-check">✓</span>
+            <span v-else-if="form.email && form.emailConfirm && form.email !== form.emailConfirm" class="preview-error">✗</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="emailConfirm">メールアドレス（確認用） *</label>
+          <small class="form-hint" style="display: block; margin-bottom: 0.5rem;">
+            💡 上と同じように入力してください
+          </small>
+          <div class="email-split-input">
+            <input 
+              id="emailConfirmLocal"
+              v-model="emailConfirmLocalPart" 
+              type="text" 
+              required 
+              placeholder="例: tanaka.taro"
+              @input="updateFullEmailConfirm"
+              @paste="handleEmailPaste"
+              class="email-local-part"
+            />
+            <span class="email-at">@</span>
+            <select 
+              v-model="emailConfirmDomain"
+              @change="updateFullEmailConfirm"
+              required
+              class="email-domain-select"
+            >
+              <option value="" disabled>ドメインを選択してください</option>
+              <option value="gmail.com">gmail.com</option>
+              <option value="yahoo.co.jp">yahoo.co.jp</option>
+              <option value="docomo.ne.jp">docomo.ne.jp</option>
+              <option value="ezweb.ne.jp">ezweb.ne.jp</option>
+              <option value="softbank.ne.jp">softbank.ne.jp</option>
+              <option value="icloud.com">icloud.com</option>
+              <option value="outlook.com">outlook.com</option>
+              <option value="outlook.jp">outlook.jp</option>
+              <option value="hotmail.com">hotmail.com</option>
+              <option value="live.jp">live.jp</option>
+              <option value="custom">🔧 その他（手動入力）</option>
+            </select>
+          </div>
+          
+          <!-- カスタムドメイン入力（確認用） -->
+          <div v-if="emailConfirmDomain === 'custom'" class="custom-domain-input">
+            <input 
+              v-model="customEmailConfirmDomain"
+              type="text"
+              placeholder="例: example.com"
+              @input="updateFullEmailConfirm"
+              @paste="handleEmailPaste"
+              class="custom-domain-field"
+            />
+          </div>
+          
+          <!-- 完成したメールアドレス表示（確認用） -->
+          <div v-if="form.emailConfirm" class="email-preview">
+            <span class="preview-label">📧 確認用メールアドレス:</span>
+            <span class="preview-email" :class="{ 
+              'valid': form.email && form.emailConfirm && form.email === form.emailConfirm,
+              'invalid': form.emailConfirm && form.email !== form.emailConfirm
+            }">{{ form.emailConfirm }}</span>
+            <span v-if="form.email && form.emailConfirm && form.email === form.emailConfirm" class="preview-check">✓</span>
+            <span v-else-if="form.emailConfirm && form.email !== form.emailConfirm" class="preview-error">✗</span>
+          </div>
+          
+          <div v-if="emailMismatchError" class="email-error-message">
+            {{ emailMismatchError }}
+          </div>
+          <small v-if="form.email && form.emailConfirm && form.email === form.emailConfirm" class="success-text">
+            ✓ メールアドレスが一致しました
+          </small>
+          <small v-else-if="form.email && form.emailConfirm && form.email !== form.emailConfirm" class="error-text">
+            ⚠️ メールアドレスが一致しません
+          </small>
+          <small v-else class="form-hint">
+            確認のため、同じメールアドレスを再度入力してください
+          </small>
         </div>
 
         <div class="form-group">
@@ -165,20 +289,62 @@
           ></textarea>
         </div>
 
-        <!-- 決済方法（銀行振込固定） -->
+        <!-- 決済方法選択 -->
         <div class="payment-section">
           <h3>💳 お支払い方法</h3>
-          <div class="payment-info-fixed">
-            <div class="payment-option-fixed">
-              <span class="payment-icon">🏦</span>
-              <div class="payment-details">
-                <span class="payment-title">銀行振込</span>
-                <span class="payment-desc">注文確定後、振込先をメールでお知らせします</span>
-              </div>
+          <div class="payment-methods">
+            <!-- Square決済 -->
+            <div 
+              class="payment-option" 
+              :class="{ active: form.paymentMethod === 'square' }"
+              @click="form.paymentMethod = 'square'"
+            >
+              <input 
+                type="radio" 
+                id="payment-square" 
+                value="square" 
+                v-model="form.paymentMethod"
+              />
+              <label for="payment-square">
+                <span class="payment-icon">💳</span>
+                <div class="payment-details">
+                  <span class="payment-title">クレジットカード決済（Square）</span>
+                  <span class="payment-desc">カード情報入力後、即座に決済完了</span>
+                </div>
+              </label>
             </div>
-            <div class="payment-note">
-              <p>※ カートからのご注文は銀行振込のみとなります</p>
+
+            <!-- 銀行振込 -->
+            <div 
+              class="payment-option" 
+              :class="{ active: form.paymentMethod === 'bank_transfer' }"
+              @click="form.paymentMethod = 'bank_transfer'"
+            >
+              <input 
+                type="radio" 
+                id="payment-bank" 
+                value="bank_transfer" 
+                v-model="form.paymentMethod"
+              />
+              <label for="payment-bank">
+                <span class="payment-icon">🏦</span>
+                <div class="payment-details">
+                  <span class="payment-title">銀行振込</span>
+                  <span class="payment-desc">注文確定後、振込先をメールでお知らせします</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 決済方法の説明 -->
+          <div class="payment-note">
+            <div v-if="form.paymentMethod === 'square'">
+              <p>✓ クレジットカードで即座にお支払いいただけます</p>
+              <p>✓ 決済完了後、すぐに発送準備に入ります</p>
+            </div>
+            <div v-else-if="form.paymentMethod === 'bank_transfer'">
               <p>※ お振込確認後に商品を発送いたします</p>
+              <p>※ お支払期限は注文確定から48時間以内です</p>
             </div>
           </div>
         </div>
@@ -210,7 +376,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { supabase } from '../lib/supabase'
@@ -218,6 +384,12 @@ import { getOrCreateCustomerId } from '../lib/customerUtils'
 import { sendCartOrderEmail } from '../lib/mailgun' // Mailgunを使用したメール送信
 import { useAddressLookup } from '../composables/useAddressLookup'
 import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
+import { 
+  createSquareCheckout, 
+  checkProductStock,
+  generateOrderNumber,
+  calculatePaymentDueDate
+} from '../lib/squarePayment' // Square決済用ヘルパー
 
 const router = useRouter()
 const cart = useCartStore()
@@ -242,11 +414,12 @@ const selectedSuggestionIndex = ref(0)
 const form = reactive({
   customerName: '',
   email: '',
+  emailConfirm: '',
   phone: '',
   postal: '',
   address: '',
   notes: '',
-  paymentMethod: 'bank' // カートからの注文は銀行振込固定
+  paymentMethod: 'square' // デフォルトはSquare決済
 })
 
 // 送料計算
@@ -369,9 +542,105 @@ const closeSuggestion = () => {
   clearDebounce()
 }
 
+// メールアドレス関連
+const emailLocalPart = ref('')
+const emailDomain = ref('')
+const customEmailDomain = ref('')
+const emailConfirmLocalPart = ref('')
+const emailConfirmDomain = ref('')
+const customEmailConfirmDomain = ref('')
+const emailMismatchError = ref('')
+
+// メールアドレスを更新
+const updateFullEmail = () => {
+  const domain = emailDomain.value === 'custom' ? customEmailDomain.value : emailDomain.value
+  if (emailLocalPart.value && domain) {
+    form.email = `${emailLocalPart.value}@${domain}`
+  } else {
+    form.email = ''
+  }
+  handleEmailConfirmInput()
+}
+
+// 確認用メールアドレスを更新
+const updateFullEmailConfirm = () => {
+  const domain = emailConfirmDomain.value === 'custom' ? customEmailConfirmDomain.value : emailConfirmDomain.value
+  if (emailConfirmLocalPart.value && domain) {
+    form.emailConfirm = `${emailConfirmLocalPart.value}@${domain}`
+  } else {
+    form.emailConfirm = ''
+  }
+  handleEmailConfirmInput()
+}
+
+const showEmailDomainSuggestions = ref(false)
+const emailDomainSuggestions = ref([])
+const commonEmailDomains = [
+  '@gmail.com',
+  '@yahoo.co.jp',
+  '@docomo.ne.jp',
+  '@ezweb.ne.jp',
+  '@softbank.ne.jp',
+  '@icloud.com',
+  '@outlook.com',
+  '@outlook.jp',
+  '@hotmail.com',
+  '@live.jp'
+]
+
+// メールアドレスのバリデーション
+const isEmailValid = computed(() => {
+  if (!form.email) return false
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailPattern.test(form.email)
+})
+
+// メールアドレス確認欄の入力時の処理
+const handleEmailConfirmInput = () => {
+  emailMismatchError.value = ''
+  
+  // 両方のフィールドに入力がある場合のみチェック
+  if (form.email && form.emailConfirm) {
+    if (form.email !== form.emailConfirm) {
+      emailMismatchError.value = 'メールアドレスが一致しません'
+    }
+  }
+}
+
+// ペースト防止（確認用メールアドレス）
+const handleEmailPaste = (e) => {
+  e.preventDefault()
+  emailMismatchError.value = 'セキュリティのため、メールアドレスはコピー＆ペーストではなく手入力してください'
+  setTimeout(() => {
+    emailMismatchError.value = ''
+  }, 3000)
+}
+
+onMounted(() => {
+  // カートが空の場合はカート画面にリダイレクト
+  if (cart.items.length === 0) {
+    router.push('/cart')
+  }
+  
+  // 初期送料計算
+  updateShippingInfo()
+})
+
 const submitOrder = async () => {
   if (cart.items.length === 0) {
     showMessage('カートに商品がありません', 'error')
+    return
+  }
+
+  // メールアドレスの一致チェック
+  if (form.email !== form.emailConfirm) {
+    showMessage('メールアドレスと確認用メールアドレスが一致しません', 'error')
+    return
+  }
+
+  // メールアドレスの形式チェック
+  if (!isEmailValid.value) {
+    showMessage('メールアドレスの形式が正しくありません', 'error')
     return
   }
 
@@ -380,38 +649,163 @@ const submitOrder = async () => {
   try {
     const customerId = getOrCreateCustomerId()
     
-    // 1. 在庫チェックのみ実行（実際の減少はデータベーストリガーに任せる）
-    for (const item of cart.items) {
-      // 現在の在庫を取得して事前チェック
-      const { data: currentStock } = await supabase
-        .from('succulents')
-        .select('quantity, name')
-        .eq('id', item.id)
-        .single()
-
-      if (!currentStock || currentStock.quantity < item.quantity) {
-        throw new Error(`商品「${item.name}」の在庫が不足しています（在庫: ${currentStock?.quantity || 0}個、必要: ${item.quantity}個）`)
-      }
-    }
-    
-    // カート注文用の統一注文番号を生成
-    const cartOrderNumber = `CART${Date.now()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`
-    const now = new Date().toISOString()
-    const paymentDueDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    // 1. 在庫チェック
+    await checkProductStock(cart.items)
     
     // 郵便番号をフォーマット
     let formattedZipCode = form.postal.trim()
     if (/^\d{7}$/.test(formattedZipCode)) {
       formattedZipCode = formattedZipCode.slice(0, 3) + '-' + formattedZipCode.slice(3)
     }
+
+    // Square決済の場合
+    if (form.paymentMethod === 'square') {
+      // カート注文用の統一注文番号を生成
+      const cartOrderNumber = generateOrderNumber('CART')
+      const now = new Date().toISOString()
+      
+      // 各商品ごとに注文を作成（ステータスはpending_payment）
+      const orderPromises = cart.items.map(async (item, index) => {
+        const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
+        
+        const orderData = {
+          order_number: individualOrderNumber,
+          customer_id: customerId,
+          product_id: item.id,
+          product_name: item.name,
+          product_image: item.image,
+          price: item.price,
+          quantity: item.quantity,
+          customer_name: form.customerName,
+          email: form.email,
+          phone: form.phone,
+          payment_method: form.paymentMethod,
+          status: 'pending_payment',
+          payment_status: 'pending',
+          created_at: now,
+          updated_at: now,
+        }
+
+        // 住所にカートグループIDと送料情報を含める
+        let addressWithCartGroup = form.address
+        if (form.notes) {
+          addressWithCartGroup = `${form.address}\n備考: ${form.notes}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]\n[CartGroup:${cartOrderNumber}]`
+        } else {
+          addressWithCartGroup = `${form.address}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]\n[CartGroup:${cartOrderNumber}]`
+        }
+
+        // zip_codeカラムの存在を確認
+        try {
+          const { error: schemaError } = await supabase
+            .from('orders')
+            .select('zip_code')
+            .limit(1)
+
+          if (!schemaError) {
+            orderData.zip_code = formattedZipCode
+            orderData.address = addressWithCartGroup
+          } else {
+            orderData.address = `〒${formattedZipCode}\n${addressWithCartGroup}`
+          }
+        } catch (e) {
+          orderData.address = `〒${formattedZipCode}\n${addressWithCartGroup}`
+        }
+
+        const { data, error } = await supabase
+          .from('orders')
+          .insert([orderData])
+          .select()
+
+        if (error) throw error
+        return data[0]
+      })
+
+      await Promise.all(orderPromises)
+      
+      // Square決済のデータを準備
+      const orderData = {
+        customerName: form.customerName,
+        email: form.email,
+        phone: form.phone,
+        postal: formattedZipCode,
+        address: form.address,
+        notes: form.notes,
+        items: cart.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image
+        })),
+        shippingFee: shippingInfo.value.shippingFee,
+        shippingRegion: shippingInfo.value.region,
+        totalAmount: shippingInfo.value.totalAmount,
+        redirectUrl: window.location.origin,
+        cartOrderNumber: cartOrderNumber // Webhook用の注文番号
+      }
+
+      // Square Checkoutセッションを作成
+      const checkoutResult = await createSquareCheckout(orderData)
+      
+      console.log('🔍 Square Checkout結果:', checkoutResult)
+      console.log('🔍 Order ID:', checkoutResult.orderId)
+      console.log('🔍 Payment Link ID:', checkoutResult.paymentLinkId)
+      
+      if (!checkoutResult.success || !checkoutResult.checkoutUrl) {
+        throw new Error('決済ページの作成に失敗しました')
+      }
+
+      // 注文IDをデータベースに更新（Webhook時の照合用）
+      const updateResult = await supabase
+        .from('orders')
+        .update({ 
+          square_order_id: checkoutResult.orderId,
+          square_payment_link_id: checkoutResult.paymentLinkId
+        })
+        .ilike('order_number', `${cartOrderNumber}%`)
+        .select()
+      
+      console.log('🔍 DB更新結果:', updateResult)
+      
+      if (updateResult.error) {
+        console.error('❌ DB更新エラー:', updateResult.error)
+        throw new Error(`注文IDの保存に失敗しました: ${updateResult.error.message}`)
+      }
+      
+      if (!updateResult.data || updateResult.data.length === 0) {
+        console.error('❌ 更新対象の注文が見つかりませんでした')
+        console.error('検索した注文番号パターン:', `${cartOrderNumber}%`)
+        // 警告だけ表示して続行（決済自体は成功する可能性がある）
+        console.warn('⚠️ 警告: 注文IDの保存に失敗しましたが、決済処理は続行します')
+      } else {
+        console.log(`✅ ${updateResult.data.length}件の注文を更新しました`)
+      }
+
+      // 注文情報をlocalStorageに保存（決済完了後の画面で使用）
+      localStorage.setItem('pendingSquareOrder', JSON.stringify({
+        orderData,
+        cartOrderNumber: cartOrderNumber, // カート注文番号を追加
+        squareOrderId: checkoutResult.orderId,
+        paymentLinkId: checkoutResult.paymentLinkId,
+        timestamp: Date.now()
+      }))
+
+      // Square決済ページにリダイレクト
+      window.location.href = checkoutResult.checkoutUrl
+      return
+    }
     
-    // 各商品ごとに注文を作成（個別の注文番号を生成し、共通のグループIDで管理）
+    // 銀行振込の場合（既存のロジック）
+    const cartOrderNumber = generateOrderNumber('CART')
+    const now = new Date().toISOString()
+    const paymentDueDate = calculatePaymentDueDate(48)
+    
+    // 各商品ごとに注文を作成
     const orderPromises = cart.items.map(async (item, index) => {
-      // 各商品に個別の注文番号を生成（カート注文の場合は末尾に連番を追加）
       const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
       
       const orderData = {
-        order_number: individualOrderNumber, // 個別の注文番号
+        order_number: individualOrderNumber,
         customer_id: customerId,
         product_id: item.id,
         product_name: item.name,
@@ -421,18 +815,15 @@ const submitOrder = async () => {
         customer_name: form.customerName,
         email: form.email,
         phone: form.phone,
-        address: form.address,
         payment_method: form.paymentMethod,
         status: 'pending_payment',
         payment_due_date: paymentDueDate,
         created_at: now,
         updated_at: now,
         customer_id: customerId,
-        // カート注文であることを識別するフラグ（一時的にコメントアウト）
-        // is_cart_order: true
       }
 
-      // 住所にカートグループIDと送料情報を含める（管理者画面でのグループ化のため）
+      // 住所にカートグループIDと送料情報を含める
       let addressWithCartGroup = form.address
       if (form.notes) {
         addressWithCartGroup = `${form.address}\n備考: ${form.notes}\n[送料:${shippingInfo.value.shippingFee}円(${shippingInfo.value.region})]\n[CartGroup:${cartOrderNumber}]`
@@ -451,11 +842,9 @@ const submitOrder = async () => {
           orderData.zip_code = formattedZipCode
           orderData.address = addressWithCartGroup
         } else {
-          // zip_codeカラムが存在しない場合は住所に含める
           orderData.address = `〒${formattedZipCode}\n${addressWithCartGroup}`
         }
       } catch (e) {
-        // エラーの場合は統合形式を使用
         orderData.address = `〒${formattedZipCode}\n${addressWithCartGroup}`
       }
 
@@ -470,7 +859,7 @@ const submitOrder = async () => {
 
     const orders = await Promise.all(orderPromises)
     
-    // メール送信機能を有効化
+    // メール送信（銀行振込のみ）
     try {
       await sendCartOrderEmail({
         customerName: form.customerName,
@@ -479,18 +868,18 @@ const submitOrder = async () => {
         postal: form.postal,
         address: form.address,
         items: cart.items,
-        itemTotal: cart.totalAmount, // 商品代金のみ
-        shippingFee: shippingInfo.value.shippingFee, // 送料
-        shippingRegion: shippingInfo.value.region, // 配送地域
-        totalAmount: shippingInfo.value.totalAmount, // 送料込み合計
+        itemTotal: cart.totalAmount,
+        shippingFee: shippingInfo.value.shippingFee,
+        shippingRegion: shippingInfo.value.region,
+        totalAmount: shippingInfo.value.totalAmount,
         paymentMethod: form.paymentMethod,
         notes: form.notes
       })
     } catch (emailError) {
-      // メール送信に失敗してもエラーにしない（注文は成功扱い）
+      console.error('メール送信エラー:', emailError)
     }
 
-    // カートを空にする（在庫は既に減らされているので、戻さない）
+    // カートを空にする
     cart.items.splice(0)
     cart.saveCartToStorage()
 
@@ -601,8 +990,8 @@ const showMessage = (text, type = 'success') => {
 }
 
 .summary-item-image {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   object-fit: cover;
   border-radius: 6px;
 }
@@ -615,17 +1004,21 @@ const showMessage = (text, type = 'success') => {
 
 .summary-item-name {
   font-weight: bold;
-  color: #2c5f2d;
+  color: #1a1a1a;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 .summary-item-price {
-  color: #666;
+  color: #333;
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .summary-item-subtotal {
   font-weight: bold;
-  color: #2c5f2d;
+  color: #1a1a1a;
+  font-size: 1.05rem;
 }
 
 .order-total {
@@ -704,6 +1097,7 @@ const showMessage = (text, type = 'success') => {
 
 .input-wrapper input {
   padding-right: 2.5rem;
+  color: #333;
 }
 
 .input-spinner,
@@ -873,18 +1267,45 @@ const showMessage = (text, type = 'success') => {
   margin-bottom: 1rem;
 }
 
-.payment-info-fixed {
-  background: #f8f9fa;
-  border: 2px solid #2c5f2d;
-  border-radius: 10px;
-  padding: 1.5rem;
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.payment-option-fixed {
+.payment-option {
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 10px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.payment-option:hover {
+  border-color: #2c5f2d;
+  background: #f0f8f0;
+}
+
+.payment-option.active {
+  border-color: #2c5f2d;
+  background: #e8f5e9;
+  box-shadow: 0 0 0 3px rgba(44, 95, 45, 0.1);
+}
+
+.payment-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.payment-option label {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
+  cursor: pointer;
+  margin: 0;
 }
 
 .payment-icon {
@@ -898,7 +1319,7 @@ const showMessage = (text, type = 'success') => {
 }
 
 .payment-title {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: bold;
   color: #2c5f2d;
   margin-bottom: 0.25rem;
@@ -906,12 +1327,13 @@ const showMessage = (text, type = 'success') => {
 
 .payment-desc {
   color: #666;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .payment-note {
-  border-top: 1px solid #dee2e6;
-  padding-top: 1rem;
+  background: #f0f8f0;
+  border-radius: 8px;
+  padding: 1rem;
   margin-top: 1rem;
 }
 
@@ -989,22 +1411,24 @@ const showMessage = (text, type = 'success') => {
 }
 
 .subtotal, .shipping-fee {
-  color: #666;
-  font-size: 0.9rem;
+  color: #333;
+  font-size: 0.95rem;
   margin: 0;
+  font-weight: 500;
 }
 
 .total-amount {
-  color: #007bff;
-  font-size: 1.2rem;
+  color: #1a1a1a;
+  font-size: 1.3rem;
   margin: 0;
   padding-top: 0.5rem;
-  border-top: 2px solid #007bff;
+  border-top: 2px solid #2c5f2d;
+  font-weight: bold;
 }
 
 .shipping-note {
-  color: #666;
-  font-size: 0.8rem;
+  color: #555;
+  font-size: 0.85rem;
   margin: 0.5rem 0 0 0;
   font-style: italic;
 }
@@ -1031,6 +1455,245 @@ const showMessage = (text, type = 'success') => {
 .message.error {
   border-left: 4px solid #dc3545;
   color: #dc3545;
+}
+
+/* メールアドレス入力関連のスタイル */
+/* メールアドレス分割入力 */
+.email-split-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.email-local-part {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-at {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2c5f2d;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+}
+
+.email-domain-select {
+  flex: 1.2;
+  min-width: 150px;
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+}
+
+.email-domain-select:hover {
+  border-color: #2c5f2d;
+  background: #f8fff9;
+}
+
+.email-domain-select:focus {
+  outline: none;
+  border-color: #2c5f2d;
+  box-shadow: 0 0 0 3px rgba(44, 95, 45, 0.15);
+  background: #f8fff9;
+}
+
+.email-domain-select option {
+  padding: 0.5rem;
+  background: white;
+  color: #333;
+  font-size: 1rem;
+}
+
+.email-domain-select option:disabled {
+  color: #999;
+  font-style: italic;
+}
+
+.custom-domain-input {
+  margin-top: 0.5rem;
+}
+
+.custom-domain-field {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #333;
+  background-color: #fffbf0;
+}
+
+.custom-domain-field:focus {
+  outline: none;
+  border-color: #2c5f2d;
+  box-shadow: 0 0 0 2px rgba(44, 95, 45, 0.1);
+}
+
+.email-preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.preview-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.preview-email {
+  font-size: 1rem;
+  color: #2c5f2d;
+  font-weight: 600;
+  flex: 1;
+}
+
+.preview-email.valid {
+  color: #28a745;
+}
+
+.preview-email.invalid {
+  color: #dc3545;
+}
+
+.preview-check {
+  color: #28a745;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.preview-error {
+  color: #dc3545;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.email-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.email-input-wrapper input {
+  flex: 1;
+  padding-right: 2.5rem;
+  color: #333;
+}
+
+.email-input-wrapper input.valid {
+  border-color: #28a745;
+  background-color: #f0fff4;
+}
+
+.email-input-wrapper input.error,
+.email-input-wrapper input.invalid {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.input-checkmark {
+  position: absolute;
+  right: 0.75rem;
+  color: #28a745;
+  font-size: 1.25rem;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.input-error-mark {
+  position: absolute;
+  right: 0.75rem;
+  color: #dc3545;
+  font-size: 1.25rem;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.email-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: -1px;
+}
+
+.email-suggestion-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+  border: none;
+  background: none;
+  width: 100%;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.email-suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+.email-suggestion-item:active {
+  background-color: #e9ecef;
+}
+
+.email-error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.error-text {
+  display: block;
+  margin-top: 0.5rem;
+  color: #dc3545;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.success-text {
+  display: block;
+  margin-top: 0.5rem;
+  color: #28a745;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@media screen and (max-width: 768px) {
+  .email-suggestions {
+    max-height: 150px;
+  }
+  
+  .email-suggestion-item {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
 }
 
 /* レスポンシブ対応 */
