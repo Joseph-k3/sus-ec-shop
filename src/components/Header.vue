@@ -347,5 +347,10 @@ const isAdminRoute = computed(() => {
     min-width: 40px;
     justify-content: center;
   }
+  .admin-text {
+    display: inline !important;
+    font-size: 0.8rem;
+    margin-left: 0.2rem;
+  }
 }
 </style>
