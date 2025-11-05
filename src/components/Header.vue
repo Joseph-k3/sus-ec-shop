@@ -342,14 +342,13 @@ const isAdminRoute = computed(() => {
 }
 
 @media (max-width: 480px) {
-  .admin-text {
-    display: none;
-  }
-  
   .admin-nav-link {
     padding: 0.4rem;
     min-width: 40px;
     justify-content: center;
+  }
+  .admin-text {
+    display: inline;
   }
 }
 </style>
