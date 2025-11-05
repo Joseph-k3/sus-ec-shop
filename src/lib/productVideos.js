@@ -147,48 +147,178 @@ export const updateProductVideo = async (videoId, updates) => {
  * @param {string} videoId 動画ID
  */
 export const deleteProductVideo = async (videoId) => {
+  console.log('deleteProductVideo called', videoId)
   try {
     // 動画情報を取得してストレージからも削除
     const { data: videoData } = await supabase
       .from('product_videos')
-      .select('video_url, thumbnail_url')
+      .select('video_url, thumbnail_url, storage_provider')
       .eq('id', videoId)
       .single()
 
     if (videoData) {
-      // ストレージから動画ファイルを削除
-      if (videoData.video_url) {
-        const videoPath = videoData.video_url.split('/').pop()
-        if (videoPath) {
-          await supabase.storage
-            .from('product_videos')
-            .remove([videoPath])
+      console.log('🗑️ 動画削除開始:', {
+        videoId,
+        video_url: videoData.video_url,
+        thumbnail_url: videoData.thumbnail_url,
+        storage_provider: videoData.storage_provider,
+        USE_R2,
+      })
+      // ここで分岐条件を明示的にログ
+      if (USE_R2 || videoData.storage_provider === 'r2') {
+        console.log('🟢 R2削除分岐に入ります')
+        // 動画ファイルをR2から削除
+        if (videoData.video_url) {
+          await deleteFromR2(videoData.video_url)
         }
-      }
+        // サムネイルをR2から削除
+        if (videoData.thumbnail_url) {
+          await deleteFromR2(videoData.thumbnail_url)
+        }
+      } else {
+        console.log('🟡 Supabase削除分岐に入ります')
+        // Supabaseストレージから削除
+        if (videoData.video_url) {
+          const videoPath = videoData.video_url.split('/').pop()
+          if (videoPath) {
+            const { error: deleteError } = await supabase.storage
+              .from('product_videos')
+              .remove([videoPath])
+            
+            if (deleteError) {
+              console.error('⚠️ Supabase動画削除エラー:', deleteError)
+            } else {
+              console.log('✅ Supabase動画削除成功:', videoPath)
+            }
+          }
+        }
 
-      // サムネイル画像も削除
-      if (videoData.thumbnail_url) {
-        const thumbnailPath = videoData.thumbnail_url.split('/').pop()
-        if (thumbnailPath) {
-          await supabase.storage
-            .from('product_videos')
-            .remove([thumbnailPath])
+        // サムネイルをSupabaseストレージから削除
+        if (videoData.thumbnail_url) {
+          const thumbnailPath = videoData.thumbnail_url.split('/').pop()
+          if (thumbnailPath) {
+            const { error: deleteError } = await supabase.storage
+              .from('product_videos')
+              .remove([thumbnailPath])
+            
+            if (deleteError) {
+              console.error('⚠️ Supabaseサムネイル削除エラー:', deleteError)
+            } else {
+              console.log('✅ Supabaseサムネイル削除成功:', thumbnailPath)
+            }
+          }
         }
       }
+    } else {
+      console.warn('videoData is null for videoId:', videoId)
     }
 
+    // DBから削除
     const { error } = await supabase
       .from('product_videos')
       .delete()
       .eq('id', videoId)
 
     if (error) {
-      console.error('動画の削除に失敗:', error)
+      console.error('❌ DB削除に失敗:', error)
       throw error
     }
+
+    console.log('✅ 動画削除完了:', videoId)
   } catch (error) {
-    console.error('deleteProductVideo エラー:', error)
+    console.error('❌ deleteProductVideo エラー:', error)
     throw error
+  }
+}
+
+/**
+ * R2からファイルを削除
+ * @param {string} fileUrl ファイルのURL
+ */
+const deleteFromR2 = async (fileUrl) => {
+  try {
+    console.log('🗑️ R2削除処理開始:', fileUrl)
+    let fileKey = ''
+    // 1. .r2.dev/ 以降に /products/ があれば必ずそこから
+    const r2DevIdx = fileUrl.indexOf('.r2.dev/')
+    if (r2DevIdx !== -1) {
+      const afterR2 = fileUrl.substring(r2DevIdx + 9)
+      const productsIdx = afterR2.indexOf('products/')
+      if (productsIdx !== -1) {
+        fileKey = afterR2.substring(productsIdx)
+        console.log('✅ .r2.dev/ 以降の products/ から抽出:', fileKey)
+      } else {
+        // sus-ec-images/ で始まる場合は除去
+        if (afterR2.startsWith('sus-ec-images/')) {
+          fileKey = afterR2.replace('sus-ec-images/', '')
+          console.log('✅ sus-ec-images/ 除去:', fileKey)
+        } else {
+          fileKey = afterR2
+          console.log('✅ .r2.dev/ 以降から抽出:', fileKey)
+        }
+      }
+    } else {
+      // 2. 既存のパス形式抽出ロジック
+      const urlParts = fileUrl.split('/')
+      const pathIndex = urlParts.findIndex(part => part === 'products' || part === 'videos' || part === 'images')
+      if (pathIndex !== -1) {
+        fileKey = urlParts.slice(pathIndex).join('/')
+        console.log('✅ パス形式から抽出:', fileKey)
+      } else {
+        // 最後の有効なパスを取得（少なくとも3階層）
+        const validParts = urlParts.filter(part => part && part !== 'https:' && part !== 'http:')
+        if (validParts.length >= 3) {
+          fileKey = validParts.slice(-5).join('/')
+          console.log('✅ 最後の5パスから抽出:', fileKey)
+        }
+      }
+    }
+    if (!fileKey) {
+      console.warn('⚠️ ファイルキーを抽出できませんでした:', fileUrl)
+      return
+    }
+
+    console.log('🗑️ R2削除リクエスト:', {
+      fileUrl,
+      extractedFileKey: fileKey
+    })
+
+    // R2削除APIを呼び出し
+    const response = await fetch('/api/r2-delete', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileKey })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('❌ R2削除APIエラー:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        fileKey
+      })
+      
+      // 404の場合はファイルが既に削除されているので警告のみ
+      if (response.status === 404 || errorData.message?.includes('NoSuchKey')) {
+        console.warn('⚠️ ファイルは既に存在しません:', fileKey)
+        return
+      }
+      
+      throw new Error(`R2削除エラー: ${response.status} - ${errorData.error || response.statusText}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ R2削除成功:', result)
+
+  } catch (error) {
+    console.error('❌ R2削除エラー:', {
+      error: error.message,
+      fileUrl
+    })
+    // エラーをthrowせず、ログだけ出力（ファイルが既に削除されている可能性があるため）
   }
 }
 
@@ -398,14 +528,27 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
     console.log('🌥️ R2へのアップロードを開始:', {
       fileName: file.name,
       fileSize: file.size,
+      fileSizeMB: Math.round(file.size / 1024 / 1024),
       fileType: file.type
     })
+
+    // ファイルサイズチェック (200MB制限)
+    const maxSize = 200 * 1024 * 1024
+    if (file.size > maxSize) {
+      const errorMsg = `ファイルサイズが大きすぎます (最大: 200MB, 実際: ${Math.round(file.size / 1024 / 1024)}MB)`
+      console.error('❌', errorMsg)
+      throw new Error(errorMsg)
+    }
+    
+    console.log('✅ ファイルサイズチェック通過')
 
     // ファイル名を生成
     const timestamp = Date.now()
     const randomId = Math.random().toString(36).substring(7)
     const fileExtension = file.name.split('.').pop()
     const fileName = `videos/video_${timestamp}_${randomId}.${fileExtension}`
+    
+    console.log('📝 生成されたファイル名:', fileName)
 
     // FormDataを作成
     const formData = new FormData()
@@ -420,27 +563,47 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`R2アップロードエラー: ${response.status} - ${errorText}`)
+      let errorMessage = `R2アップロードエラー: ${response.status} ${response.statusText}`
+      
+      try {
+        const errorData = await response.json()
+        console.error('❌ R2アップロードAPIエラー詳細:', errorData)
+        
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+        if (errorData.code === 'LIMIT_FILE_SIZE') {
+          errorMessage = 'ファイルサイズが大きすぎます（最大: 200MB）'
+        }
+      } catch (parseError) {
+        // JSONのパースに失敗した場合はテキストを取得
+        const errorText = await response.text()
+        console.error('❌ R2アップロードAPIエラー (テキスト):', errorText)
+        if (errorText) {
+          errorMessage += ` - ${errorText}`
+        }
+      }
+      
+      throw new Error(errorMessage)
     }
 
     const result = await response.json()
     console.log('✅ R2アップロード完了:', result)
 
+    if (!result.url) {
+      throw new Error('R2からのレスポンスにURLが含まれていません')
+    }
+
     return {
       videoUrl: result.url,  // videoUrlとして返す
-      fileName: result.fileName,
+      fileName: result.fileName || fileName,
       fileSize: file.size,
       mimeType: file.type
     }
 
   } catch (error) {
     console.error('❌ R2アップロードエラー:', error)
-    return {
-      data: null,
-      publicURL: null,
-      error: error
-    }
+    throw error  // エラーを再スローして呼び出し元でキャッチ
   }
 }
 
@@ -711,4 +874,23 @@ export const checkVideoFileSize = (file) => {
   }
   
   return true
+}
+
+/**
+ * 動画を削除
+ * @param {string} videoId 動画ID
+ */
+const deleteVideo = async (videoId) => {
+  console.log('deleteVideo called', videoId)
+  if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) return
+  try {
+    console.log('🗑️ 動画削除開始:', videoId)
+    await deleteProductVideo(videoId)
+    console.log('✅ 動画削除成功:', videoId)
+    await loadProductVideos(editingId.value)
+    alert('動画とR2ストレージから削除しました')
+  } catch (error) {
+    console.error('❌ 動画の削除に失敗しました:', error)
+    alert('動画の削除に失敗しました（R2ストレージの物理削除も含む）:\n\n' + error.message)
+  }
 }

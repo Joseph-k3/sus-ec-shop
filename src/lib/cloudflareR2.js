@@ -21,12 +21,27 @@ class CloudflareR2Client {
    */
   async uploadFile(file, key, onProgress = null) {
     try {
-      // サーバーサイドで署名付きURLを生成してもらう
-      const signedUrlData = await this.getPresignedUploadUrl(key, file.type, file.size)
-      const publicUrl = await this.uploadWithSignedUrl(signedUrlData.uploadUrl, file, onProgress)
+      // 直接R2アップロードAPIを使用（署名付きURLは不要）
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', file.type.startsWith('video/') ? 'video' : 'image')
+      formData.append('productId', key.split('/')[1] || 'general')
+
+      const response = await fetch('http://localhost:3001/api/r2-upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
       
-      // 公開URLを返す
-      return signedUrlData.publicUrl
+      // 返されたURLをそのまま使用
+      console.log('✅ R2アップロード完了:', data.url)
+      return data.url
       
     } catch (error) {
       console.error('R2アップロードエラー:', error)

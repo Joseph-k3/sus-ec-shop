@@ -280,7 +280,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../../lib/supabase'
 import getPublicImageUrl from '../../lib/imageUtils.js'
-import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/postmark' // メール送信機能を有効化
+import { sendTrackingNumberEmail, sendCartTrackingNumberEmail } from '../../lib/mailgun' // メール送信機能（Mailgun使用）
 import RefundButton from '../RefundButton.vue'
 
 const route = useRoute()

@@ -180,7 +180,12 @@ app.post('/api/r2/upload', async (req, res) => {
 
     await r2Client.send(command)
 
-    const publicUrl = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}/${key}`
+    // 公開URLを生成（末尾スラッシュを正規化してから連結）
+    let baseUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL
+    if (baseUrl && baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1)
+    }
+    const publicUrl = `${baseUrl}/${key}`
 
     res.json({
       success: true,
@@ -232,10 +237,16 @@ app.post('/api/r2-upload', upload.single('file'), async (req, res) => {
 
     await r2Client.send(uploadCommand)
 
-    // 公開URLを生成
-    const publicUrl = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}${fileName}`
+    // 公開URLを生成（末尾スラッシュを正規化してから連結）
+    let baseUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL
+    // 末尾スラッシュを削除
+    if (baseUrl && baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1)
+    }
+    const publicUrl = `${baseUrl}/${fileName}`
 
     console.log(`✅ ファイルアップロード成功: ${fileName}`)
+    console.log(`📍 公開URL: ${publicUrl}`)
     
     res.status(200).json({
       success: true,

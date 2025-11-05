@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server.js",
     "api": "node server/r2-api.js",
     "dev:full": "concurrently \"npm run dev\" \"npm run api\"",
     "build": "vite build",

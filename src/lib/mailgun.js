@@ -457,3 +457,129 @@ export async function sendCartOrderEmail(orderData) {
     throw new Error(error.message || 'メール送信に失敗しました')
   }
 }
+
+/**
+ * 追跡番号メールを送信（単品注文用）
+ * @param {Object} order - 注文情報
+ * @param {string} trackingNumber - 追跡番号
+ * @param {string} shippingCarrier - 配送業者
+ */
+export async function sendTrackingNumberEmail(order, trackingNumber, shippingCarrier) {
+  const trackingUrl = getTrackingUrl(shippingCarrier, trackingNumber)
+  
+  const emailData = {
+    to: order.email,
+    subject: '【SUS Plants EC Shop】商品を発送しました',
+    html: `
+      <h2>商品を発送いたしました</h2>
+      <p>${order.customer_name} 様</p>
+      
+      <p>ご注文いただいた商品を発送いたしました。</p>
+      
+      <h3>配送情報</h3>
+      <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+        <p><strong>注文番号:</strong> ${order.order_number}</p>
+        <p><strong>商品名:</strong> ${order.product_name}</p>
+        <p><strong>数量:</strong> ${order.quantity}個</p>
+        <p><strong>配送業者:</strong> ${shippingCarrier}</p>
+        <p><strong>追跡番号:</strong> ${trackingNumber}</p>
+        ${trackingUrl ? `<p><strong>配送状況の確認:</strong> <a href="${trackingUrl}">${trackingUrl}</a></p>` : ''}
+      </div>
+      
+      <p>商品到着までもうしばらくお待ちください。</p>
+      <p>商品が到着しましたら、状態をご確認ください。</p>
+      
+      <hr>
+      <p>SUS Plants EC Shop</p>
+      <p>Instagram: <a href="https://www.instagram.com/ryo_suke_071210/">@ryo_suke_071210</a></p>
+    `
+  }
+
+  try {
+    return await sendMailgunEmail(emailData)
+  } catch (error) {
+    console.error('追跡番号メール送信エラー:', error)
+    throw error
+  }
+}
+
+/**
+ * カート注文の追跡番号メールを送信
+ * @param {Array} orders - 注文一覧
+ * @param {string} trackingNumber - 追跡番号
+ * @param {string} shippingCarrier - 配送業者
+ */
+export async function sendCartTrackingNumberEmail(orders, trackingNumber, shippingCarrier) {
+  if (!orders || orders.length === 0) {
+    throw new Error('注文情報が見つかりません')
+  }
+
+  const firstOrder = orders[0]
+  const trackingUrl = getTrackingUrl(shippingCarrier, trackingNumber)
+  const totalAmount = orders.reduce((sum, order) => sum + (order.price * order.quantity), 0)
+  
+  const emailData = {
+    to: firstOrder.email,
+    subject: '【SUS Plants EC Shop】商品を発送しました',
+    html: `
+      <h2>商品を発送いたしました</h2>
+      <p>${firstOrder.customer_name} 様</p>
+      
+      <p>ご注文いただいた商品を発送いたしました。</p>
+      
+      <h3>注文内容</h3>
+      ${orders.map(order => `
+        <div style="border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem; margin: 1rem 0;">
+          <p><strong>注文番号:</strong> ${order.order_number}</p>
+          <p><strong>商品名:</strong> ${order.product_name}</p>
+          <p><strong>数量:</strong> ${order.quantity}個</p>
+          <p><strong>金額:</strong> ¥${(order.price * order.quantity).toLocaleString()}</p>
+        </div>
+      `).join('')}
+      
+      <div style="background-color: #d4edda; padding: 1rem; margin: 1rem 0; border-radius: 4px; border: 1px solid #c3e6cb;">
+        <p style="color: #155724; font-size: 1.2rem; font-weight: bold;">
+          合計金額: ¥${totalAmount.toLocaleString()}
+        </p>
+      </div>
+      
+      <h3>配送情報</h3>
+      <div style="background-color: #f8f9fa; padding: 1rem; margin: 1rem 0; border-radius: 4px;">
+        <p><strong>配送業者:</strong> ${shippingCarrier}</p>
+        <p><strong>追跡番号:</strong> ${trackingNumber}</p>
+        ${trackingUrl ? `<p><strong>配送状況の確認:</strong> <a href="${trackingUrl}">${trackingUrl}</a></p>` : ''}
+      </div>
+      
+      <p>商品到着までもうしばらくお待ちください。</p>
+      <p>商品が到着しましたら、状態をご確認ください。</p>
+      
+      <hr>
+      <p>SUS Plants EC Shop</p>
+      <p>Instagram: <a href="https://www.instagram.com/ryo_suke_071210/">@ryo_suke_071210</a></p>
+    `
+  }
+
+  try {
+    return await sendMailgunEmail(emailData)
+  } catch (error) {
+    console.error('カート注文追跡番号メール送信エラー:', error)
+    throw error
+  }
+}
+
+/**
+ * 配送業者から追跡URLを生成
+ * @param {string} carrier - 配送業者
+ * @param {string} trackingNumber - 追跡番号
+ * @returns {string|null} 追跡URL
+ */
+function getTrackingUrl(carrier, trackingNumber) {
+  const carriers = {
+    'ヤマト運輸': `https://toi.kuronekoyamato.co.jp/cgi-bin/tneko?number=${trackingNumber}`,
+    '佐川急便': `https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo=${trackingNumber}`,
+    '日本郵便': `https://trackings.post.japanpost.jp/services/srv/search/?requestNo1=${trackingNumber}`,
+    'ゆうパック': `https://trackings.post.japanpost.jp/services/srv/search/?requestNo1=${trackingNumber}`
+  }
+  
+  return carriers[carrier] || null
+}

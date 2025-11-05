@@ -818,22 +818,32 @@ const handleSubmit = async () => {
       
       // 新規商品の場合、一時画像と動画をアップロード
       if (tempImages.value.length > 0) {
-        const uploadedImages = await uploadTempImages(savedProductId)
-        
-        // プライマリ画像をsucculents.imageにも保存
-        if (uploadedImages && uploadedImages.length > 0) {
-          const primaryImage = uploadedImages.find(img => img.is_primary) || uploadedImages[0]
-          if (primaryImage && primaryImage.image_url) {
-            await supabase
-              .from('succulents')
-              .update({ image: primaryImage.image_url })
-              .eq('id', savedProductId)
+        try {
+          const uploadedImages = await uploadTempImages(savedProductId)
+          
+          // プライマリ画像をsucculents.imageにも保存
+          if (uploadedImages && uploadedImages.length > 0) {
+            const primaryImage = uploadedImages.find(img => img.is_primary) || uploadedImages[0]
+            if (primaryImage && primaryImage.image_url) {
+              await supabase
+                .from('succulents')
+                .update({ image: primaryImage.image_url })
+                .eq('id', savedProductId)
+            }
           }
+        } catch (imageError) {
+          console.error('❌ 画像アップロードエラー:', imageError)
+          alert(`画像のアップロードに失敗しました:\n\n${imageError.message}\n\n商品は保存されましたが、画像は保存されませんでした。`)
         }
       }
       
       if (tempVideos.value.length > 0) {
-        await uploadTempVideos(savedProductId)
+        try {
+          await uploadTempVideos(savedProductId)
+        } catch (videoError) {
+          console.error('❌ 動画アップロードエラー:', videoError)
+          alert(`動画のアップロードに失敗しました:\n\n${videoError.message}\n\n商品は保存されましたが、動画は保存されませんでした。\n\n後で商品を編集して動画を追加してください。`)
+        }
       }
     }
     
@@ -1338,11 +1348,11 @@ const handleVideoSelect = async (event) => {
   const files = Array.from(event.target.files)
   if (files.length === 0) return
   
-  // ファイルサイズチェック（100MB制限）
-  const maxSize = 100 * 1024 * 1024 // 100MB
+  // ファイルサイズチェック（200MB制限）
+  const maxSize = 200 * 1024 * 1024 // 200MB
   for (const file of files) {
     if (file.size > maxSize) {
-      alert(`ファイル "${file.name}" が大きすぎます。100MB以下のファイルを選択してください。`)
+      alert(`ファイル "${file.name}" が大きすぎます。\n\n最大サイズ: 200MB\n実際のサイズ: ${Math.round(file.size / 1024 / 1024)}MB\n\nより小さいファイルを選択してください。`)
       event.target.value = ''
       return
     }
@@ -1360,8 +1370,10 @@ const handleVideoSelect = async (event) => {
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
+      console.log(`📤 動画アップロード開始 (${i + 1}/${totalFiles}):`, file.name)
       await uploadSingleVideo(file, i === 0 && productVideos.value.length === 0)
       videoUploadProgress.value = Math.round(((i + 1) / totalFiles) * 100)
+      console.log(`✅ 動画アップロード完了 (${i + 1}/${totalFiles})`)
     }
     
     // 動画一覧を再読み込み
@@ -1370,9 +1382,11 @@ const handleVideoSelect = async (event) => {
     
     // ファイル入力をリセット
     event.target.value = ''
+    
+    alert(`${totalFiles}件の動画をアップロードしました！`)
   } catch (error) {
-    console.error('動画アップロードに失敗しました:', error)
-    alert('動画のアップロードに失敗しました: ' + error.message)
+    console.error('❌ 動画アップロードに失敗しました:', error)
+    alert('動画のアップロードに失敗しました:\n\n' + error.message)
     videoUploadProgress.value = 0
   }
 }
@@ -1415,6 +1429,15 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
     const uploadResult = await uploadVideoToStorage(file, (progress) => {
       // 個別の進捗は全体の進捗に含める
     })
+    
+    // アップロード結果の検証
+    if (!uploadResult || !uploadResult.videoUrl) {
+      throw new Error('動画のアップロードに失敗しました。動画URLが取得できませんでした。')
+    }
+    // R2のURLであることを明示的にチェック
+    if (!uploadResult.videoUrl.includes('r2.cloudflarestorage.com')) {
+      throw new Error('R2の動画URLが取得できませんでした。環境変数CLOUDFLARE_R2_PUBLIC_URLを確認してください。')
+    }
     
     // サムネイルを生成
     const thumbnailDataUrl = await generateVideoThumbnail(file)
@@ -1476,56 +1499,69 @@ const uploadTempVideos = async (productId) => {
     for (let i = 0; i < tempVideos.value.length; i++) {
       const tempVideo = tempVideos.value[i]
       
-      // 動画をアップロード
-      const uploadResult = await uploadVideoToStorage(tempVideo.file, (progress) => {
-        // 個別の進捗は全体に反映
-        const overallProgress = Math.round(((i + progress / 100) / totalVideos) * 100)
-        videoUploadProgress.value = overallProgress
-      })
-      
-      // サムネイルをアップロード
-      let thumbnailUrl = ''
-      if (tempVideo.thumbnail_url && tempVideo.thumbnail_url.startsWith('data:')) {
-        try {
-          const thumbnailBlob = dataUrlToBlob(tempVideo.thumbnail_url)
-          const timestamp = Date.now()
-          const randomId = Math.random().toString(36).substring(7)
-          
-          // R2にサムネイルをアップロード
-          const thumbnailFile = new File([thumbnailBlob], `thumb_${timestamp}_${randomId}.jpg`, { type: 'image/jpeg' })
-          const formData = new FormData()
-          formData.append('file', thumbnailFile)
-          formData.append('type', 'thumbnail')
-          
-          const uploadResponse = await fetch('/api/r2-upload', {
-            method: 'POST',
-            body: formData
-          })
-          
-          if (!uploadResponse.ok) {
-            throw new Error(`サムネイルアップロード失敗: ${uploadResponse.statusText}`)
-          }
-          
-          const uploadData = await uploadResponse.json()
-          thumbnailUrl = uploadData.url
-        } catch (thumbnailError) {
-          console.error('⚠️ サムネイルのアップロード失敗:', thumbnailError)
-          // サムネイルがなくても動画は保存する
+      try {
+        // 動画をアップロード
+        const uploadResult = await uploadVideoToStorage(tempVideo.file, (progress) => {
+          // 個別の進捗は全体に反映
+          const overallProgress = Math.round(((i + progress / 100) / totalVideos) * 100)
+          videoUploadProgress.value = overallProgress
+        })
+        
+        // アップロード結果の検証
+        if (!uploadResult || !uploadResult.videoUrl) {
+          throw new Error('動画URLが取得できませんでした')
         }
+        
+        // サムネイルをアップロード
+        let thumbnailUrl = ''
+        if (tempVideo.thumbnail_url && tempVideo.thumbnail_url.startsWith('data:')) {
+          try {
+            const thumbnailBlob = dataUrlToBlob(tempVideo.thumbnail_url)
+            const timestamp = Date.now()
+            const randomId = Math.random().toString(36).substring(7)
+            
+            // R2にサムネイルをアップロード
+            const thumbnailFile = new File([thumbnailBlob], `thumb_${timestamp}_${randomId}.jpg`, { type: 'image/jpeg' })
+            const formData = new FormData()
+            formData.append('file', thumbnailFile)
+            formData.append('type', 'thumbnail')
+            
+            const uploadResponse = await fetch('/api/r2-upload', {
+              method: 'POST',
+              body: formData
+            })
+            
+            if (!uploadResponse.ok) {
+              throw new Error(`サムネイルアップロード失敗: ${uploadResponse.statusText}`)
+            }
+            
+            const uploadData = await uploadResponse.json()
+            thumbnailUrl = uploadData.url
+          } catch (thumbnailError) {
+            console.error('⚠️ サムネイルのアップロード失敗:', thumbnailError)
+            // サムネイルがなくても動画は保存する
+          }
+        }
+        
+        // データベースに保存
+        const savedVideo = await addProductVideo(productId, uploadResult.videoUrl, {
+          title: tempVideo.title,
+          thumbnailUrl: thumbnailUrl,
+          duration: tempVideo.duration,
+          fileSize: tempVideo.file_size,
+          mimeType: tempVideo.mime_type,
+          displayOrder: i,
+          isPrimary: tempVideo.is_primary
+        })
+        
+        videoUploadProgress.value = Math.round(((i + 1) / totalVideos) * 100)
+        
+      } catch (videoError) {
+        console.error(`❌ 動画 ${i + 1}/${totalVideos} のアップロード失敗:`, videoError)
+        videoUploadProgress.value = 0
+        // 個別の動画のエラーを上位に伝える
+        throw new Error(`動画「${tempVideo.title}」のアップロードに失敗: ${videoError.message}`)
       }
-      
-      // データベースに保存
-      const savedVideo = await addProductVideo(productId, uploadResult.videoUrl, {
-        title: tempVideo.title,
-        thumbnailUrl: thumbnailUrl,
-        duration: tempVideo.duration,
-        fileSize: tempVideo.file_size,
-        mimeType: tempVideo.mime_type,
-        displayOrder: i,
-        isPrimary: tempVideo.is_primary
-      })
-      
-      videoUploadProgress.value = Math.round(((i + 1) / totalVideos) * 100)
     }
     
     videoUploadProgress.value = 0
@@ -1558,14 +1594,21 @@ const setPrimaryVideo = async (videoId) => {
 
 // 動画削除
 const deleteVideo = async (videoId) => {
-  if (!confirm('この動画を削除しますか？')) return
+  if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) return
   
   try {
+    console.log('🗑️ 動画削除開始:', videoId)
     await deleteProductVideo(videoId)
+    console.log('✅ 動画削除成功:', videoId)
+    
+    // 動画一覧を再読み込み
     await loadProductVideos(editingId.value)
+    
+    // 成功メッセージ
+    alert('動画とR2ストレージから削除しました')
   } catch (error) {
-    console.error('動画の削除に失敗しました:', error)
-    alert('動画の削除に失敗しました')
+    console.error('❌ 動画の削除に失敗しました:', error)
+    alert('動画の削除に失敗しました（R2ストレージの物理削除も含む）:\n\n' + error.message)
   }
 }
 
@@ -2017,6 +2060,8 @@ onMounted(() => {
   height: 6px !important;
   pointer-events: auto !important;
 }
+
+
 
 .product-swiper-pagination .swiper-pagination-bullet-active {
   background: white !important;

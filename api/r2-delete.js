@@ -15,14 +15,14 @@ const r2Client = new S3Client({
 })
 
 export default async function handler(req, res) {
-  if (req.method !== 'DELETE') {
-    res.setHeader('Allow', ['DELETE'])
+  if (req.method !== 'DELETE' && req.method !== 'POST') {
+    res.setHeader('Allow', ['DELETE', 'POST'])
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   // CORSヘッダーを設定
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'DELETE, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') {
@@ -36,10 +36,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'fileKeyが必要です' })
     }
 
-    console.log('🗑️ R2からファイルを削除:', fileKey)
+    console.log('🗑️ R2からファイルを削除:', {
+      fileKey,
+      method: req.method
+    })
 
     // バケット名を取得
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || process.env.VITE_CLOUDFLARE_R2_BUCKET_NAME
+
+    console.log('📦 使用するバケット:', bucketName)
 
     // R2から削除
     const deleteCommand = new DeleteObjectCommand({
@@ -49,7 +54,10 @@ export default async function handler(req, res) {
 
     await r2Client.send(deleteCommand)
 
-    console.log('✅ R2削除成功:', fileKey)
+    console.log('✅ R2削除成功:', {
+      fileKey,
+      bucket: bucketName
+    })
     
     res.status(200).json({
       success: true,

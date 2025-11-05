@@ -434,8 +434,34 @@ const fetchProducts = async () => {
           .order('display_order', { ascending: true })
         
         if (videoError) {
-          console.error('動画取得エラー:', videoError)
+          console.error('❌ 動画取得エラー:', videoError)
+        } else if (videos && videos.length > 0) {
+          console.log(`✅ 商品「${product.name}」の動画取得成功:`, videos.length, '本')
+          console.log('動画データ:', videos.map(v => ({
+            video_url: v.video_url,
+            thumbnail_url: v.thumbnail_url,
+            storage_provider: v.storage_provider
+          })))
         }
+        
+        // 動画URLの処理
+        const processedVideos = videos && videos.length > 0 ? videos.map(video => {
+          const videoUrl = getPublicImageUrl(video.video_url)
+          const thumbnailUrl = video.thumbnail_url ? getPublicImageUrl(video.thumbnail_url) : null
+          
+          console.log('🎬 動画URL処理:', {
+            original_video: video.video_url,
+            processed_video: videoUrl,
+            original_thumbnail: video.thumbnail_url,
+            processed_thumbnail: thumbnailUrl
+          })
+          
+          return {
+            ...video,
+            video_url: videoUrl,
+            thumbnail_url: thumbnailUrl
+          }
+        }) : []
         
         return {
           ...product,
@@ -444,11 +470,7 @@ const fetchProducts = async () => {
             ...img,
             image_url: getPublicImageUrl(img.image_url)
           })),
-          videos: videos && videos.length > 0 ? videos.map(video => ({
-            ...video,
-            video_url: getPublicImageUrl(video.video_url),
-            thumbnail_url: video.thumbnail_url ? getPublicImageUrl(video.thumbnail_url) : null
-          })) : []
+          videos: processedVideos
         }
       })
     )

@@ -163,7 +163,7 @@ import { initializeSquare, createCardPaymentForm, processPayment } from '../lib/
 import { supabase } from '../lib/supabase'
 import { decreaseProductStock } from '../lib/decreaseStock'
 import { getOrCreateCustomerId } from '../lib/customer'
-import { sendPaymentConfirmationEmail } from '../lib/postmark'
+import { sendPaymentConfirmationEmail } from '../lib/mailgun'
 import getPublicImageUrl from '../lib/imageUtils.js'
 
 const props = defineProps({

@@ -35,10 +35,27 @@ export default async function handler(req, res) {
   try {
     const form = formidable({
       multiples: false,
-      maxFileSize: 50 * 1024 * 1024, // 50MB
+      maxFileSize: 200 * 1024 * 1024, // 200MB (動画対応)
     })
 
-    const [fields, files] = await form.parse(req)
+    let fields, files
+    try {
+      [fields, files] = await form.parse(req)
+    } catch (parseError) {
+      console.error('❌ Formidable parse error:', parseError)
+      
+      if (parseError.code === 1009 || parseError.httpCode === 413) {
+        // ファイルサイズ超過エラー
+        return res.status(413).json({
+          error: 'ファイルサイズが大きすぎます（最大: 200MB）',
+          code: 'LIMIT_FILE_SIZE',
+          details: parseError.message
+        })
+      }
+      
+      throw parseError
+    }
+    
     const file = files.file?.[0]
     const type = fields.type?.[0] || 'image'
     const productId = fields.productId?.[0] || 'general'
@@ -46,6 +63,13 @@ export default async function handler(req, res) {
     if (!file) {
       return res.status(400).json({ error: 'ファイルが選択されていません' })
     }
+    
+    console.log('📁 受信したファイル:', {
+      name: file.originalFilename,
+      size: file.size,
+      sizeMB: Math.round(file.size / 1024 / 1024),
+      type: type
+    })
 
     // ファイル拡張子をチェック
     const allowedImageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
@@ -90,7 +114,12 @@ export default async function handler(req, res) {
 
     // バケット名と公開URLを取得
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || process.env.VITE_CLOUDFLARE_R2_BUCKET_NAME
-    const publicBaseUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || process.env.VITE_CLOUDFLARE_R2_PUBLIC_URL
+    let publicBaseUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || process.env.VITE_CLOUDFLARE_R2_PUBLIC_URL
+
+    // 公開URLの末尾スラッシュを正規化（必ず末尾スラッシュなしに統一）
+    if (publicBaseUrl && publicBaseUrl.endsWith('/')) {
+      publicBaseUrl = publicBaseUrl.slice(0, -1)
+    }
 
     // R2にアップロード
     const uploadCommand = new PutObjectCommand({
@@ -102,17 +131,25 @@ export default async function handler(req, res) {
 
     await r2Client.send(uploadCommand)
 
-    // 公開URLを生成
-    const publicUrl = `${publicBaseUrl}${fileName}`
+    // 公開URLを生成（スラッシュで正しく連結）
+    const publicUrl = `${publicBaseUrl}/${fileName}`
 
     // 一時ファイルを削除
     fs.unlinkSync(file.filepath)
+
+    console.log('✅ R2アップロード成功:', {
+      url: publicUrl,
+      fileName: fileName,
+      fileSize: file.size,
+      fileSizeMB: Math.round(file.size / 1024 / 1024)
+    })
 
     res.status(200).json({
       success: true,
       url: publicUrl,
       fileName: fileName,
-      type: type
+      type: type,
+      fileSize: file.size
     })
 
   } catch (error) {
@@ -128,10 +165,22 @@ export default async function handler(req, res) {
     console.error('CLOUDFLARE_R2_BUCKET_NAME:', bucketName)
     console.error('CLOUDFLARE_R2_PUBLIC_URL:', publicBaseUrl)
     
-    res.status(500).json({
-      error: 'アップロードに失敗しました',
+    // より詳細なエラー情報を返す
+    let errorMessage = 'アップロードに失敗しました'
+    let statusCode = 500
+    
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      errorMessage = 'ファイルサイズが大きすぎます（最大: 200MB）'
+      statusCode = 413
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    res.status(statusCode).json({
+      error: errorMessage,
       details: error.message,
-      stack: error.stack
+      code: error.code,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     })
   }
 }
