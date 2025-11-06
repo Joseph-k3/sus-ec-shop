@@ -72,20 +72,27 @@ export async function saveCartOrders(orders) {
  */
 export async function checkProductStock(items) {
   try {
+    // 商品IDごとに合計数量を集計
+    const itemTotals = {}
     for (const item of items) {
-      // 最新の在庫数を取得
+      if (!itemTotals[item.id]) {
+        itemTotals[item.id] = 0
+      }
+      itemTotals[item.id] += item.quantity
+    }
+    // 各商品について在庫チェック
+    for (const id in itemTotals) {
       const { data: product, error } = await supabase
         .from('succulents')
         .select('quantity, name')
-        .eq('id', item.id)
+        .eq('id', id)
         .single()
 
       if (error) throw error
 
-      // カート内の数量が最新在庫を超えていないか判定
-      if (!product || item.quantity > product.quantity) {
+      if (!product || itemTotals[id] > product.quantity) {
         throw new Error(
-          `商品「${item.name}」の在庫が不足しています（在庫: ${product?.quantity || 0}個、必要: ${item.quantity}個）`
+          `商品「${product?.name || id}」の在庫が不足しています（在庫: ${product?.quantity || 0}個、必要: ${itemTotals[id]}個）`
         )
       }
     }

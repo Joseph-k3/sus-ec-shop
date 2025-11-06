@@ -1420,6 +1420,10 @@ const showMessage = (text, type = 'success') => {
   text-align: center;
 }
 
+.message.error {
+  color: #dc3545;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -1764,8 +1768,6 @@ const showMessage = (text, type = 'success') => {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 20; /* z-indexを下げる */
-  max-width: 400px;
-  text-align: center;
 }
 
 .cart-checkout-container {
