@@ -1393,6 +1393,7 @@ const showMessage = (text, type = 'success') => {
   align-items: center;
   justify-content: center;
   border-radius: 15px;
+  z-index: 10; /* z-indexを下げる */
 }
 
 .loading-spinner {
@@ -1403,6 +1404,20 @@ const showMessage = (text, type = 'success') => {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
+}
+
+.message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 20; /* z-indexを下げる */
+  max-width: 400px;
+  text-align: center;
 }
 
 @keyframes spin {
@@ -1453,19 +1468,9 @@ const showMessage = (text, type = 'success') => {
   padding: 1rem 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 20; /* z-indexを下げる */
   max-width: 400px;
   text-align: center;
-}
-
-.message.success {
-  border-left: 4px solid #28a745;
-  color: #28a745;
-}
-
-.message.error {
-  border-left: 4px solid #dc3545;
-  color: #dc3545;
 }
 
 /* メールアドレス入力関連のスタイル */
@@ -1732,6 +1737,47 @@ const showMessage = (text, type = 'success') => {
   .summary-item-image {
     width: 80px;
     height: 80px;
+  }
+
+  .loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  z-index: 10; /* z-indexを下げる */
+}
+
+.message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 20; /* z-indexを下げる */
+  max-width: 400px;
+  text-align: center;
+}
+
+.cart-checkout-container {
+    padding-bottom: 3rem; /* ボタンが隠れないよう余白追加 */
+  }
+  .form-actions {
+    margin-bottom: 2rem;
+  }
+  .submit-btn {
+    min-width: 150px;
+    font-size: 1rem;
+    padding: 0.8rem 1.2rem;
   }
 }
 </style>
