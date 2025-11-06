@@ -858,7 +858,18 @@ const submitOrder = async () => {
     })
 
     const orders = await Promise.all(orderPromises)
-    
+
+    // 銀行振込の場合は注文確定後に在庫を減少させる
+    for (const item of cart.items) {
+      try {
+        // 在庫減少処理を呼び出し
+        await decreaseProductStock(item.id, item.quantity)
+      } catch (stockError) {
+        console.error('在庫減少エラー:', stockError)
+        // 必要ならユーザー通知やロールバック処理
+      }
+    }
+
     // メール送信（銀行振込のみ）
     try {
       await sendCartOrderEmail({

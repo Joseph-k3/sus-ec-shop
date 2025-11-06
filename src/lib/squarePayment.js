@@ -73,6 +73,7 @@ export async function saveCartOrders(orders) {
 export async function checkProductStock(items) {
   try {
     for (const item of items) {
+      // 最新の在庫数を取得
       const { data: product, error } = await supabase
         .from('succulents')
         .select('quantity, name')
@@ -81,7 +82,8 @@ export async function checkProductStock(items) {
 
       if (error) throw error
 
-      if (!product || product.quantity < item.quantity) {
+      // カート内の数量が最新在庫を超えていないか判定
+      if (!product || item.quantity > product.quantity) {
         throw new Error(
           `商品「${item.name}」の在庫が不足しています（在庫: ${product?.quantity || 0}個、必要: ${item.quantity}個）`
         )
