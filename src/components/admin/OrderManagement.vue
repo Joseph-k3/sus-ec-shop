@@ -164,8 +164,8 @@
             </div>
 
             <div class="payment-info">
-              <p><strong>支払方法:</strong> {{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込' : 'Square決済' }}</p>
-              <p v-if="orderGroup.orders[0].payment_method === 'bank'">
+              <p><strong>支払方法:</strong> {{ orderGroup.orders[0].payment_method === 'bank_transfer' ? '銀行振込' : 'Square決済' }}</p>
+              <p v-if="orderGroup.orders[0].payment_method === 'bank_transfer'">
                 <strong>支払期限:</strong> {{ formatDate(orderGroup.orders[0].payment_due_date) }}
               </p>
             </div>

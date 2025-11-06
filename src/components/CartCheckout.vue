@@ -384,7 +384,6 @@ import { getOrCreateCustomerId } from '../lib/customerUtils'
 import { sendCartOrderEmail } from '../lib/mailgun' // Mailgunを使用したメール送信
 import { useAddressLookup } from '../composables/useAddressLookup'
 import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
-import { decreaseProductStock } from '../lib/decreaseStock' // 在庫減少関数
 import { 
   createSquareCheckout, 
   checkProductStock,
@@ -801,17 +800,8 @@ const submitOrder = async () => {
     const now = new Date().toISOString()
     const paymentDueDate = calculatePaymentDueDate(48)
     
-    // ⚠️ 重要: 注文作成前に在庫を減少させる（トリガーの在庫チェックより前に実行）
-    try {
-      for (const item of cart.items) {
-        await decreaseProductStock(item.id, item.quantity)
-      }
-    } catch (stockError) {
-      console.error('在庫減少エラー:', stockError)
-      throw new Error(`在庫の確保に失敗しました: ${stockError.message}`)
-    }
-    
     // 各商品ごとに注文を作成
+    // 注意: 在庫チェックと減少はデータベーストリガー（check_and_decrease_stock_on_order）で自動的に行われます
     const orderPromises = cart.items.map(async (item, index) => {
       const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
       
@@ -830,8 +820,7 @@ const submitOrder = async () => {
         status: 'pending_payment',
         payment_due_date: paymentDueDate,
         created_at: now,
-        updated_at: now,
-        customer_id: customerId,
+        updated_at: now
       }
 
       // 住所にカートグループIDと送料情報を含める
@@ -859,12 +848,47 @@ const submitOrder = async () => {
         orderData.address = `〒${formattedZipCode}\n${addressWithCartGroup}`
       }
 
+      console.log('📝 注文データ:', {
+        order_number: orderData.order_number,
+        product_id: orderData.product_id,
+        product_name: orderData.product_name,
+        quantity: orderData.quantity,
+        payment_method: orderData.payment_method,
+        status: orderData.status
+      })
+      
+      console.log('🔄 注文をSupabaseに送信中...')
+
       const { data, error } = await supabase
         .from('orders')
         .insert([orderData])
         .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ 注文作成エラー:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          product_id: orderData.product_id,
+          product_name: orderData.product_name,
+          quantity: orderData.quantity
+        })
+        throw error
+      }
+      
+      console.log('✅ 注文作成成功:', data[0])
+      
+      // 注文後の在庫確認（デバッグ用）
+      const { data: productAfter, error: fetchError } = await supabase
+        .from('succulents')
+        .select('quantity')
+        .eq('id', item.id)
+        .single()
+      
+      if (!fetchError) {
+        console.log(`📦 商品 ${item.name} の注文後在庫: ${productAfter.quantity}個`)
+      }
       return data[0]
     })
 
@@ -902,21 +926,54 @@ const submitOrder = async () => {
     }, 3000)
 
   } catch (error) {
-    console.error('注文処理エラー:', error)
-    console.error('エラーの詳細:', {
+    console.error('🚨 注文処理エラー:', error)
+    console.error('📋 エラーの詳細:', {
       message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      // エラーオブジェクト全体も出力
+      fullError: JSON.stringify(error, null, 2)
     })
     
-    // エラーが発生した場合、在庫復元は不要（事前に減少していないため）
+    // エラーが発生した場合、在庫復元は不要（トリガーがロールバックする）
     
-    // 在庫不足エラーの場合の特別処理
-    if (error.message && error.message.includes('在庫が不足しています')) {
-      showMessage('🚫 申し訳ありません。カート内の一部商品が在庫切れになりました。\n\n他のお客様が先にご購入されたため、現在在庫がございません。\nカートを確認して商品を調整してください。', 'error')
-    } else {
-      showMessage(`注文処理中にエラーが発生しました: ${error.message}`, 'error')
+    // エラーメッセージを解析してユーザーフレンドリーなメッセージを表示
+    let userMessage = '注文処理中にエラーが発生しました。'
+    let errorDetails = ''
+    
+    if (error.code === 'P0001' || (error.message && error.message.includes('在庫が不足しています'))) {
+      // 在庫不足エラー
+      userMessage = '🚫 申し訳ありません。カート内の一部商品が在庫切れになりました。\n\n他のお客様が先にご購入されたため、現在在庫がございません。\nカートを確認して商品を調整してください。'
+    } else if (error.message && error.message.includes('商品が見つかりません')) {
+      // 商品削除エラー
+      userMessage = '⚠️ カート内の一部商品が削除されています。\nカートを確認してください。'
+    } else if (error.code === '23505') {
+      // 重複エラー
+      userMessage = '⚠️ この注文は既に処理されています。\n注文履歴をご確認ください。'
+    } else if (error.code === '42P01') {
+      // テーブルが存在しない
+      userMessage = '⚠️ データベースエラーが発生しました。\n管理者に連絡してください。'
+      errorDetails = 'テーブルが見つかりません'
+    } else if (error.code === '42703') {
+      // カラムが存在しない
+      userMessage = '⚠️ データベースエラーが発生しました。\n管理者に連絡してください。'
+      errorDetails = 'カラムが見つかりません'
+    } else if (error.message) {
+      userMessage = `注文処理中にエラーが発生しました: ${error.message}`
+      if (error.details) {
+        errorDetails = `\n詳細: ${error.details}`
+      }
     }
+    
+    console.error('🔍 ユーザーメッセージ:', userMessage)
+    if (errorDetails) {
+      console.error('🔍 エラー詳細:', errorDetails)
+    }
+    
+    showMessage(userMessage + errorDetails, 'error')
   } finally {
     isSubmitting.value = false
   }

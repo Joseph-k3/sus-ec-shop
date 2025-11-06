@@ -74,7 +74,7 @@
               <dt>お届け先</dt>
               <dd>{{ orderGroup.orders[0].address?.split('\n[CartGroup:')[0] || orderGroup.orders[0].address }}</dd>
 
-              <template v-if="orderGroup.orders[0].payment_method === 'bank'">
+              <template v-if="orderGroup.orders[0].payment_method === 'bank_transfer'">
                 <dt>支払期限</dt>
                 <dd :class="{ 'expired': isPaymentExpired(orderGroup.orders[0]) }">
                   {{ formatDate(orderGroup.orders[0].payment_due_date) }}
@@ -107,7 +107,7 @@
           <!-- カート注文のキャンセルボタン（入金待ち状態） -->
           <div v-else-if="shouldShowCartCancelButton(orderGroup.orders)" class="cart-cancel-actions">
             <div class="pending-payment-message">
-              <p>{{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
+              <p>{{ orderGroup.orders[0].payment_method === 'bank_transfer' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
               <p class="cancel-note">※ ご都合により注文をキャンセルされる場合は、下記ボタンからお手続きいただけます</p>
             </div>
             <button 
@@ -158,7 +158,7 @@
                 <dt>お届け先</dt>
                 <dd>{{ orderGroup.orders[0].address }}</dd>
 
-                <template v-if="orderGroup.orders[0].payment_method === 'bank'">
+                <template v-if="orderGroup.orders[0].payment_method === 'bank_transfer'">
                   <dt>支払期限</dt>
                   <dd :class="{ 'expired': isPaymentExpired(orderGroup.orders[0]) }">
                     {{ formatDate(orderGroup.orders[0].payment_due_date) }}
@@ -191,7 +191,7 @@
           <!-- お支払い待ち状態でキャンセルボタン表示 -->
           <div v-else-if="shouldShowCancelButton(orderGroup.orders[0])" class="cancel-actions">
             <div class="pending-payment-message">
-              <p>{{ orderGroup.orders[0].payment_method === 'bank' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
+              <p>{{ orderGroup.orders[0].payment_method === 'bank_transfer' ? '銀行振込でのお支払いをお待ちしております' : 'クレジットカード決済をお待ちしております' }}</p>
               <p class="cancel-note">※ ご都合により注文をキャンセルされる場合は、下記ボタンからお手続きいただけます</p>
             </div>
             <button 
@@ -389,7 +389,7 @@ const confirmPayment = async (order) => {
 
 // 注文キャンセル
 const cancelOrder = async (order) => {
-  const paymentMethod = order.payment_method === 'bank' ? '銀行振込' : 'クレジットカード決済'
+  const paymentMethod = order.payment_method === 'bank_transfer' ? '銀行振込' : 'クレジットカード決済'
   
   if (!confirm(
     `この注文をキャンセルしますか？\n\n` +
@@ -413,7 +413,11 @@ const cancelOrder = async (order) => {
 
     if (updateError) throw updateError
 
+    console.log('✅ 注文をキャンセル済みに更新しました')
+
     // 在庫を復元
+    console.log(`🔄 在庫復元開始: 商品ID=${order.product_id}, 数量=${order.quantity || 1}`)
+    
     const { data: currentStock, error: stockFetchError } = await supabase
       .from('succulents')
       .select('quantity')
@@ -421,23 +425,31 @@ const cancelOrder = async (order) => {
       .single()
 
     if (stockFetchError) {
-      console.error('在庫取得エラー:', stockFetchError)
-    } else {
-      const { error: stockError } = await supabase
-        .from('succulents')
-        .update({
-          quantity: currentStock.quantity + (order.quantity || 1)
-        })
-        .eq('id', order.product_id)
-
-      if (stockError) {
-        console.error('在庫復元エラー:', stockError)
-        // 在庫復元に失敗してもキャンセルは成功とする
-      }
+      console.error('❌ 在庫取得エラー:', stockFetchError)
+      throw new Error(`在庫取得に失敗しました: ${stockFetchError.message}`)
     }
+    
+    console.log(`📦 現在の在庫: ${currentStock.quantity}個`)
+    const newQuantity = currentStock.quantity + (order.quantity || 1)
+    console.log(`➕ 復元後の在庫: ${newQuantity}個`)
+    
+    const { error: stockError } = await supabase
+      .from('succulents')
+      .update({
+        quantity: newQuantity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', order.product_id)
+
+    if (stockError) {
+      console.error('❌ 在庫復元エラー:', stockError)
+      throw new Error(`在庫復元に失敗しました: ${stockError.message}`)
+    }
+    
+    console.log('✅ 在庫を復元しました')
 
     await fetchOrders() // 注文リストを再取得して表示を更新
-    alert('注文をキャンセルしました。')
+    alert('注文をキャンセルしました。\n在庫を復元しました。')
   } catch (e) {
     console.error('注文キャンセルに失敗:', e)
     alert('注文キャンセルに失敗しました。')
@@ -605,21 +617,42 @@ const cancelCartOrder = async (cartOrders) => {
 
     if (orderError) throw orderError
 
+    console.log(`✅ カート注文をキャンセル済みに更新しました: ${cartOrders.length}件`)
+
     // 在庫を元に戻す
     for (const order of cartOrders) {
+      console.log(`🔄 在庫復元中: 商品ID=${order.product_id}, 商品名=${order.product_name}, 数量=${order.quantity || 1}`)
+      
       const { data: product, error: productError } = await supabase
         .from('succulents')
         .select('quantity')
         .eq('id', order.product_id)
         .single()
 
-      if (!productError && product) {
-        await supabase
+      if (productError) {
+        console.error(`❌ 在庫取得エラー (${order.product_name}):`, productError)
+        throw new Error(`在庫取得に失敗しました: ${productError.message}`)
+      }
+      
+      if (product) {
+        console.log(`📦 現在の在庫 (${order.product_name}): ${product.quantity}個`)
+        const newQuantity = product.quantity + (order.quantity || 1)
+        console.log(`➕ 復元後の在庫 (${order.product_name}): ${newQuantity}個`)
+        
+        const { error: stockError } = await supabase
           .from('succulents')
           .update({ 
-            quantity: product.quantity + (order.quantity || 1)
+            quantity: newQuantity,
+            updated_at: new Date().toISOString()
           })
           .eq('id', order.product_id)
+        
+        if (stockError) {
+          console.error(`❌ 在庫復元エラー (${order.product_name}):`, stockError)
+          throw new Error(`在庫復元に失敗しました: ${stockError.message}`)
+        }
+        
+        console.log(`✅ 在庫復元完了 (${order.product_name})`)
       }
     }
 
@@ -680,7 +713,7 @@ const isPaymentExpired = (order) => {
 // 支払いボタンを表示すべきかどうか
 const shouldShowPaymentButton = (order) => {
   return (
-    order.payment_method === 'bank' && 
+    order.payment_method === 'bank_transfer' && 
     !order.payment_confirmed_by_customer &&
     !isPaymentExpired(order) &&
     order.status !== 'cancelled'
@@ -691,7 +724,7 @@ const shouldShowPaymentButton = (order) => {
 const shouldShowCartPaymentButton = (cartOrders) => {
   const firstOrder = cartOrders[0]
   return (
-    firstOrder.payment_method === 'bank' && 
+    firstOrder.payment_method === 'bank_transfer' && 
     !firstOrder.payment_confirmed_by_customer &&
     !isPaymentExpired(firstOrder) &&
     firstOrder.status !== 'cancelled'
