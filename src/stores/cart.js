@@ -51,8 +51,8 @@ export const useCartStore = defineStore('cart', () => {
 
       if (fetchError) throw fetchError
 
-      if (currentProduct.is_reserved || currentProduct.quantity < quantity) {
-        throw new Error('この商品は在庫不足または取引中のため、カートに追加できません')
+      if (currentProduct.is_reserved) {
+        throw new Error('この商品は取引中のため、カートに追加できません')
       }
 
       // 既存のカートアイテムをチェック
@@ -63,13 +63,19 @@ export const useCartStore = defineStore('cart', () => {
         const existingItem = items.value[existingItemIndex]
         const newQuantity = existingItem.quantity + quantity
         
+        // カート内の既存数量も含めて在庫チェック
         if (newQuantity > currentProduct.quantity) {
-          throw new Error(`在庫不足です。最大${currentProduct.quantity}個まで選択できます`)
+          throw new Error(`在庫不足です。現在の在庫: ${currentProduct.quantity}個、カート内: ${existingItem.quantity}個`)
         }
         
         items.value[existingItemIndex].quantity = newQuantity
+        items.value[existingItemIndex].maxQuantity = currentProduct.quantity
       } else {
         // 新しいアイテムを追加
+        if (quantity > currentProduct.quantity) {
+          throw new Error(`在庫不足です。最大${currentProduct.quantity}個まで選択できます`)
+        }
+        
         items.value.push({
           id: product.id,
           name: product.name,
@@ -106,33 +112,33 @@ export const useCartStore = defineStore('cart', () => {
   const updateQuantity = async (productId, newQuantity) => {
     const itemIndex = items.value.findIndex(item => item.id === productId)
     if (itemIndex >= 0) {
-      const item = items.value[itemIndex]
-      const oldQuantity = item.quantity
-      const quantityDiff = newQuantity - oldQuantity
-
       if (newQuantity <= 0) {
         await removeFromCart(productId)
-        return
+        return { success: true }
       }
 
       try {
         // 在庫チェック
         const { data: currentProduct, error: fetchError } = await supabase
           .from('succulents')
-          .select('quantity')
+          .select('quantity, is_reserved')
           .eq('id', productId)
           .single()
 
         if (fetchError) throw fetchError
 
-        // 修正: 新しい数量が在庫数を超えていないか判定
+        if (currentProduct.is_reserved) {
+          throw new Error('この商品は現在取引中です')
+        }
+
+        // 新しい数量が在庫数を超えていないか判定
         if (newQuantity > currentProduct.quantity) {
           throw new Error(`在庫不足です。最大${currentProduct.quantity}個まで選択できます`)
         }
 
         // カート内の数量変更時は在庫を調整しない（注文確定時に在庫チェックを行う）
-
         items.value[itemIndex].quantity = newQuantity
+        items.value[itemIndex].maxQuantity = currentProduct.quantity
         saveCartToStorage()
         return { success: true }
       } catch (error) {
@@ -140,6 +146,7 @@ export const useCartStore = defineStore('cart', () => {
         return { success: false, message: error.message }
       }
     }
+    return { success: false, message: '商品が見つかりません' }
   }
 
   // カートを空にする

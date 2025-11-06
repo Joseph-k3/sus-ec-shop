@@ -384,6 +384,7 @@ import { getOrCreateCustomerId } from '../lib/customerUtils'
 import { sendCartOrderEmail } from '../lib/mailgun' // Mailgunを使用したメール送信
 import { useAddressLookup } from '../composables/useAddressLookup'
 import { calculateTotalWithShipping } from '../lib/shipping.js' // 送料計算機能
+import { decreaseProductStock } from '../lib/decreaseStock' // 在庫減少関数
 import { 
   createSquareCheckout, 
   checkProductStock,
@@ -800,6 +801,16 @@ const submitOrder = async () => {
     const now = new Date().toISOString()
     const paymentDueDate = calculatePaymentDueDate(48)
     
+    // ⚠️ 重要: 注文作成前に在庫を減少させる（トリガーの在庫チェックより前に実行）
+    try {
+      for (const item of cart.items) {
+        await decreaseProductStock(item.id, item.quantity)
+      }
+    } catch (stockError) {
+      console.error('在庫減少エラー:', stockError)
+      throw new Error(`在庫の確保に失敗しました: ${stockError.message}`)
+    }
+    
     // 各商品ごとに注文を作成
     const orderPromises = cart.items.map(async (item, index) => {
       const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
@@ -858,17 +869,6 @@ const submitOrder = async () => {
     })
 
     const orders = await Promise.all(orderPromises)
-
-    // 銀行振込の場合は注文確定後に在庫を減少させる
-    for (const item of cart.items) {
-      try {
-        // 在庫減少処理を呼び出し
-        await decreaseProductStock(item.id, item.quantity)
-      } catch (stockError) {
-        console.error('在庫減少エラー:', stockError)
-        // 必要ならユーザー通知やロールバック処理
-      }
-    }
 
     // メール送信（銀行振込のみ）
     try {
