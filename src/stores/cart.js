@@ -125,8 +125,9 @@ export const useCartStore = defineStore('cart', () => {
 
         if (fetchError) throw fetchError
 
-        if (quantityDiff > 0 && currentProduct.quantity < quantityDiff) {
-          throw new Error('在庫不足です')
+        // 修正: 新しい数量が在庫数を超えていないか判定
+        if (newQuantity > currentProduct.quantity) {
+          throw new Error(`在庫不足です。最大${currentProduct.quantity}個まで選択できます`)
         }
 
         // カート内の数量変更時は在庫を調整しない（注文確定時に在庫チェックを行う）
