@@ -109,8 +109,10 @@
     </div>
 
     <!-- メッセージ表示 -->
-    <div v-if="message" class="message" :class="messageType">
-      {{ message }}
+    <div v-if="message" class="message-overlay">
+      <div class="message-box" :class="messageType">
+        {{ message }}
+      </div>
     </div>
   </div>
 </template>
@@ -332,9 +334,17 @@ const closeUploadModal = () => {
 const showMessage = (text, type = 'success') => {
   message.value = text
   messageType.value = type
+  
+  // ダイアログ表示時にページトップへスムーズにスクロール
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  })
+  
+  // メッセージを5秒後に自動で消す
   setTimeout(() => {
     message.value = ''
-  }, 3000)
+  }, 5000)
 }
 
 // プロダクトIDが変更されたら画像を再読み込み
@@ -609,37 +619,45 @@ onMounted(() => {
   color: #666;
 }
 
-.message {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1.5rem 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
+.message-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  padding: 2rem !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  box-sizing: border-box !important;
+}
+
+.message-box {
   min-width: 300px;
-  max-width: 90%;
+  max-width: 600px;
+  padding: 2rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   text-align: center;
   white-space: pre-line;
-  line-height: 1.6;
+  line-height: 1.8;
+  font-weight: 600;
+  font-size: 1.15rem;
 }
 
-.message.success {
-  border: 3px solid #28a745;
+.message-box.success {
+  border: 4px solid #28a745;
   color: #155724;
   background: #d4edda;
-  font-weight: 600;
-  font-size: 1.1rem;
 }
 
-.message.error {
-  border: 3px solid #dc3545;
+.message-box.error {
+  border: 4px solid #dc3545;
   color: #721c24;
   background: #f8d7da;
-  font-weight: 600;
-  font-size: 1.1rem;
 }
 
 @media screen and (max-width: 768px) {

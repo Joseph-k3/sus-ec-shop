@@ -368,8 +368,10 @@
     </div>
 
     <!-- メッセージ表示 -->
-    <div v-if="message" class="message" :class="messageType">
-      {{ message }}
+    <div v-if="message" class="message-overlay">
+      <div class="message-box" :class="messageType">
+        {{ message }}
+      </div>
     </div>
   </div>
 </template>
@@ -917,12 +919,12 @@ const submitOrder = async () => {
     cart.items.splice(0)
     cart.saveCartToStorage()
 
-    showMessage('ご注文ありがとうございます！\n注文が正常に完了いたしました。', 'success')
+    showMessage('ご注文ありがとうございます！\n注文が正常に完了いたしました。\n\n5秒後に注文履歴画面に移動します...', 'success')
     
-    // 3秒後に注文履歴画面に遷移
+    // 5秒後に注文履歴画面に遷移
     setTimeout(() => {
       router.push('/my-orders')
-    }, 3000)
+    }, 5000)
 
   } catch (error) {
     console.error('🚨 注文処理エラー:', error)
@@ -981,9 +983,20 @@ const submitOrder = async () => {
 const showMessage = (text, type = 'success') => {
   message.value = text
   messageType.value = type
-  setTimeout(() => {
-    message.value = ''
-  }, 5000)
+  
+  // ダイアログ表示時にページトップへスムーズにスクロール
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  })
+  
+  // エラーメッセージのみ8秒後に自動で消す
+  // 成功メッセージは画面遷移時に自然に消えるので自動では消さない
+  if (type === 'error') {
+    setTimeout(() => {
+      message.value = ''
+    }, 8000)
+  }
 }
 </script>
 
@@ -1799,37 +1812,45 @@ const showMessage = (text, type = 'success') => {
   }
 }
 
-/* メッセージ表示（メディアクエリの外に配置） */
-.message {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1.5rem 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
+/* メッセージ表示（ビューポート中央に確実に配置） */
+.message-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  padding: 2rem !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  box-sizing: border-box !important;
+}
+
+.message-box {
   min-width: 300px;
-  max-width: 90%;
+  max-width: 600px;
+  padding: 2rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   text-align: center;
   white-space: pre-line;
-  line-height: 1.6;
+  line-height: 1.8;
+  font-weight: 600;
+  font-size: 1.15rem;
 }
 
-.message.success {
-  border: 3px solid #28a745;
+.message-box.success {
+  border: 4px solid #28a745;
   color: #155724;
   background: #d4edda;
-  font-weight: 600;
-  font-size: 1.1rem;
 }
 
-.message.error {
-  border: 3px solid #dc3545;
+.message-box.error {
+  border: 4px solid #dc3545;
   color: #721c24;
   background: #f8d7da;
-  font-weight: 600;
-  font-size: 1.1rem;
 }
 </style>
