@@ -220,9 +220,8 @@
             <small>住所を検索中...</small>
           </div>
           <small class="form-hint">
-            数字を入力するとハイフンが自動で挿入されます（例：1234567 → 123-4567）。<br>
+            数字を入力するとハイフンが自動で挿入されます。<br>（例：1234567 → 123-4567）<br>
             完全な郵便番号を入力すると自動で住所候補を表示します。<br>
-            <strong>テスト用:</strong> 100-0001（千代田区）、164-0001（中野区）、810-0001（福岡市）
           </small>
           
           <!-- 住所自動補完の提案 -->
@@ -309,7 +308,7 @@
                 <span class="payment-icon">💳</span>
                 <div class="payment-details">
                   <span class="payment-title">クレジットカード決済（Square）</span>
-                  <span class="payment-desc">カード情報入力後、即座に決済完了</span>
+                  <span class="payment-desc">カード情報入力後、即座に決済実行</span>
                 </div>
               </label>
             </div>
@@ -330,7 +329,7 @@
                 <span class="payment-icon">🏦</span>
                 <div class="payment-details">
                   <span class="payment-title">銀行振込</span>
-                  <span class="payment-desc">注文確定後、振込先をメールでお知らせします</span>
+                  <span class="payment-desc">注文確定後、振込先をメールでお知らせいたします</span>
                 </div>
               </label>
             </div>
@@ -344,7 +343,7 @@
             </div>
             <div v-else-if="form.paymentMethod === 'bank_transfer'">
               <p>※ お振込確認後に商品を発送いたします</p>
-              <p>※ お支払期限は注文確定から48時間以内です</p>
+              <p>※ お支払期限は注文確定から72時間以内です</p>
             </div>
           </div>
         </div>
@@ -918,7 +917,7 @@ const submitOrder = async () => {
     cart.items.splice(0)
     cart.saveCartToStorage()
 
-    showMessage('ご注文ありがとうございました！注文が正常に完了いたしました。', 'success')
+    showMessage('ご注文ありがとうございます！\n注文が正常に完了いたしました。', 'success')
     
     // 3秒後に注文履歴画面に遷移
     setTimeout(() => {
@@ -1463,23 +1462,7 @@ const showMessage = (text, type = 'success') => {
   margin-bottom: 1rem;
 }
 
-.message {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 20; /* z-indexを下げる */
-  max-width: 400px;
-  text-align: center;
-}
-
-.message.error {
-  color: #dc3545;
-}
+/* 古い.message定義は削除（下部に統一した定義あり） */
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
@@ -1518,20 +1501,6 @@ const showMessage = (text, type = 'success') => {
   font-size: 0.85rem;
   margin: 0.5rem 0 0 0;
   font-style: italic;
-}
-
-.message {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 20; /* z-indexを下げる */
-  max-width: 400px;
-  text-align: center;
 }
 
 /* メールアドレス入力関連のスタイル */
@@ -1801,42 +1770,66 @@ const showMessage = (text, type = 'success') => {
   }
 
   .loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 15px;
-  z-index: 10; /* z-indexを下げる */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    z-index: 10;
+  }
+
+  .cart-checkout-container {
+    padding-bottom: 3rem;
+  }
+  
+  .form-actions {
+    margin-bottom: 2rem;
+  }
+  
+  .submit-btn {
+    min-width: 150px;
+    font-size: 1rem;
+    padding: 0.8rem 1.2rem;
+  }
 }
 
+/* メッセージ表示（メディアクエリの外に配置） */
 .message {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 20; /* z-indexを下げる */
+  padding: 1.5rem 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  min-width: 300px;
+  max-width: 90%;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.6;
 }
 
-.cart-checkout-container {
-    padding-bottom: 3rem; /* ボタンが隠れないよう余白追加 */
-  }
-  .form-actions {
-    margin-bottom: 2rem;
-  }
-  .submit-btn {
-    min-width: 150px;
-    font-size: 1rem;
-    padding: 0.8rem 1.2rem;
-  }
+.message.success {
+  border: 3px solid #28a745;
+  color: #155724;
+  background: #d4edda;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.message.error {
+  border: 3px solid #dc3545;
+  color: #721c24;
+  background: #f8d7da;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 </style>

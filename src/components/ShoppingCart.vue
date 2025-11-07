@@ -501,20 +501,31 @@ const showMessage = (text, type = 'success') => {
   left: 50%;
   transform: translate(-50%, -50%);
   background: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  padding: 1.5rem 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  min-width: 300px;
+  max-width: 90%;
+  text-align: center;
+  white-space: pre-line; /* 改行を有効化 */
+  line-height: 1.6;
 }
 
 .message.success {
-  border-left: 4px solid #28a745;
-  color: #28a745;
+  border: 3px solid #28a745;
+  color: #155724;
+  background: #d4edda;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .message.error {
-  border-left: 4px solid #dc3545;
-  color: #dc3545;
+  border: 3px solid #dc3545;
+  color: #721c24;
+  background: #f8d7da;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 /* レスポンシブ対応 */

@@ -610,21 +610,36 @@ onMounted(() => {
 }
 
 .message {
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-top: 1rem;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 1.5rem 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  min-width: 300px;
+  max-width: 90%;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.6;
 }
 
 .message.success {
-  background: #d4edda;
+  border: 3px solid #28a745;
   color: #155724;
-  border: 1px solid #c3e6cb;
+  background: #d4edda;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .message.error {
-  background: #f8d7da;
+  border: 3px solid #dc3545;
   color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: #f8d7da;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 @media screen and (max-width: 768px) {
