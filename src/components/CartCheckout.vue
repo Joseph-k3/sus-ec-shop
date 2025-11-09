@@ -31,6 +31,7 @@
 
       <!-- お客様情報入力フォーム -->
       <form @submit.prevent="submitOrder" class="customer-form">
+        <fieldset :disabled="isSubmitting" class="form-fieldset">
         <h3>👤 お客様情報</h3>
         
         <div class="form-group">
@@ -338,12 +339,12 @@
           <!-- 決済方法の説明 -->
           <div class="payment-note">
             <div v-if="form.paymentMethod === 'square'">
-              <p>✓ クレジットカードで即座にお支払いいただけます</p>
-              <p>✓ 決済完了後、すぐに発送準備に入ります</p>
+              <p>クレジットカードで即座にお支払いいただけます</p>
+              <p>決済完了後、すぐに発送準備に入ります</p>
             </div>
             <div v-else-if="form.paymentMethod === 'bank_transfer'">
-              <p>※ お振込確認後に商品を発送いたします</p>
-              <p>※ お支払期限は注文確定から72時間以内です</p>
+              <p>お振込確認後に商品を発送いたします</p>
+              <p>お支払期限は注文確定から72時間以内です</p>
             </div>
           </div>
         </div>
@@ -358,20 +359,28 @@
             <span v-else>注文を確定する</span>
           </button>
         </div>
+        </fieldset>
       </form>
     </div>
+  </div>
 
-    <!-- ローディング表示 -->
-    <div v-if="isSubmitting" class="loading-overlay">
-      <div class="loading-spinner"></div>
-      <p>注文を処理しています...</p>
-    </div>
-
-    <!-- メッセージ表示 -->
-    <div v-if="message" class="message-overlay">
-      <div class="message-box" :class="messageType">
-        {{ message }}
+  <!-- ローディング表示（全画面オーバーレイ） -->
+  <div v-if="isSubmitting" class="loading-overlay-fullscreen">
+    <div class="loading-content">
+      <div class="loading-spinner-wrapper">
+        <div class="loading-spinner-outer"></div>
+        <div class="loading-spinner-inner"></div>
       </div>
+      <p class="loading-text">注文を処理しています...</p>
+      <p class="loading-subtext">このまましばらくお待ちください</p>
+      <p class="loading-warning">⚠️ ページを閉じたり、戻るボタンを押さないでください</p>
+    </div>
+  </div>
+
+  <!-- メッセージ表示 -->
+  <div v-if="message" class="message-overlay">
+    <div class="message-box" :class="messageType">
+      {{ message }}
     </div>
   </div>
 </template>
@@ -398,6 +407,10 @@ const cart = useCartStore()
 const isSubmitting = ref(false)
 const message = ref('')
 const messageType = ref('success')
+
+// 二重送信防止: 処理中の注文番号を記録
+const processingOrderNumber = ref(null)
+const lastSubmitTime = ref(0)
 
 // 住所自動補完機能
 const { 
@@ -628,46 +641,103 @@ onMounted(() => {
 })
 
 const submitOrder = async () => {
+  console.log('🚀🚀🚀 ============================================')
+  console.log('🚀 注文手続き開始')
+  console.log('🚀 カート内商品数:', cart.items.length)
+  console.log('🚀 商品一覧:', cart.items.map(item => `${item.name}(数量:${item.quantity})`))
+  console.log('🚀 決済方法:', form.paymentMethod)
+  console.log('🚀🚀🚀 ============================================')
+  
+  // 🔒 二重送信防止: 既に処理中の場合は即座にreturn
+  if (isSubmitting.value) {
+    console.warn('⚠️⚠️⚠️ 既に注文処理中です。二重送信を防止しました。')
+    return
+  }
+
+  // 🔒 二重送信防止: 短時間（3秒以内）の連続送信を防止
+  const now = Date.now()
+  if (now - lastSubmitTime.value < 3000) {
+    console.warn('⚠️⚠️⚠️ 短時間の連続送信を防止しました。')
+    showMessage('処理中です。しばらくお待ちください。', 'error')
+    return
+  }
+  lastSubmitTime.value = now
+  
+  console.log('✅ 二重送信チェック完了')
+
   if (cart.items.length === 0) {
+    console.error('❌ カートが空です')
     showMessage('カートに商品がありません', 'error')
     return
   }
 
   // メールアドレスの一致チェック
   if (form.email !== form.emailConfirm) {
+    console.error('❌ メールアドレスが一致しません')
     showMessage('メールアドレスと確認用メールアドレスが一致しません', 'error')
     return
   }
 
   // メールアドレスの形式チェック
   if (!isEmailValid.value) {
+    console.error('❌ メールアドレスの形式が不正です:', form.email)
     showMessage('メールアドレスの形式が正しくありません', 'error')
     return
   }
+  
+  console.log('✅ バリデーションチェック完了')
 
+  // 🔒 処理開始フラグを立てる
   isSubmitting.value = true
+  console.log('🔒 処理開始フラグをONにしました')
 
   try {
     const customerId = getOrCreateCustomerId()
+    console.log('👤 顧客ID取得完了:', customerId)
     
     // 1. 在庫チェック
+    console.log('📦 在庫チェック開始...')
     await checkProductStock(cart.items)
+    console.log('✅ 在庫チェック完了')
+    console.log('✅ 在庫チェック完了')
     
     // 郵便番号をフォーマット
     let formattedZipCode = form.postal.trim()
     if (/^\d{7}$/.test(formattedZipCode)) {
       formattedZipCode = formattedZipCode.slice(0, 3) + '-' + formattedZipCode.slice(3)
     }
+    console.log('📮 郵便番号フォーマット完了:', formattedZipCode)
 
     // Square決済の場合
     if (form.paymentMethod === 'square') {
+      console.log('💳💳💳 ============================================')
+      console.log('💳 Square決済処理開始')
+      console.log('💳💳💳 ============================================')
+      
       // カート注文用の統一注文番号を生成
       const cartOrderNumber = generateOrderNumber('CART')
+      console.log('📝 カート注文番号生成:', cartOrderNumber)
+      
+      // 🔒 二重送信防止: 同じ注文番号で既に処理中の場合は中断
+      if (processingOrderNumber.value === cartOrderNumber) {
+        console.warn('⚠️⚠️⚠️ 同じ注文番号で既に処理中です:', cartOrderNumber)
+        return
+      }
+      processingOrderNumber.value = cartOrderNumber
+      console.log('🔒 処理中注文番号を設定:', cartOrderNumber)
+      
       const now = new Date().toISOString()
+      console.log('⏰ 注文作成時刻:', now)
+      
+      console.log(`📦📦📦 ${cart.items.length}件の商品に対して注文作成を開始...`)
       
       // 各商品ごとに注文を作成（ステータスはpending_payment）
+      // 注意: Square決済の場合、在庫は注文作成時には減らさず、Webhook受信時（決済完了後）に減らす
+      // これにより、決済キャンセル時の在庫復元が不要になり、二重減少も防げる
       const orderPromises = cart.items.map(async (item, index) => {
         const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
+        console.log(`🔄 注文作成開始 [${index + 1}/${cart.items.length}]: ${individualOrderNumber}`)
+        console.log(`   商品: ${item.name}, 数量: ${item.quantity}, 商品ID: ${item.id}`)
         
         const orderData = {
           order_number: individualOrderNumber,
@@ -717,13 +787,30 @@ const submitOrder = async () => {
           .insert([orderData])
           .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('❌❌❌ 注文作成エラー:', error)
+          console.error('   注文番号:', individualOrderNumber)
+          console.error('   商品:', item.name)
+          throw error
+        }
+        
+        console.log(`✅✅✅ 注文作成完了: ${individualOrderNumber}`)
+        console.log(`   商品: ${item.name}, 数量: ${item.quantity}`)
+        console.log(`   注文ID: ${data[0].id}`)
         return data[0]
       })
 
-      await Promise.all(orderPromises)
+      const createdOrders = await Promise.all(orderPromises)
+      console.log('🎉🎉🎉 ============================================')
+      console.log(`🎉 全注文作成完了: 合計${createdOrders.length}件`)
+      console.log('🎉 作成された注文番号:', createdOrders.map(o => o.order_number))
+      console.log('🎉🎉🎉 ============================================')
       
       // Square決済のデータを準備
+      console.log('📋 Square決済データ準備中...')
+      console.log('   カート商品:', cart.items)
+      console.log('   送料:', shippingInfo.value)
+      
       const orderData = {
         customerName: form.customerName,
         email: form.email,
@@ -744,19 +831,26 @@ const submitOrder = async () => {
         redirectUrl: window.location.origin,
         cartOrderNumber: cartOrderNumber // Webhook用の注文番号
       }
+      console.log('✅ Square決済データ準備完了')
+      console.log('   送信するorderData:', JSON.stringify(orderData, null, 2))
 
       // Square Checkoutセッションを作成
+      console.log('🔗 Square Checkoutセッション作成中...')
       const checkoutResult = await createSquareCheckout(orderData)
       
-      console.log('🔍 Square Checkout結果:', checkoutResult)
+      console.log('🔍🔍🔍 Square Checkout結果:', checkoutResult)
       console.log('🔍 Order ID:', checkoutResult.orderId)
       console.log('🔍 Payment Link ID:', checkoutResult.paymentLinkId)
+      console.log('🔍 Checkout URL:', checkoutResult.checkoutUrl)
       
       if (!checkoutResult.success || !checkoutResult.checkoutUrl) {
+        console.error('❌❌❌ Square Checkout作成失敗')
         throw new Error('決済ページの作成に失敗しました')
       }
+      console.log('✅ Square Checkoutセッション作成完了')
 
       // 注文IDをデータベースに更新（Webhook時の照合用）
+      console.log('💾 注文にSquare IDを保存中...')
       const updateResult = await supabase
         .from('orders')
         .update({ 
@@ -769,20 +863,22 @@ const submitOrder = async () => {
       console.log('🔍 DB更新結果:', updateResult)
       
       if (updateResult.error) {
-        console.error('❌ DB更新エラー:', updateResult.error)
+        console.error('❌❌❌ DB更新エラー:', updateResult.error)
         throw new Error(`注文IDの保存に失敗しました: ${updateResult.error.message}`)
       }
       
       if (!updateResult.data || updateResult.data.length === 0) {
-        console.error('❌ 更新対象の注文が見つかりませんでした')
+        console.error('❌❌❌ 更新対象の注文が見つかりませんでした')
         console.error('検索した注文番号パターン:', `${cartOrderNumber}%`)
         // 警告だけ表示して続行（決済自体は成功する可能性がある）
         console.warn('⚠️ 警告: 注文IDの保存に失敗しましたが、決済処理は続行します')
       } else {
-        console.log(`✅ ${updateResult.data.length}件の注文を更新しました`)
+        console.log(`✅✅✅ ${updateResult.data.length}件の注文を更新しました`)
+        console.log('   更新された注文:', updateResult.data.map(o => o.order_number))
       }
 
       // 注文情報をlocalStorageに保存（決済完了後の画面で使用）
+      console.log('💾 localStorageに注文情報を保存中...')
       localStorage.setItem('pendingSquareOrder', JSON.stringify({
         orderData,
         cartOrderNumber: cartOrderNumber, // カート注文番号を追加
@@ -790,8 +886,13 @@ const submitOrder = async () => {
         paymentLinkId: checkoutResult.paymentLinkId,
         timestamp: Date.now()
       }))
+      console.log('✅ localStorage保存完了')
 
       // Square決済ページにリダイレクト
+      console.log('🚀🚀🚀 ============================================')
+      console.log('🚀 Square決済ページにリダイレクトします')
+      console.log('🚀 URL:', checkoutResult.checkoutUrl)
+      console.log('🚀🚀🚀 ============================================')
       window.location.href = checkoutResult.checkoutUrl
       return
     }
@@ -802,7 +903,7 @@ const submitOrder = async () => {
     const paymentDueDate = calculatePaymentDueDate(48)
     
     // 各商品ごとに注文を作成
-    // 注意: 在庫チェックと減少はデータベーストリガー（check_and_decrease_stock_on_order）で自動的に行われます
+    // 注意: 銀行振込の場合、在庫はデータベーストリガー（check_stock_before_order）で注文作成時に減らす
     const orderPromises = cart.items.map(async (item, index) => {
       const individualOrderNumber = `${cartOrderNumber}_${index + 1}`
       
@@ -927,6 +1028,9 @@ const submitOrder = async () => {
     }, 5000)
 
   } catch (error) {
+    console.error('❌❌❌ ============================================')
+    console.error('❌ 注文処理でエラーが発生しました')
+    console.error('❌❌❌ ============================================')
     console.error('🚨 注文処理エラー:', error)
     console.error('📋 エラーの詳細:', {
       message: error.message,
@@ -946,23 +1050,29 @@ const submitOrder = async () => {
     let errorDetails = ''
     
     if (error.code === 'P0001' || (error.message && error.message.includes('在庫が不足しています'))) {
+      console.error('🚫 在庫不足エラー')
       // 在庫不足エラー
       userMessage = '🚫 申し訳ありません。カート内の一部商品が在庫切れになりました。\n\n他のお客様が先にご購入されたため、現在在庫がございません。\nカートを確認して商品を調整してください。'
     } else if (error.message && error.message.includes('商品が見つかりません')) {
+      console.error('⚠️ 商品削除エラー')
       // 商品削除エラー
       userMessage = '⚠️ カート内の一部商品が削除されています。\nカートを確認してください。'
     } else if (error.code === '23505') {
+      console.error('⚠️ 重複エラー')
       // 重複エラー
       userMessage = '⚠️ この注文は既に処理されています。\n注文履歴をご確認ください。'
     } else if (error.code === '42P01') {
+      console.error('⚠️ テーブル不存在エラー')
       // テーブルが存在しない
       userMessage = '⚠️ データベースエラーが発生しました。\n管理者に連絡してください。'
       errorDetails = 'テーブルが見つかりません'
     } else if (error.code === '42703') {
+      console.error('⚠️ カラム不存在エラー')
       // カラムが存在しない
       userMessage = '⚠️ データベースエラーが発生しました。\n管理者に連絡してください。'
       errorDetails = 'カラムが見つかりません'
     } else if (error.message) {
+      console.error('⚠️ その他のエラー:', error.message)
       userMessage = `注文処理中にエラーが発生しました: ${error.message}`
       if (error.details) {
         errorDetails = `\n詳細: ${error.details}`
@@ -976,7 +1086,10 @@ const submitOrder = async () => {
     
     showMessage(userMessage + errorDetails, 'error')
   } finally {
+    console.log('🔓 処理終了: isSubmittingをfalseに設定')
     isSubmitting.value = false
+    console.log('🔓 処理中注文番号をクリア')
+    processingOrderNumber.value = null
   }
 }
 
@@ -1112,6 +1225,20 @@ const showMessage = (text, type = 'success') => {
 .customer-form h3 {
   color: #2c5f2d;
   margin-bottom: 1rem;
+}
+
+/* フォームのfieldset（ローディング中は無効化） */
+.form-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.form-fieldset:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .form-group {
@@ -1448,34 +1575,155 @@ const showMessage = (text, type = 'success') => {
 .submit-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-.loading-overlay {
+/* 全画面ローディングオーバーレイ */
+.loading-overlay-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100000 !important;
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  box-sizing: border-box !important;
+  cursor: not-allowed !important;
+  backdrop-filter: blur(3px);
+}
+
+.loading-content {
+  background: white;
+  padding: 3rem 3rem;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  max-width: 550px;
+  width: 90%;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.loading-spinner-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 2rem;
+}
+
+.loading-spinner-outer {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 15px;
-  z-index: 10; /* z-indexを下げる */
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #2c5f2d;
+  width: 100%;
+  height: 100%;
+  border: 10px solid #e8f5e9;
+  border-top: 10px solid #2c5f2d;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
+  animation: spin 1.2s linear infinite;
+  box-shadow: 0 0 20px rgba(44, 95, 45, 0.3);
 }
 
-/* 古い.message定義は削除（下部に統一した定義あり） */
+.loading-spinner-inner {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 70px;
+  height: 70px;
+  border: 8px solid transparent;
+  border-top: 8px solid #4caf50;
+  border-right: 8px solid #81c784;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite reverse;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2c5f2d;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.5px;
+}
+
+.loading-subtext {
+  font-size: 1.1rem;
+  color: #555;
+  margin: 0 0 2rem 0;
+  font-weight: 500;
+}
+
+.loading-warning {
+  font-size: 1rem;
+  color: #d32f2f;
+  font-weight: 700;
+  margin: 0;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe89e 100%);
+  border-radius: 10px;
+  border: 3px solid #ffc107;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+  line-height: 1.6;
+}
+
+/* レスポンシブ対応（ローディング） */
+@media (max-width: 768px) {
+  .loading-content {
+    padding: 2rem 1.5rem;
+    max-width: 90%;
+  }
+
+  .loading-spinner-wrapper {
+    width: 70px;
+    height: 70px;
+  }
+
+  .loading-spinner-outer {
+    border-width: 7px;
+  }
+
+  .loading-spinner-inner {
+    top: 10px;
+    left: 10px;
+    width: 50px;
+    height: 50px;
+    border-width: 6px;
+  }
+
+  .loading-text {
+    font-size: 1.2rem;
+  }
+
+  .loading-subtext {
+    font-size: 0.95rem;
+  }
+
+  .loading-warning {
+    font-size: 0.9rem;
+    padding: 1rem;
+  }
+}
+
+/* 古い.loading-overlayは削除（上記の全画面版に統一） */
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
@@ -1780,21 +2028,6 @@ const showMessage = (text, type = 'success') => {
   .summary-item-image {
     width: 80px;
     height: 80px;
-  }
-
-  .loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 15px;
-    z-index: 10;
   }
 
   .cart-checkout-container {

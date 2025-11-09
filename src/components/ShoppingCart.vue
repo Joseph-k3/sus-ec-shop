@@ -85,7 +85,10 @@
 
     <!-- ローディング表示 -->
     <div v-if="cart.isLoading" class="loading-overlay">
-      <div class="loading-spinner"></div>
+      <div class="loading-spinner-wrapper">
+        <div class="loading-spinner-outer"></div>
+        <div class="loading-spinner-inner"></div>
+      </div>
     </div>
 
     <!-- メッセージ表示 -->
@@ -484,20 +487,44 @@ const showMessage = (text, type = 'success') => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 15px;
+  z-index: 1000;
 }
 
-.loading-spinner {
+.loading-spinner-wrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.loading-spinner-outer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 6px solid #e8f5e9;
+  border-top: 6px solid #2c5f2d;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+  box-shadow: 0 0 15px rgba(44, 95, 45, 0.3);
+}
+
+.loading-spinner-inner {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #2c5f2d;
+  border: 5px solid transparent;
+  border-top: 5px solid #4caf50;
+  border-right: 5px solid #81c784;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite reverse;
 }
 
 @keyframes spin {

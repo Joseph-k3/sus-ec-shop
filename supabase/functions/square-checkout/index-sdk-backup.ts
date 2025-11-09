@@ -1,5 +1,6 @@
-// Supabase Edge Function for Square Checkout API (REST API版)
+// Supabase Edge Function for Square Checkout API
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { Client, Environment } from 'https://esm.sh/square@39.0.0'
 
 // 環境変数から設定を取得（サンドボックス/本番を切り替え）
 const SQUARE_ENVIRONMENT = Deno.env.get('SQUARE_ENVIRONMENT') || 'sandbox'
@@ -14,37 +15,12 @@ const SQUARE_LOCATION_ID = IS_SANDBOX
   ? Deno.env.get('SQUARE_SANDBOX_LOCATION_ID') || Deno.env.get('SQUARE_LOCATION_ID')
   : Deno.env.get('SQUARE_LOCATION_ID')
 
-// Square APIのベースURL
-const SQUARE_API_BASE = IS_SANDBOX 
-  ? 'https://connect.squareupsandbox.com' 
-  : 'https://connect.squareup.com'
-
 console.log(`Square Checkout - Environment: ${SQUARE_ENVIRONMENT}`)
-console.log(`Square API Base: ${SQUARE_API_BASE}`)
+console.log(`Using ${IS_SANDBOX ? 'SANDBOX' : 'PRODUCTION'} credentials`)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// 電話番号を国際フォーマットに変換する関数
-function formatPhoneNumberForSquare(phone: string): string {
-  if (!phone) return ''
-  
-  // すでに+で始まる場合はそのまま返す
-  if (phone.startsWith('+')) return phone
-  
-  // 日本の電話番号を国際フォーマットに変換
-  // 080-1234-5678 → +81-80-1234-5678
-  // 08012345678 → +81-80-1234-5678
-  let cleaned = phone.replace(/[^\d]/g, '') // 数字以外を削除
-  
-  if (cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1) // 先頭の0を削除
-  }
-  
-  // +81を追加
-  return `+81${cleaned}`
 }
 
 serve(async (req) => {
@@ -88,25 +64,28 @@ serve(async (req) => {
 
     console.log(`Processing order in ${SQUARE_ENVIRONMENT} mode`)
 
+    // Initialize Square client with environment-specific settings
+    console.log('🔧 Square クライアント初期化中...')
+    const client = new Client({
+      accessToken: SQUARE_ACCESS_TOKEN,
+      environment: IS_SANDBOX ? Environment.Sandbox : Environment.Production,
+    })
+    console.log('✅ Square クライアント初期化完了')
+
     // Prepare line items for Square
     console.log('📦 商品ラインアイテム準備中...')
     console.log('📦 受信した商品データ:', JSON.stringify(orderData.items, null, 2))
     
     const lineItems = orderData.items.map((item: any, index: number) => {
-      const priceInCents = Math.round(item.price)
+      const priceInCents = Math.round(item.price * 100)
       console.log(`📦 商品[${index}]: ${item.name}`)
-      console.log(`   価格: ${item.price}円 → ${priceInCents}円`)
-      
-      // 価格が0円の場合は警告
-      if (priceInCents === 0) {
-        console.warn(`⚠️ 警告: 商品「${item.name}」の価格が0円です`)
-      }
+      console.log(`   価格: ${item.price}円 → ${priceInCents}セント`)
       
       return {
         name: item.name,
         quantity: item.quantity.toString(),
-        base_price_money: {
-          amount: priceInCents,
+        basePriceMoney: {
+          amount: BigInt(priceInCents),
           currency: 'JPY',
         },
       }
@@ -119,93 +98,73 @@ serve(async (req) => {
       lineItems.push({
         name: `送料 (${orderData.shippingRegion || '配送地域'})`,
         quantity: '1',
-        base_price_money: {
-          amount: Math.round(orderData.shippingFee),
+        basePriceMoney: {
+          amount: BigInt(Math.round(orderData.shippingFee * 100)),
           currency: 'JPY',
         },
       })
     }
 
-    // 電話番号を国際フォーマットに変換
-    const formattedPhone = formatPhoneNumberForSquare(orderData.phone || '')
-    console.log('📞 電話番号フォーマット:', orderData.phone, '→', formattedPhone)
-
-    // metadataを構築（空文字列のフィールドは除外）
-    const metadata: Record<string, string> = {}
-    if (orderData.customerName) metadata.customer_name = orderData.customerName
-    if (orderData.email) metadata.email = orderData.email
-    if (orderData.phone) metadata.phone = orderData.phone
-    if (orderData.postal) metadata.postal_code = orderData.postal
-    if (orderData.address) metadata.address = orderData.address
-    if (orderData.notes && orderData.notes.trim() !== '') {
-      metadata.notes = orderData.notes // notesが空の場合は除外
-    }
-    if (orderData.cartOrderNumber) metadata.cart_order_number = orderData.cartOrderNumber
+    // Create checkout
+    console.log('🔗 Square Payment Link作成中...')
+    console.log('Location ID:', SQUARE_LOCATION_ID)
+    console.log('Line Items:', JSON.stringify(lineItems, (_, v) => typeof v === 'bigint' ? v.toString() : v))
     
-    console.log('📝 Metadata:', metadata)
-
-    // Square Payment Link作成のリクエストボディ
-    const requestBody = {
-      idempotency_key: crypto.randomUUID(),
+    const { result, statusCode } = await client.checkoutApi.createPaymentLink({
+      idempotencyKey: crypto.randomUUID(),
       order: {
-        location_id: SQUARE_LOCATION_ID,
-        line_items: lineItems,
-        metadata: metadata,
+        locationId: SQUARE_LOCATION_ID,
+        lineItems: lineItems,
+        metadata: {
+          customerName: orderData.customerName,
+          email: orderData.email,
+          phone: orderData.phone,
+          postalCode: orderData.postal,
+          address: orderData.address,
+          notes: orderData.notes || '',
+          cartOrderNumber: orderData.cartOrderNumber || '', // カート注文番号を追加
+        },
       },
-      checkout_options: {
-        redirect_url: `${orderData.redirectUrl || 'https://www.sus-ec-shop.com'}/payment-complete?order=${orderData.cartOrderNumber || ''}`,
-        ask_for_shipping_address: true,
+      checkoutOptions: {
+        redirectUrl: `${orderData.redirectUrl || 'https://www.sus-ec-shop.com'}/payment-complete?order=${orderData.cartOrderNumber || ''}`,
+        askForShippingAddress: true, // 住所入力欄を表示
       },
-      pre_populated_data: {
-        buyer_email: orderData.email || '',
-        buyer_phone_number: formattedPhone, // フォーマット済みの電話番号を使用
-        buyer_address: {
-          address_line_1: orderData.address || '',
-          postal_code: orderData.postal || '',
+      prePopulatedData: {
+        buyerEmail: orderData.email,
+        buyerPhoneNumber: orderData.phone,
+        buyerAddress: {
+          addressLine1: orderData.addressLine1 || orderData.address || '',
+          addressLine2: orderData.addressLine2 || '',
+          locality: orderData.locality || '', // 市区町村
+          administrativeDistrictLevel1: orderData.prefecture || '', // 都道府県
+          postalCode: orderData.postal || '',
           country: 'JP',
         },
       },
-    }
-
-    console.log('🔗 Square Payment Link作成中...')
-    console.log('Location ID:', SQUARE_LOCATION_ID)
-    console.log('Request Body:', JSON.stringify(requestBody, null, 2))
-
-    // Square REST APIを直接呼び出し
-    const response = await fetch(`${SQUARE_API_BASE}/v2/online-checkout/payment-links`, {
-      method: 'POST',
-      headers: {
-        'Square-Version': '2024-11-20',
-        'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
     })
 
-    const result = await response.json()
-    console.log('📊 Square API レスポンスコード:', response.status)
-    console.log('📊 Square API レスポンス:', JSON.stringify(result, null, 2))
-
-    if (!response.ok) {
-      console.error('❌ Square API エラー:', response.status)
+    console.log('📊 Square API レスポンスコード:', statusCode)
+    
+    if (statusCode !== 200) {
+      console.error('❌ Square API エラー:', statusCode)
       console.error('❌ エラー詳細:', JSON.stringify(result, null, 2))
       return new Response(
         JSON.stringify({ error: 'Failed to create checkout', details: result }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     console.log('✅✅✅ Checkout作成成功!')
-    console.log('Payment Link URL:', result.payment_link?.url)
-    console.log('Order ID:', result.payment_link?.order_id)
-    console.log('Payment Link ID:', result.payment_link?.id)
+    console.log('Payment Link URL:', result.paymentLink?.url)
+    console.log('Order ID:', result.paymentLink?.orderId)
+    console.log('Payment Link ID:', result.paymentLink?.id)
 
     return new Response(
       JSON.stringify({
         success: true,
-        checkoutUrl: result.payment_link?.url,
-        orderId: result.payment_link?.order_id,
-        paymentLinkId: result.payment_link?.id,
+        checkoutUrl: result.paymentLink?.url,
+        orderId: result.paymentLink?.orderId,
+        paymentLinkId: result.paymentLink?.id,
         environment: SQUARE_ENVIRONMENT,
         isTest: IS_SANDBOX,
       }),

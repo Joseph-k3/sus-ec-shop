@@ -27,26 +27,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// 電話番号を国際フォーマットに変換する関数
-function formatPhoneNumberForSquare(phone: string): string {
-  if (!phone) return ''
-  
-  // すでに+で始まる場合はそのまま返す
-  if (phone.startsWith('+')) return phone
-  
-  // 日本の電話番号を国際フォーマットに変換
-  // 080-1234-5678 → +81-80-1234-5678
-  // 08012345678 → +81-80-1234-5678
-  let cleaned = phone.replace(/[^\d]/g, '') // 数字以外を削除
-  
-  if (cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1) // 先頭の0を削除
-  }
-  
-  // +81を追加
-  return `+81${cleaned}`
-}
-
 serve(async (req) => {
   // CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -97,11 +77,6 @@ serve(async (req) => {
       console.log(`📦 商品[${index}]: ${item.name}`)
       console.log(`   価格: ${item.price}円 → ${priceInCents}円`)
       
-      // 価格が0円の場合は警告
-      if (priceInCents === 0) {
-        console.warn(`⚠️ 警告: 商品「${item.name}」の価格が0円です`)
-      }
-      
       return {
         name: item.name,
         quantity: item.quantity.toString(),
@@ -126,31 +101,21 @@ serve(async (req) => {
       })
     }
 
-    // 電話番号を国際フォーマットに変換
-    const formattedPhone = formatPhoneNumberForSquare(orderData.phone || '')
-    console.log('📞 電話番号フォーマット:', orderData.phone, '→', formattedPhone)
-
-    // metadataを構築（空文字列のフィールドは除外）
-    const metadata: Record<string, string> = {}
-    if (orderData.customerName) metadata.customer_name = orderData.customerName
-    if (orderData.email) metadata.email = orderData.email
-    if (orderData.phone) metadata.phone = orderData.phone
-    if (orderData.postal) metadata.postal_code = orderData.postal
-    if (orderData.address) metadata.address = orderData.address
-    if (orderData.notes && orderData.notes.trim() !== '') {
-      metadata.notes = orderData.notes // notesが空の場合は除外
-    }
-    if (orderData.cartOrderNumber) metadata.cart_order_number = orderData.cartOrderNumber
-    
-    console.log('📝 Metadata:', metadata)
-
     // Square Payment Link作成のリクエストボディ
     const requestBody = {
       idempotency_key: crypto.randomUUID(),
       order: {
         location_id: SQUARE_LOCATION_ID,
         line_items: lineItems,
-        metadata: metadata,
+        metadata: {
+          customer_name: orderData.customerName || '',
+          email: orderData.email || '',
+          phone: orderData.phone || '',
+          postal_code: orderData.postal || '',
+          address: orderData.address || '',
+          notes: orderData.notes || '',
+          cart_order_number: orderData.cartOrderNumber || '',
+        },
       },
       checkout_options: {
         redirect_url: `${orderData.redirectUrl || 'https://www.sus-ec-shop.com'}/payment-complete?order=${orderData.cartOrderNumber || ''}`,
@@ -158,7 +123,7 @@ serve(async (req) => {
       },
       pre_populated_data: {
         buyer_email: orderData.email || '',
-        buyer_phone_number: formattedPhone, // フォーマット済みの電話番号を使用
+        buyer_phone_number: orderData.phone || '',
         buyer_address: {
           address_line_1: orderData.address || '',
           postal_code: orderData.postal || '',

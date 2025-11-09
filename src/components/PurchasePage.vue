@@ -467,6 +467,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { getOrCreateCustomerId } from '../lib/customer'
+import { createSquareCheckout } from '../lib/squarePayment'
 import SquarePaymentForm from './SquarePaymentForm.vue'
 import BankTransferInfo from './BankTransferInfo.vue'
 import { useAddressLookup } from '../composables/useAddressLookup'
@@ -667,7 +668,6 @@ const fetchProduct = async () => {
       image: getPublicImageUrl(data.image)
     }
   } catch (e) {
-    console.error('商品データの取得に失敗:', e)
     error.value = e.message || '商品データの取得に失敗しました'
   } finally {
     loading.value = false
@@ -731,7 +731,6 @@ const lookupAddress = async (zipCode) => {
       suggestedAddresses.value = []
     }
   } catch (error) {
-    console.error('住所検索エラー:', error)
     showAddressSuggestion.value = false
     suggestedAddresses.value = []
   }
@@ -883,7 +882,9 @@ const saveOrder = async (paymentMethod) => {
       // zip_codeカラムが存在しない場合は統合形式を使用
     }
 
-    // 3. 注文データを保存（在庫は減らさない）
+    // 3. 注文データを保存
+    // 注意: Square決済の場合、在庫は注文作成時には減らさず、Webhook受信時（決済完了後）に減らす
+    // 銀行振込の場合は、トリガーで注文作成時に在庫を減らす
     
     const { data: savedOrder, error: orderError } = await supabase
       .from('orders')
@@ -892,13 +893,6 @@ const saveOrder = async (paymentMethod) => {
       .single()
 
     if (orderError) {
-      console.error('注文保存エラー:', orderError)
-      console.error('エラーコード:', orderError.code)
-      console.error('エラーメッセージ:', orderError.message)
-      console.error('エラーデータ:', orderError.details)
-      
-
-      
       // データベースカラムエラーの処理
       if (orderError.code === '42703') {
         if (orderError.message && orderError.message.includes('zip_code')) {
@@ -1015,12 +1009,6 @@ const handleSubmit = async (e) => {
 
     // 商品データの検証
     if (!product.value?.id || !product.value?.name || product.value?.price == null) {
-      console.error('商品データが不正:', {
-        id: product.value?.id,
-        name: product.value?.name,
-        price: product.value?.price,
-        productValue: product.value
-      })
       throw new Error('商品情報が不正です。ページを更新してもう一度お試しください。')
     }
 
@@ -1028,7 +1016,6 @@ const handleSubmit = async (e) => {
     showPurchaseConfirmation.value = true
 
   } catch (error) {
-    console.error('入力検証エラー:', error)
     alert(error.message || '入力内容に問題があります。ご確認ください。')
   }
 }
@@ -1042,9 +1029,9 @@ const proceedToPurchase = async () => {
   isSubmitting.value = true
 
   try {
-    // クレジットカード決済の場合は在庫チェックのみ（実際の減少はSquare決済完了後）
+    // クレジットカード決済の場合
     if (selectedPaymentMethod.value === 'square') {
-      // 在庫チェックのみ実行
+      // 在庫チェック
       const { data: currentStock } = await supabase
         .from('succulents')
         .select('quantity')
@@ -1055,34 +1042,98 @@ const proceedToPurchase = async () => {
         throw new Error('申し訳ありません。在庫が不足しています')
       }
       
-      // 郵便番号をフォーマット（ハイフンが無い場合は自動追加）
+      // 郵便番号をフォーマット
       let formattedZipCode = formData.value.zipCode.trim()
       if (/^\d{7}$/.test(formattedZipCode)) {
         formattedZipCode = formattedZipCode.slice(0, 3) + '-' + formattedZipCode.slice(3)
       }
       
-      // 注文データを準備（DBには保存しない）
-      orderData.value = {
+      // 送料情報を取得
+      const shippingCalc = calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode)
+      
+      // 注文番号を生成
+      const singleOrderNumber = `SINGLE${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+      const customerId = await getOrCreateCustomerId()
+      
+      // 注文をDBに保存（Square決済前）
+      const orderInfo = {
+        order_number: singleOrderNumber,
+        customer_id: customerId,
         product_id: product.value.id,
         product_name: product.value.name,
         product_image: product.value.image,
-        price: shippingInfo.value.totalAmount, // 送料込みの合計金額
+        price: product.value.price,
         quantity: 1,
         customer_name: formData.value.name.trim(),
         email: formData.value.email.trim(),
         phone: formData.value.phone.trim(),
         zip_code: formattedZipCode,
-        address: `${formData.value.address.trim()}\n[送料:${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).shippingFee}円(${calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).region})]`,
+        address: `${formData.value.address.trim()}\n[送料:${shippingCalc.shippingFee}円(${shippingCalc.region})]`,
         payment_method: 'square',
-        // メール送信用に送料情報を保持（最新の計算結果を使用）
-        shipping_fee: calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).shippingFee,
-        shipping_region: calculateTotalWithShipping(Number(product.value.price), formData.value.zipCode).region,
-        item_price: Number(product.value.price)
+        status: 'pending_payment',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
+
+      const { data: savedOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderInfo])
+        .select()
+        .single()
+
+      if (orderError) {
+        throw new Error('注文データの保存に失敗しました')
+      }
+
+      // Square Checkoutセッションを作成
+      const checkoutOrderData = {
+        items: [{
+          id: product.value.id,
+          name: product.value.name,
+          price: product.value.price,
+          quantity: 1,
+          image: product.value.image
+        }],
+        customerName: formData.value.name.trim(),
+        email: formData.value.email.trim(),
+        phone: formData.value.phone.trim(),
+        postal: formattedZipCode,
+        address: formData.value.address.trim(),
+        notes: '',
+        shippingFee: shippingCalc.shippingFee,
+        shippingRegion: shippingCalc.region,
+        totalAmount: shippingCalc.totalAmount,
+        redirectUrl: window.location.origin,
+        cartOrderNumber: singleOrderNumber
+      }
+
+      const checkoutResult = await createSquareCheckout(checkoutOrderData)
       
-      // 購入確認画面を非表示にして決済画面に移行
-      showPurchaseConfirmation.value = false
-      confirmedOrder.value = true
+      if (!checkoutResult.success || !checkoutResult.checkoutUrl) {
+        throw new Error('決済ページの作成に失敗しました')
+      }
+
+      // 注文にSquare IDを保存
+      await supabase
+        .from('orders')
+        .update({ 
+          square_order_id: checkoutResult.orderId,
+          square_payment_link_id: checkoutResult.paymentLinkId
+        })
+        .eq('order_number', singleOrderNumber)
+
+      // 注文情報をlocalStorageに保存
+      localStorage.setItem('pendingSquareOrder', JSON.stringify({
+        orderData: checkoutOrderData,
+        cartOrderNumber: singleOrderNumber,
+        squareOrderId: checkoutResult.orderId,
+        paymentLinkId: checkoutResult.paymentLinkId,
+        timestamp: Date.now()
+      }))
+
+      // Square決済ページにリダイレクト
+      window.location.href = checkoutResult.checkoutUrl
+      return
       
     } else {
       // 銀行振込の場合は従来通り注文を保存
@@ -1101,9 +1152,7 @@ const proceedToPurchase = async () => {
     }
 
   } catch (error) {
-    console.error('注文処理中にエラーが発生しました:', error)
     alert(error.message || 'エラーが発生しました。もう一度お試しください。')
-    // エラー時は確認画面に戻る
     showPurchaseConfirmation.value = true
     confirmedOrder.value = false
     orderData.value = null

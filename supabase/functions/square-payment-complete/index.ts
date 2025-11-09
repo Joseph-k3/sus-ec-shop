@@ -26,7 +26,12 @@ serve(async (req) => {
       )
     }
 
-    console.log('Processing payment completion for order:', cartOrderNumber)
+    console.log('🎯 Webhook受信:', {
+      cartOrderNumber,
+      squareOrderId,
+      paymentLinkId,
+      timestamp: new Date().toISOString()
+    })
 
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
@@ -38,7 +43,7 @@ serve(async (req) => {
       .ilike('order_number', `${cartOrderNumber}%`)
 
     if (fetchError) {
-      console.error('Failed to fetch orders:', fetchError)
+      console.error('❌ Failed to fetch orders:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch orders', details: fetchError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -46,17 +51,54 @@ serve(async (req) => {
     }
 
     if (!orders || orders.length === 0) {
-      console.error('No orders found for:', cartOrderNumber)
+      console.error('❌ No orders found for:', cartOrderNumber)
       return new Response(
         JSON.stringify({ error: 'Orders not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Found ${orders.length} orders to process`)
+    // 重複処理チェック: 既にpaidステータスの注文がある場合はスキップ
+    const alreadyPaid = orders.filter(order => order.status === 'paid' || order.payment_status === 'paid')
+    if (alreadyPaid.length > 0) {
+      console.log(`⚠️ 既に処理済みです (${alreadyPaid.length}/${orders.length}件がpaid状態):`, {
+        cartOrderNumber,
+        alreadyPaidOrders: alreadyPaid.map(o => o.order_number),
+        timestamp: new Date().toISOString()
+      })
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Already processed', 
+          ordersAlreadyPaid: alreadyPaid.length 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 全ての注文がpending_paymentであることを確認
+    const notPending = orders.filter(order => order.status !== 'pending_payment')
+    if (notPending.length > 0) {
+      console.warn(`⚠️ pending_payment以外の注文が含まれています:`, {
+        cartOrderNumber,
+        notPendingOrders: notPending.map(o => ({ order_number: o.order_number, status: o.status }))
+      })
+    }
+
+    console.log(`📋 ${orders.length}件の注文を処理開始:`, {
+      cartOrderNumber,
+      orders: orders.map(o => ({
+        order_number: o.order_number,
+        product_name: o.product_name,
+        quantity: o.quantity,
+        status: o.status
+      }))
+    })
 
     // Update all orders
     const updatePromises = orders.map(async (order) => {
+      console.log(`🔄 注文処理中: ${order.order_number} - 商品: ${order.product_name}, 数量: ${order.quantity}`)
+      
       // Update order status
       const { error: updateError } = await supabase
         .from('orders')
@@ -71,25 +113,36 @@ serve(async (req) => {
         .eq('id', order.id)
 
       if (updateError) {
-        console.error(`Failed to update order ${order.id}:`, updateError)
+        console.error(`❌ 注文ステータス更新失敗 ${order.order_number}:`, updateError)
         throw updateError
       }
 
+      console.log(`✅ 注文ステータス更新完了: ${order.order_number} -> paid`)
+
       // Decrease product stock
+      console.log(`📦 在庫減少処理開始: 商品ID=${order.product_id}, 商品名=${order.product_name}, 数量=${order.quantity}`)
+      
       const { error: stockError } = await supabase.rpc('decrease_product_stock', {
         product_id: order.product_id,
         quantity_to_decrease: order.quantity,
       })
 
       if (stockError) {
-        console.error(`Failed to decrease stock for product ${order.product_id}:`, stockError)
+        console.error(`❌ 在庫減少失敗: 商品ID=${order.product_id}, エラー:`, stockError)
         // Don't throw error, just log it
+      } else {
+        console.log(`✅ 在庫減少処理完了: ${order.product_name} (${order.quantity}個減少)`)
       }
 
       return order
     })
 
-    await Promise.all(updatePromises)
+    const processedOrders = await Promise.all(updatePromises)
+    console.log(`🎉 全ての注文処理が完了しました (合計${processedOrders.length}件):`, {
+      cartOrderNumber,
+      processedOrders: processedOrders.map(o => o.order_number),
+      timestamp: new Date().toISOString()
+    })
 
     // Send confirmation emails
     const firstOrder = orders[0]
@@ -121,7 +174,7 @@ serve(async (req) => {
       console.error('Failed to send customer email:', emailError)
     }
 
-    console.log('Payment completion processed successfully')
+    console.log('🎉 Payment completion processed successfully')
 
     return new Response(
       JSON.stringify({
@@ -133,7 +186,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Payment completion error:', error)
+    console.error('💥 Payment completion error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
