@@ -1425,17 +1425,23 @@ const handleTempVideoSelect = async (files) => {
 // 単一動画のアップロード
 const uploadSingleVideo = async (file, isPrimary = false) => {
   try {
+    console.log('📤 uploadSingleVideo開始:', file.name)
+    
     // 動画をストレージにアップロード
     const uploadResult = await uploadVideoToStorage(file, (progress) => {
       // 個別の進捗は全体の進捗に含める
     })
     
+    console.log('📥 uploadResult:', uploadResult)
+    console.log('📥 videoUrl:', uploadResult?.videoUrl)
+    
     // アップロード結果の検証
     if (!uploadResult || !uploadResult.videoUrl) {
       throw new Error('動画のアップロードに失敗しました。動画URLが取得できませんでした。')
     }
-    // R2のURLであることを明示的にチェック
-    if (!uploadResult.videoUrl.includes('r2.cloudflarestorage.com')) {
+    // R2のURLであることを明示的にチェック（r2.dev または r2.cloudflarestorage.com）
+    if (!uploadResult.videoUrl.includes('r2.dev') && !uploadResult.videoUrl.includes('r2.cloudflarestorage.com')) {
+      console.error('❌ 不正なURL形式:', uploadResult.videoUrl)
       throw new Error('R2の動画URLが取得できませんでした。環境変数CLOUDFLARE_R2_PUBLIC_URLを確認してください。')
     }
     
@@ -1473,7 +1479,7 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
     // 動画の長さを取得
     const duration = await getVideoDuration(file)
     
-    // データベースに動画情報を保存
+    // データベースに動画情報を保存（R2キーも保存）
     await addProductVideo(editingId.value, uploadResult.videoUrl, {
       title: file.name.replace(/\.[^/.]+$/, ''), // 拡張子を除いたファイル名
       thumbnailUrl: thumbnailUrl,
@@ -1481,7 +1487,9 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
       fileSize: uploadResult.fileSize,
       mimeType: uploadResult.mimeType,
       displayOrder: productVideos.value.length,
-      isPrimary: isPrimary
+      isPrimary: isPrimary,
+      r2VideoKey: uploadResult.r2Key,  // R2キーを保存
+      r2ThumbnailKey: null  // サムネイルはまだR2に保存していない
     })
     
   } catch (error) {
@@ -1543,7 +1551,7 @@ const uploadTempVideos = async (productId) => {
           }
         }
         
-        // データベースに保存
+        // データベースに保存（R2キーも保存）
         const savedVideo = await addProductVideo(productId, uploadResult.videoUrl, {
           title: tempVideo.title,
           thumbnailUrl: thumbnailUrl,
@@ -1551,7 +1559,9 @@ const uploadTempVideos = async (productId) => {
           fileSize: tempVideo.file_size,
           mimeType: tempVideo.mime_type,
           displayOrder: i,
-          isPrimary: tempVideo.is_primary
+          isPrimary: tempVideo.is_primary,
+          r2VideoKey: uploadResult.r2Key,  // R2キーを保存
+          r2ThumbnailKey: null
         })
         
         videoUploadProgress.value = Math.round(((i + 1) / totalVideos) * 100)
@@ -1597,9 +1607,7 @@ const deleteVideo = async (videoId) => {
   if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) return
   
   try {
-    console.log('🗑️ 動画削除開始:', videoId)
     await deleteProductVideo(videoId)
-    console.log('✅ 動画削除成功:', videoId)
     
     // 動画一覧を再読み込み
     await loadProductVideos(editingId.value)
@@ -1607,8 +1615,7 @@ const deleteVideo = async (videoId) => {
     // 成功メッセージ
     alert('動画とR2ストレージから削除しました')
   } catch (error) {
-    console.error('❌ 動画の削除に失敗しました:', error)
-    alert('動画の削除に失敗しました（R2ストレージの物理削除も含む）:\n\n' + error.message)
+    alert('動画の削除に失敗しました:\n\n' + error.message)
   }
 }
 
