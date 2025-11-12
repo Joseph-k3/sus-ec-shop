@@ -519,6 +519,7 @@ import {
   addProductImage, 
   updateProductImage, 
   deleteProductImage, 
+  deleteAllProductImages,
   updateImageDisplayOrder 
 } from '../lib/productImages'
 // R2対応版画像管理
@@ -532,6 +533,7 @@ import {
   addProductVideo, 
   updateProductVideo, 
   deleteProductVideo, 
+  deleteAllProductVideos,
   updateVideoDisplayOrder,
   uploadVideoToStorage,
   generateVideoThumbnail,
@@ -959,9 +961,24 @@ const resetForm = () => {
 
 // 商品を削除
 const deleteProduct = async (id) => {
-  if (!confirm('本当にこの商品を削除しますか？')) return
+  if (!confirm('本当にこの商品を削除しますか？\n\n※関連する画像・動画データも全て削除されます')) return
   
   try {
+    // ステップ1: 関連画像を全て削除
+    try {
+      await deleteAllProductImages(id)
+    } catch (imageError) {
+      console.error('❌ 画像削除エラー:', imageError)
+    }
+    
+    // ステップ2: 関連動画を全て削除
+    try {
+      await deleteAllProductVideos(id)
+    } catch (videoError) {
+      console.error('❌ 動画削除エラー:', videoError)
+    }
+    
+    // ステップ3: 商品本体を削除
     const { error } = await supabase
       .from('succulents')
       .delete()
@@ -969,11 +986,11 @@ const deleteProduct = async (id) => {
     
     if (error) throw error
     
-    alert('商品を削除しました')
+    alert('商品と関連データ（画像・動画）を削除しました')
     loadProducts()
   } catch (error) {
     console.error('Error deleting product:', error)
-    alert('削除中にエラーが発生しました')
+    alert('削除中にエラーが発生しました: ' + error.message)
   }
 }
 
@@ -1604,7 +1621,9 @@ const setPrimaryVideo = async (videoId) => {
 
 // 動画削除
 const deleteVideo = async (videoId) => {
-  if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) return
+  if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) {
+    return
+  }
   
   try {
     await deleteProductVideo(videoId)
@@ -1615,6 +1634,7 @@ const deleteVideo = async (videoId) => {
     // 成功メッセージ
     alert('動画とR2ストレージから削除しました')
   } catch (error) {
+    console.error('❌ [AdminProductEdit] 動画削除エラー:', error)
     alert('動画の削除に失敗しました:\n\n' + error.message)
   }
 }

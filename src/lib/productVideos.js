@@ -4,6 +4,12 @@ import { supabase } from './supabase'
 const STORAGE_PROVIDER = import.meta.env.VITE_STORAGE_PROVIDER || 'supabase'
 const USE_R2 = STORAGE_PROVIDER === 'r2'
 
+console.log('📦 productVideos.js初期化:', {
+  STORAGE_PROVIDER,
+  USE_R2,
+  VITE_STORAGE_PROVIDER: import.meta.env.VITE_STORAGE_PROVIDER
+})
+
 /**
  * 商品の動画一覧を取得
  * @param {string} productId 商品ID
@@ -173,10 +179,6 @@ export const updateProductVideo = async (videoId, updates) => {
  * @param {string} videoId 動画ID
  */
 export const deleteProductVideo = async (videoId) => {
-  console.log('🗑️ deleteProductVideo開始:', videoId)
-  console.log('環境変数 USE_R2:', USE_R2)
-  console.log('環境変数 VITE_STORAGE_PROVIDER:', import.meta.env.VITE_STORAGE_PROVIDER)
-  
   try {
     // 動画情報を取得（R2キーを含む）
     const { data: videoData, error: selectError } = await supabase
@@ -185,15 +187,6 @@ export const deleteProductVideo = async (videoId) => {
       .eq('id', videoId)
       .single()
 
-    console.log('📹 動画データ取得結果:', { 
-      videoData, 
-      selectError, 
-      USE_R2,
-      storage_provider: videoData?.storage_provider,
-      hasR2Key: !!videoData?.r2_video_key,
-      r2_video_key: videoData?.r2_video_key
-    })
-
     if (selectError) {
       console.error('❌ 動画データ取得エラー:', selectError)
       throw selectError
@@ -201,22 +194,12 @@ export const deleteProductVideo = async (videoId) => {
 
     // ステップ1: R2から削除（先に実行）
     const shouldDeleteFromR2 = videoData && (USE_R2 || videoData.storage_provider === 'r2')
-    console.log('R2削除判定:', {
-      shouldDelete: shouldDeleteFromR2,
-      hasVideoData: !!videoData,
-      USE_R2: USE_R2,
-      storage_provider: videoData?.storage_provider,
-      condition: `${!!videoData} && (${USE_R2} || ${videoData?.storage_provider === 'r2'})`
-    })
     
     if (shouldDeleteFromR2) {
-      console.log('🟢 R2削除処理を実行')
-      
       const deletePromises = []
       
       // 動画ファイルをR2から削除
       if (videoData.r2_video_key) {
-        console.log('🗑️ 動画ファイル削除開始（キー使用）:', videoData.r2_video_key)
         deletePromises.push(
           deleteFromR2ByKey(videoData.r2_video_key)
             .catch(err => {
@@ -225,7 +208,6 @@ export const deleteProductVideo = async (videoId) => {
             })
         )
       } else if (videoData.video_url) {
-        console.log('🗑️ 動画ファイル削除開始（URL使用）:', videoData.video_url)
         deletePromises.push(
           deleteFromR2(videoData.video_url)
             .catch(err => {
@@ -237,7 +219,6 @@ export const deleteProductVideo = async (videoId) => {
 
       // サムネイルをR2から削除
       if (videoData.r2_thumbnail_key) {
-        console.log('🗑️ サムネイル削除開始（キー使用）:', videoData.r2_thumbnail_key)
         deletePromises.push(
           deleteFromR2ByKey(videoData.r2_thumbnail_key)
             .catch(err => {
@@ -246,7 +227,6 @@ export const deleteProductVideo = async (videoId) => {
             })
         )
       } else if (videoData.thumbnail_url) {
-        console.log('🗑️ サムネイル削除開始（URL使用）:', videoData.thumbnail_url)
         deletePromises.push(
           deleteFromR2(videoData.thumbnail_url)
             .catch(err => {
@@ -272,15 +252,10 @@ export const deleteProductVideo = async (videoId) => {
           })
           .eq('id', videoId)
         console.warn('💡 削除失敗フラグをDBに記録しました。手動またはリトライスクリプトで再実行してください')
-      } else {
-        console.log('✅ R2削除完了')
       }
-    } else {
-      console.log('⚠️ R2削除をスキップ（条件不一致）')
     }
 
     // ステップ2: Supabaseから削除（R2削除後に実行）
-    console.log('🗄️ Supabaseから削除開始')
     const { error: dbError } = await supabase
       .from('product_videos')
       .delete()
@@ -290,7 +265,6 @@ export const deleteProductVideo = async (videoId) => {
       console.error('❌ Supabase削除エラー:', dbError)
       throw dbError
     }
-    console.log('✅ Supabase削除完了')
 
   } catch (error) {
     console.error('❌ deleteProductVideoエラー:', error)
@@ -303,7 +277,6 @@ export const deleteProductVideo = async (videoId) => {
  * @param {string} fileUrl ファイルのURL
  */
 const deleteFromR2 = async (fileUrl) => {
-  console.log('🗑️ deleteFromR2開始:', fileUrl)
   try {
     let fileKey = ''
     // 1. .r2.dev/ 以降に /products/ があれば必ずそこから
@@ -313,15 +286,12 @@ const deleteFromR2 = async (fileUrl) => {
       const productsIdx = afterR2.indexOf('products/')
       if (productsIdx !== -1) {
         fileKey = afterR2.substring(productsIdx)
-        console.log('✅ .r2.dev/以降のproducts/から抽出:', fileKey)
       } else {
         // sus-ec-images/ で始まる場合は除去
         if (afterR2.startsWith('sus-ec-images/')) {
           fileKey = afterR2.replace('sus-ec-images/', '')
-          console.log('✅ sus-ec-images/除去後:', fileKey)
         } else {
           fileKey = afterR2
-          console.log('✅ .r2.dev/以降から抽出:', fileKey)
         }
       }
     } else {
@@ -330,13 +300,11 @@ const deleteFromR2 = async (fileUrl) => {
       const pathIndex = urlParts.findIndex(part => part === 'products' || part === 'videos' || part === 'images')
       if (pathIndex !== -1) {
         fileKey = urlParts.slice(pathIndex).join('/')
-        console.log('✅ パス形式から抽出:', fileKey)
       } else {
         // 最後の有効なパスを取得（少なくとも3階層）
         const validParts = urlParts.filter(part => part && part !== 'https:' && part !== 'http:')
         if (validParts.length >= 3) {
           fileKey = validParts.slice(-5).join('/')
-          console.log('✅ 最後の5パスから抽出:', fileKey)
         }
       }
     }
@@ -345,8 +313,6 @@ const deleteFromR2 = async (fileUrl) => {
       console.warn('⚠️ ファイルキー抽出失敗:', fileUrl)
       return
     }
-
-    console.log('📤 Vercel API呼び出し:', fileKey)
 
     // Vercel API経由でR2削除
     const { data: { session } } = await supabase.auth.getSession()
@@ -363,12 +329,6 @@ const deleteFromR2 = async (fileUrl) => {
       body: JSON.stringify({ fileKey })
     })
 
-    console.log('📥 Vercel API応答:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    })
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       console.error('❌ Vercel APIエラー詳細:', errorData)
@@ -382,9 +342,6 @@ const deleteFromR2 = async (fileUrl) => {
       throw new Error(`R2削除エラー: ${errorData.error || response.statusText}`)
     }
 
-    const data = await response.json()
-    console.log('✅ R2削除成功:', data)
-
   } catch (error) {
     console.error('❌ deleteFromR2エラー:', error)
     // エラーをthrowせず、ログだけ出力（ファイルが既に削除されている可能性があるため）
@@ -396,13 +353,10 @@ const deleteFromR2 = async (fileUrl) => {
  * @param {string} fileKey R2オブジェクトキー
  */
 const deleteFromR2ByKey = async (fileKey) => {
-  console.log('🗑️ deleteFromR2ByKey開始:', fileKey)
   try {
     if (!fileKey) {
       throw new Error('ファイルキーが指定されていません')
     }
-
-    console.log('📡 Vercel API経由でR2削除:', fileKey)
     
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
@@ -421,20 +375,12 @@ const deleteFromR2ByKey = async (fileKey) => {
       }
     )
 
-    console.log('📥 R2削除APIレスポンス:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    })
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       console.error('❌ R2削除APIエラー詳細:', errorData)
       throw new Error(`R2削除失敗: ${errorData.error || response.statusText} (Status: ${response.status})`)
     }
 
-    const result = await response.json()
-    console.log('✅ R2削除完了（キー指定）:', result)
     return { success: true, fileKey }
 
   } catch (error) {
@@ -1010,17 +956,13 @@ export const checkVideoFileSize = (file) => {
  * @param {string} videoId 動画ID
  */
 const deleteVideo = async (videoId) => {
-  console.log('deleteVideo called', videoId)
   if (!confirm('この動画を削除しますか？\n\n※ R2ストレージからも物理的に削除されます。')) return
   try {
-    console.log('🗑️ 動画削除開始:', videoId)
     await deleteProductVideo(videoId)
-    console.log('✅ 動画削除成功:', videoId)
     await loadProductVideos(editingId.value)
-    alert('動画とR2ストレージから削除しました')
   } catch (error) {
     console.error('❌ 動画の削除に失敗しました:', error)
-    alert('動画の削除に失敗しました（R2ストレージの物理削除も含む）:\n\n' + error.message)
+    alert('動画の削除に失敗しました:\n\n' + error.message)
   }
 }
 
@@ -1066,4 +1008,41 @@ export const retryR2Delete = async (videoId) => {
     })
     .eq('id', videoId)
   return allSuccess
+}
+
+/**
+ * 商品に紐づく全動画を削除
+ * @param {string} productId 商品ID
+ * @returns {Promise<{success: boolean, deletedCount: number, errors: Array}>}
+ */
+export const deleteAllProductVideos = async (productId) => {
+  try {
+    // 商品に紐づく全動画を取得
+    const videos = await getProductVideos(productId)
+    
+    if (videos.length === 0) {
+      return { success: true, deletedCount: 0, errors: [] }
+    }
+    
+    // 各動画を削除
+    const errors = []
+    let deletedCount = 0
+    
+    for (const video of videos) {
+      try {
+        await deleteProductVideo(video.id)
+        deletedCount++
+      } catch (error) {
+        console.error(`❌ 動画削除失敗: ${video.id}`, error)
+        errors.push({ videoId: video.id, error })
+      }
+    }
+    
+    const success = errors.length === 0
+    
+    return { success, deletedCount, errors }
+  } catch (error) {
+    console.error('❌ deleteAllProductVideos エラー:', error)
+    throw error
+  }
 }

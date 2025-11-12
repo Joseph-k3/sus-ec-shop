@@ -203,3 +203,40 @@ export async function getProductImagesWithFallback(product) {
     return []
   }
 }
+
+/**
+ * 商品に紐づく全画像を削除
+ * @param {string} productId - 商品ID
+ * @returns {Promise<{success: boolean, deletedCount: number, errors: Array}>}
+ */
+export async function deleteAllProductImages(productId) {
+  try {
+    // 商品に紐づく全画像を取得
+    const images = await getProductImages(productId)
+    
+    if (images.length === 0) {
+      return { success: true, deletedCount: 0, errors: [] }
+    }
+    
+    // 各画像を削除
+    const errors = []
+    let deletedCount = 0
+    
+    for (const image of images) {
+      try {
+        await deleteProductImage(image.id)
+        deletedCount++
+      } catch (error) {
+        console.error(`❌ 画像削除失敗: ${image.id}`, error)
+        errors.push({ imageId: image.id, error })
+      }
+    }
+    
+    const success = errors.length === 0
+    
+    return { success, deletedCount, errors }
+  } catch (error) {
+    console.error('❌ deleteAllProductImages エラー:', error)
+    throw error
+  }
+}

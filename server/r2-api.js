@@ -284,7 +284,8 @@ app.get('/api/r2-delete/health', (req, res) => {
 })
 
 // R2ファイル削除API
-app.delete('/api/r2-delete', async (req, res) => {
+// DELETEとPOSTの両方を受け付ける
+app.post('/api/r2-delete', async (req, res) => {
   try {
     const { fileKey } = req.body
 
@@ -354,5 +355,3 @@ app.listen(PORT, () => {
   console.log(`   DELETE http://localhost:${PORT}/api/r2-delete`)
   console.log(`   GET http://localhost:${PORT}/api/health`)
 })
-
-export default app

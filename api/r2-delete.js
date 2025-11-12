@@ -23,18 +23,21 @@ const r2Client = new S3Client({
 })
 
 export default async function handler(req, res) {
+  // CORSヘッダーを最初に設定
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'DELETE, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Max-Age', '86400')
+
+  // OPTIONSリクエスト（プリフライト）への対応
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end()
+  }
+
+  // メソッドチェック
   if (req.method !== 'DELETE' && req.method !== 'POST') {
     res.setHeader('Allow', ['DELETE', 'POST'])
     return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  // CORSヘッダーを設定
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'DELETE, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end()
   }
 
   try {
