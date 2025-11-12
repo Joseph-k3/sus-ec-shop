@@ -633,11 +633,14 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
       body: formData
     })
 
+    // レスポンスのクローンを作成（エラー時とsuccess時の両方で読み取るため）
+    const responseClone = response.clone()
+
     if (!response.ok) {
       let errorMessage = `R2アップロードエラー: ${response.status} ${response.statusText}`
       
       try {
-        const errorData = await response.json()
+        const errorData = await responseClone.json()
         console.error('❌ R2アップロードAPIエラー詳細:', errorData)
         
         if (errorData.error) {
@@ -648,10 +651,14 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
         }
       } catch (parseError) {
         // JSONのパースに失敗した場合はテキストを取得
-        const errorText = await response.text()
-        console.error('❌ R2アップロードAPIエラー (テキスト):', errorText)
-        if (errorText) {
-          errorMessage += ` - ${errorText}`
+        try {
+          const errorText = await responseClone.text()
+          console.error('❌ R2アップロードAPIエラー (テキスト):', errorText)
+          if (errorText) {
+            errorMessage += ` - ${errorText}`
+          }
+        } catch (textError) {
+          console.error('❌ エラーメッセージの取得に失敗:', textError)
         }
       }
       
