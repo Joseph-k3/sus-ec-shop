@@ -5,10 +5,16 @@
   "devCommand": "npm run dev",
   "functions": {
     "api/r2-upload.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 1024
     },
     "api/r2-delete.js": {
       "maxDuration": 10
+    }
+  },
+  "api": {
+    "bodyParser": {
+      "sizeLimit": "250mb"
     }
   },
   "headers": [
