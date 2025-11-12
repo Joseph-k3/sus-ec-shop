@@ -9,11 +9,11 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 // R2設定
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'sus-ec-images'
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || process.env.CLOUDFLARE_R2_BUCKET_NAME || 'sus-ec-images'
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL
 
 // R2クライアント初期化
 const r2Client = new S3Client({
