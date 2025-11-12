@@ -1444,6 +1444,14 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
   try {
     console.log('📤 uploadSingleVideo開始:', file.name)
     
+    // ファイルサイズチェックと通知
+    const fileSizeMB = Math.round(file.size / 1024 / 1024 * 100) / 100
+    if (file.size > 4 * 1024 * 1024) {
+      console.log(`📋 大容量ファイル (${fileSizeMB}MB) を署名付きURL方式でアップロードします`)
+      // ユーザーに通知（オプション）
+      // alert(`📋 大容量ファイル (${fileSizeMB}MB) のため、直接アップロード方式を使用します`)
+    }
+    
     // 動画をストレージにアップロード
     const uploadResult = await uploadVideoToStorage(file, (progress) => {
       // 個別の進捗は全体の進捗に含める
@@ -1511,7 +1519,20 @@ const uploadSingleVideo = async (file, isPrimary = false) => {
     
   } catch (error) {
     console.error('uploadSingleVideo でエラー:', error)
-    throw error
+    
+    // エラーメッセージを詳細化
+    let errorMessage = '動画のアップロードに失敗しました'
+    if (error.message.includes('署名付きURL')) {
+      errorMessage = `大容量ファイルのアップロードに失敗しました: ${error.message}\n\nファイルサイズ: ${Math.round(file.size / 1024 / 1024)}MB`
+    } else if (error.message.includes('4MB')) {
+      errorMessage = `ファイルサイズ制限エラー: ${error.message}\n\n自動的に署名付きURL方式に切り替えて再試行されましたが失敗しました。`
+    } else if (error.message.includes('Network') || error.message.includes('ネットワーク')) {
+      errorMessage = `ネットワークエラー: ${error.message}\n\nインターネット接続を確認してください。`
+    } else {
+      errorMessage = `${errorMessage}: ${error.message}`
+    }
+    
+    throw new Error(errorMessage)
   }
 }
 
@@ -1520,6 +1541,13 @@ const uploadTempVideos = async (productId) => {
   try {
     videoUploadProgress.value = 0
     const totalVideos = tempVideos.value.length
+    
+    // 大容量ファイルの事前チェック
+    const largeFiles = tempVideos.value.filter(v => v.file.size > 4 * 1024 * 1024)
+    if (largeFiles.length > 0) {
+      const totalSizeMB = largeFiles.reduce((sum, v) => sum + v.file.size, 0) / 1024 / 1024
+      console.log(`📋 ${largeFiles.length}個の大容量ファイル (合計 ${Math.round(totalSizeMB)}MB) を署名付きURL方式でアップロードします`)
+    }
     
     for (let i = 0; i < tempVideos.value.length; i++) {
       const tempVideo = tempVideos.value[i]

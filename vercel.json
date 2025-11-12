@@ -10,6 +10,10 @@
     },
     "api/r2-delete.js": {
       "maxDuration": 10
+    },
+    "api/r2/presigned-url.js": {
+      "maxDuration": 10,
+      "memory": 256
     }
   },
   "headers": [

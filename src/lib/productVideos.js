@@ -61,6 +61,16 @@ const extractR2KeyFromUrl = (url) => {
  */
 export const addProductVideo = async (productId, videoUrl, options = {}) => {
   try {
+    // product_idバリデーション
+    if (!productId) {
+      throw new Error('商品IDが指定されていません。商品を保存してから動画をアップロードしてください。')
+    }
+
+    // videoUrlバリデーション
+    if (!videoUrl) {
+      throw new Error('動画URLが指定されていません。')
+    }
+
     const {
       title = '',
       description = '',
@@ -613,6 +623,14 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
     
     console.log('✅ ファイルサイズチェック通過')
 
+    // 4MB以上のファイルは署名付きURLを使用
+    const usePresignedUrl = file.size > 4 * 1024 * 1024
+    
+    if (usePresignedUrl) {
+      console.log('📝 署名付きURLを使用してアップロード')
+      return await uploadVideoToR2WithPresignedUrl(file, onProgress)
+    }
+
     // ファイル名を生成
     const timestamp = Date.now()
     const randomId = Math.random().toString(36).substring(7)
@@ -647,7 +665,10 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
           errorMessage = errorData.error
         }
         if (errorData.code === 'LIMIT_FILE_SIZE') {
-          errorMessage = 'ファイルサイズが大きすぎます（最大: 200MB）'
+          errorMessage = 'ファイルサイズが大きすぎます（最大: 4MB）\n\n署名付きURLで再試行します...'
+          // 4MB制限エラーの場合は署名付きURLで再試行
+          console.log('🔄 署名付きURLで再試行')
+          return await uploadVideoToR2WithPresignedUrl(file, onProgress)
         }
       } catch (parseError) {
         // JSONのパースに失敗した場合はテキストを取得
@@ -686,6 +707,111 @@ export const uploadVideoToR2 = async (file, onProgress = null) => {
   } catch (error) {
     console.error('❌ R2アップロードエラー:', error)
     throw error  // エラーを再スローして呼び出し元でキャッチ
+  }
+}
+
+/**
+ * 署名付きURLを使用してR2に直接アップロード（4MB以上の大容量ファイル用）
+ * @param {File} file 動画ファイル
+ * @param {Function} onProgress 進捗コールバック
+ * @returns {Object} アップロード結果
+ */
+export const uploadVideoToR2WithPresignedUrl = async (file, onProgress = null) => {
+  try {
+    console.log('🔐 署名付きURLを使用したアップロード開始:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileSizeMB: Math.round(file.size / 1024 / 1024 * 100) / 100,
+      fileType: file.type
+    })
+
+    // ステップ1: 署名付きURLを取得
+    const presignedResponse = await fetch('/api/r2/presigned-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type
+      })
+    })
+
+    if (!presignedResponse.ok) {
+      const errorData = await presignedResponse.json().catch(() => ({}))
+      throw new Error(`署名付きURL取得エラー: ${errorData.message || presignedResponse.statusText}`)
+    }
+
+    const { signedUrl, publicUrl, key } = await presignedResponse.json()
+    
+    console.log('✅ 署名付きURL取得成功:', {
+      publicUrl,
+      key
+    })
+
+    // ステップ2: 署名付きURLを使用してR2に直接アップロード
+    const xhr = new XMLHttpRequest()
+
+    // 進捗イベント
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentage = Math.round((e.loaded / e.total) * 100)
+          onProgress(percentage)
+        }
+      })
+    }
+
+    // アップロード実行
+    await new Promise((resolve, reject) => {
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('✅ R2への直接アップロード完了')
+          resolve()
+        } else {
+          console.error('❌ R2アップロードエラー:', {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            response: xhr.responseText
+          })
+          reject(new Error(`R2アップロードエラー: ${xhr.status} ${xhr.statusText}`))
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        console.error('❌ ネットワークエラー')
+        reject(new Error('ネットワークエラーが発生しました'))
+      })
+
+      xhr.addEventListener('abort', () => {
+        console.warn('⚠️ アップロードがキャンセルされました')
+        reject(new Error('アップロードがキャンセルされました'))
+      })
+
+      xhr.open('PUT', signedUrl)
+      xhr.setRequestHeader('Content-Type', file.type)
+      xhr.send(file)
+    })
+
+    console.log('✅ 署名付きURLアップロード完了:', {
+      publicUrl,
+      key
+    })
+
+    // R2キーを抽出
+    const r2Key = extractR2KeyFromUrl(publicUrl)
+
+    return {
+      videoUrl: publicUrl,
+      r2Key: r2Key || key,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type
+    }
+
+  } catch (error) {
+    console.error('❌ 署名付きURLアップロードエラー:', error)
+    throw error
   }
 }
 
