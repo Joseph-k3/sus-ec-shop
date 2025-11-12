@@ -12,11 +12,6 @@
       "maxDuration": 10
     }
   },
-  "api": {
-    "bodyParser": {
-      "sizeLimit": "250mb"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",

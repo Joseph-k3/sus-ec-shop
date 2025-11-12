@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   try {
     const form = formidable({
       multiples: false,
-      maxFileSize: 200 * 1024 * 1024, // 200MB (動画対応)
+      maxFileSize: 4 * 1024 * 1024, // 4MB (Vercel制限)
     })
 
     let fields, files
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       if (parseError.code === 1009 || parseError.httpCode === 413) {
         // ファイルサイズ超過エラー
         return res.status(413).json({
-          error: 'ファイルサイズが大きすぎます（最大: 200MB）',
+          error: 'ファイルサイズが大きすぎます（Vercel制限: 4MB）\n\n大きなファイルは署名付きURLを使用してください。',
           code: 'LIMIT_FILE_SIZE',
           details: parseError.message
         })
