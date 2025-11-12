@@ -1065,20 +1065,22 @@ export const getStorageInfo = async () => {
  * @returns {Boolean} アップロード可能かどうか
  */
 export const checkVideoFileSize = (file) => {
-  const maxSize = 50 * 1024 * 1024 // 50MB制限
+  const maxSize = 200 * 1024 * 1024 // 200MB制限（署名付きURL対応）
   const fileSizeMB = Math.round(file.size / 1024 / 1024 * 100) / 100
   
   console.log(`📹 動画ファイル: ${file.name}`)
   console.log(`📊 ファイルサイズ: ${fileSizeMB}MB`)
   
   if (file.size > maxSize) {
-    alert(`⚠️ ファイルサイズが大きすぎます: ${fileSizeMB}MB\n\n推奨サイズ: 50MB以下\n\n大きなファイルは以下の方法で圧縮してください:\n1. HandBrake（無料）\n2. オンライン動画圧縮ツール\n3. FFmpeg`)
+    alert(`⚠️ ファイルサイズが大きすぎます: ${fileSizeMB}MB\n\n最大サイズ: 200MB\n\n大きなファイルは以下の方法で圧縮してください:\n1. HandBrake（無料）\n2. オンライン動画圧縮ツール\n3. FFmpeg`)
     return false
   }
   
-  if (file.size > 20 * 1024 * 1024) { // 20MB以上で警告
-    const confirm = window.confirm(`⚠️ ファイルサイズが大きいです: ${fileSizeMB}MB\n\nストレージ制限により、大きなファイルは\nアップロードに失敗する可能性があります。\n\n続行しますか？`)
-    return confirm
+  // 4MB以上の場合は署名付きURL方式を使用することを通知
+  if (file.size > 4 * 1024 * 1024) {
+    console.log(`📝 ${fileSizeMB}MB: 署名付きURL方式でアップロードします`)
+    // ユーザーには特に確認せず、自動的に署名付きURL方式を使用
+    return true
   }
   
   return true
