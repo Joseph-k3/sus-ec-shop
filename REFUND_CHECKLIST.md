@@ -245,7 +245,7 @@ WHERE refunded = TRUE;
 
 **技術サポート:**
 - GitHub Issues: [プロジェクトリポジトリ]
-- メール: k3.ns.208_b50@icloud.com
+- メール: ryosk8er1026@yahoo.co.jp
 
 **Square サポート:**
 - [Square Developer Support](https://developer.squareup.com/support)

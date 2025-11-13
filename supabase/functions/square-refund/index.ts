@@ -171,7 +171,7 @@ serve(async (req) => {
     try {
       await supabase.functions.invoke('send-email-mailgun', {
         body: {
-          to: 'k3.ns.208_b50@icloud.com',
+          to: 'ryosk8er1026@yahoo.co.jp',
           subject: `【返金完了】${order.customer_name}様の注文 (${order.order_number})`,
           html: `
             <h2>返金処理が完了しました</h2>

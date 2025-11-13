@@ -142,7 +142,7 @@ async function sendEmails(supabase: any, order: any, paymentId: string) {
   try {
     await supabase.functions.invoke('send-email-mailgun', {
       body: {
-        to: 'k3.ns.208_b50@icloud.com',
+        to: 'ryosk8er1026@yahoo.co.jp',
         subject: `【決済完了】${order.customer_name}様の注文`,
         html: `
           <h2>Square決済が完了しました</h2>

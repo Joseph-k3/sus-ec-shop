@@ -152,7 +152,7 @@ serve(async (req) => {
     try {
       await supabase.functions.invoke('send-email-mailgun', {
         body: {
-          to: 'k3.ns.208_b50@icloud.com',
+          to: 'ryosk8er1026@yahoo.co.jp',
           subject: `【決済完了】${firstOrder.customer_name}様の注文 (${cartOrderNumber})`,
           html: generateAdminEmail(orders, firstOrder, cartOrderNumber, totalAmount),
         },

@@ -134,7 +134,7 @@ node scripts/check-square-payments.js
 
 ### 3. メールの確認
 
-- 管理者メール（k3.ns.208_b50@icloud.com）に注文確認メールが届く
+- 管理者メール（ryosk8er1026@yahoo.co.jp）に注文確認メールが届く
 - 顧客メールに注文確認メールが届く
 
 ## トラブルシューティング
