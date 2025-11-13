@@ -7,17 +7,32 @@ import { supabase } from './supabase'
  */
 export async function createSquareCheckout(orderData) {
   try {
+    console.log('🔗 Supabase Edge Function呼び出し中...')
+    console.log('📦 送信データ:', JSON.stringify(orderData, null, 2))
+    
     const { data, error } = await supabase.functions.invoke('square-checkout', {
       body: { orderData }
     })
 
+    console.log('📊 Edge Function レスポンス:', { data, error })
+
     if (error) {
+      console.error('❌ Edge Function エラー:', error)
+      console.error('❌ エラー詳細:', JSON.stringify(error, null, 2))
       throw new Error(error.message || 'Square Checkout作成に失敗しました')
     }
 
+    if (!data) {
+      console.error('❌ Edge Function からデータが返されませんでした')
+      throw new Error('Edge Functionからデータが返されませんでした')
+    }
+
+    console.log('✅ Edge Function 成功:', data)
     return data
   } catch (error) {
-    console.error('Square checkout error:', error)
+    console.error('❌❌❌ Square checkout error:', error)
+    console.error('📋 エラーメッセージ:', error.message)
+    console.error('📋 エラースタック:', error.stack)
     throw error
   }
 }

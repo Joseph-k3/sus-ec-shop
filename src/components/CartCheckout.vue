@@ -439,7 +439,7 @@ const form = reactive({
 // 送料計算
 const shippingInfo = ref({
   itemTotal: 0,
-  shippingFee: 1000,
+  shippingFee: 0, // 🚨 一時的に0円に設定（テスト用）
   totalAmount: 0,
   region: '本州・四国・九州'
 })
@@ -454,8 +454,8 @@ const updateShippingInfo = () => {
     // 郵便番号が未入力の場合はデフォルト送料
     shippingInfo.value = {
       itemTotal,
-      shippingFee: 1000,
-      totalAmount: itemTotal + 1000,
+      shippingFee: 0, // 🚨 一時的に0円に設定（テスト用）
+      totalAmount: itemTotal + 0,
       region: '本州・四国・九州'
     }
   }

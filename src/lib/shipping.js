@@ -6,6 +6,10 @@
  * @returns {number} 送料（円）
  */
 export function calculateShippingFee(zipCode) {
+  // 🚨 一時的に送料を無料化（テスト用）
+  return 0
+  
+  /* 通常の送料計算ロジック（テスト後に戻す場合はコメント解除）
   if (!zipCode || typeof zipCode !== 'string') {
     return 1000 // デフォルト送料
   }
@@ -35,6 +39,7 @@ export function calculateShippingFee(zipCode) {
 
   // その他の地域は通常送料
   return 1000
+  */
 }
 
 /**
