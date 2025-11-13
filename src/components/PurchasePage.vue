@@ -2093,6 +2093,29 @@ button:disabled {
 }
 
 @media screen and (max-width: 768px) {
+  /* スマホでメールアドレス入力欄を大きく */
+  .email-split-input {
+    gap: 0.25rem;
+  }
+  
+  .email-local-part {
+    flex: 1.5;
+    min-width: 120px;
+    font-size: 1rem;
+  }
+  
+  .email-at {
+    font-size: 1.1rem;
+    padding: 0 0.25rem;
+  }
+  
+  .email-domain-select {
+    flex: 1.8;
+    min-width: 140px;
+    font-size: 1rem;
+    padding: 0.75rem 0.5rem;
+  }
+  
   .email-suggestions {
     max-height: 150px;
   }
