@@ -9,7 +9,8 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run api\"",
     "build": "vite build",
     "preview": "vite preview",
-    "vercel-build": "vite build"
+    "vercel-build": "vite build",
+    "generate:sitemap": "node scripts/generate-sitemap.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",

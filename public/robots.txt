@@ -1,0 +1,35 @@
+# robots.txt - 検索エンジンクローラー向けの設定
+
+# すべての検索エンジンクローラーに対して
+User-agent: *
+
+# クロールを許可するページ
+Allow: /
+Allow: /product/*
+Allow: /cart
+Allow: /order
+
+# クロールを禁止するページ（管理画面、API、プライベートページ）
+Disallow: /admin
+Disallow: /api/
+Disallow: /.env
+Disallow: /server/
+
+# サイトマップの場所を指定
+Sitemap: https://sus-ec-shop.vercel.app/sitemap.xml
+
+# クロール頻度の調整（サーバー負荷軽減）
+Crawl-delay: 1
+
+# 特定のボットへの指示（オプション）
+# Googlebot
+User-agent: Googlebot
+Allow: /
+
+# Bingbot
+User-agent: Bingbot
+Allow: /
+
+# Yandex（ロシアの検索エンジン）
+User-agent: Yandex
+Allow: /
