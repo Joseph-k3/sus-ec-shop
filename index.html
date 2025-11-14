@@ -2,7 +2,24 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.jpg" />
+    
+    <!-- ファビコン設定（複数サイズ対応） -->
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="/logo.jpg" />
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="/logo.jpg" />
+    <link rel="icon" type="image/jpeg" sizes="48x48" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/logo.jpg" />
+    
+    <!-- PWAマニフェスト -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4CAF50" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SUS plants" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
     
     <!-- SEO基本設定 -->
@@ -18,6 +35,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sus-ec-shop.vercel.app/" />
     <meta property="og:image" content="https://sus-ec-shop.vercel.app/logo.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="SUS plants EC shop" />
     <meta property="og:locale" content="ja_JP" />
     
@@ -30,23 +49,51 @@
     <!-- 正規URL -->
     <link rel="canonical" href="https://sus-ec-shop.vercel.app/" />
     
-    <!-- 構造化データ (JSON-LD) -->
+    <!-- 構造化データ (JSON-LD) - Googleナレッジパネル用 -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Store",
+      "@type": "LocalBusiness",
       "name": "SUS plants EC shop",
-      "description": "高品質な多肉植物・サボテンを販売するオンラインショップ",
+      "alternateName": "SUS plants",
+      "description": "多肉植物通販サイト。希少品種を豊富に取り揃え、全国発送対応。",
       "url": "https://sus-ec-shop.vercel.app/",
-      "logo": "https://sus-ec-shop.vercel.app/logo.jpg",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://sus-ec-shop.vercel.app/logo.jpg",
+        "width": 512,
+        "height": 512
+      },
       "image": "https://sus-ec-shop.vercel.app/logo.jpg",
       "priceRange": "¥¥",
       "address": {
         "@type": "PostalAddress",
         "addressCountry": "JP"
       },
-      "paymentAccepted": "Credit Card, Bank Transfer",
-      "currenciesAccepted": "JPY"
+      "paymentAccepted": ["Credit Card", "Bank Transfer"],
+      "currenciesAccepted": "JPY",
+      "openingHours": "Mo-Su 00:00-23:59",
+      "sameAs": [
+        "https://www.instagram.com/your_instagram_account"
+      ]
+    }
+    </script>
+    
+    <!-- 組織情報（ロゴ表示用） -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SUS plants EC shop",
+      "url": "https://sus-ec-shop.vercel.app/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://sus-ec-shop.vercel.app/logo.jpg",
+        "width": 512,
+        "height": 512
+      },
+      "image": "https://sus-ec-shop.vercel.app/logo.jpg",
+      "description": "多肉植物・観葉植物専門のオンラインショップ"
     }
     </script>
   </head>
