@@ -8,11 +8,11 @@
   </div>
   
   <div v-else>
-    <!-- メンテナンス画面：/maintenanceパスの場合は常に表示 -->
+    <!-- メンテナンス画面または公開期間外：/maintenanceパス、メンテナンスモードON、または公開期間外の場合はComingSoon表示 -->
     <ComingSoon
-      v-if="route.path === '/maintenance'"
+      v-if="route.path === '/maintenance' || (siteSettings?.maintenance_mode && !route.path.startsWith('/admin')) || (!isWithinPublishPeriod && !route.path.startsWith('/admin'))"
       :siteSettings="siteSettings"
-      :maintenanceMode="true"
+      :maintenanceMode="siteSettings?.maintenance_mode || !isWithinPublishPeriod"
     />
     <!-- 管理者が/admin配下にいる場合、または公開期間内かつメンテナンス中でない場合 -->
     <template v-else-if="(route.path.startsWith('/admin') && isAdmin) || (isWithinPublishPeriod && !siteSettings?.maintenance_mode)">
@@ -143,7 +143,7 @@ watch(showLogin, (newVal) => {
   }
 })
 
-// メンテナンスモードの監視
+// メンテナンスモードと公開期間の監視
 watchEffect(() => {
   // loading中やsiteSettingsがない場合は何もしない
   if (loading.value || !siteSettings.value) {
@@ -157,17 +157,17 @@ watchEffect(() => {
   
   // /maintenance パスの場合の処理
   if (route.path === '/maintenance') {
-    // メンテナンスモードがOFFの場合は / にリダイレクト
-    if (!siteSettings.value.maintenance_mode) {
+    // メンテナンスモードOFFかつ公開期間内の場合は / にリダイレクト
+    if (!siteSettings.value.maintenance_mode && isWithinPublishPeriod.value) {
       router.replace('/')
     }
-    // メンテナンスモードONの場合は表示（管理者も一般ユーザーも）
+    // メンテナンスモードONまたは公開期間外の場合は表示
     return
   }
   
   // 一般パス（/, /purchase など）の場合
-  // メンテナンスモードがONの場合は /maintenance にリダイレクト（管理者含む）
-  if (siteSettings.value.maintenance_mode) {
+  // メンテナンスモードONまたは公開期間外の場合は /maintenance にリダイレクト
+  if (siteSettings.value.maintenance_mode || !isWithinPublishPeriod.value) {
     router.replace('/maintenance')
   }
 })
@@ -230,8 +230,8 @@ const handleLogout = async () => {
     await supabase.auth.signOut()
     isAdmin.value = false
     showLogoutMenu.value = false
-    // メンテナンスモード中の場合は /maintenance にリダイレクト
-    if (siteSettings.value?.maintenance_mode) {
+    // メンテナンスモード中または公開期間外の場合は /maintenance にリダイレクト
+    if (siteSettings.value?.maintenance_mode || !isWithinPublishPeriod.value) {
       await router.push('/maintenance')
     } else {
       await router.push('/')
