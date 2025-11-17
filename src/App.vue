@@ -12,10 +12,10 @@
     <ComingSoon
       v-if="route.path === '/maintenance'"
       :siteSettings="siteSettings"
-      :maintenanceMode="siteSettings?.maintenance_mode"
+      :maintenanceMode="true"
     />
-    <!-- 公開期間チェック：管理者の場合はメンテナンスモード関係なくアクセス可能 -->
-    <template v-else-if="(isWithinPublishPeriod && !siteSettings?.maintenance_mode) || isAdmin">
+    <!-- 管理者が/admin配下にいる場合、または公開期間内かつメンテナンス中でない場合 -->
+    <template v-else-if="(route.path.startsWith('/admin') && isAdmin) || (isWithinPublishPeriod && !siteSettings?.maintenance_mode)">
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
         <main class="main-content">
@@ -145,12 +145,29 @@ watch(showLogin, (newVal) => {
 
 // メンテナンスモードの監視
 watchEffect(() => {
-  // 管理者ログイン済み、または /maintenance パスなら何もしない
-  if (isAdmin.value || route.path === '/maintenance' || route.path.startsWith('/admin')) {
+  // loading中やsiteSettingsがない場合は何もしない
+  if (loading.value || !siteSettings.value) {
     return
   }
-  // メンテナンスモードかつ上記以外のパスなら /maintenance にリダイレクト
-  if (siteSettings.value?.maintenance_mode) {
+  
+  // /admin パスの場合は管理者のみアクセス可能（リダイレクトはしない）
+  if (route.path.startsWith('/admin')) {
+    return
+  }
+  
+  // /maintenance パスの場合の処理
+  if (route.path === '/maintenance') {
+    // メンテナンスモードがOFFの場合は / にリダイレクト
+    if (!siteSettings.value.maintenance_mode) {
+      router.replace('/')
+    }
+    // メンテナンスモードONの場合は表示（管理者も一般ユーザーも）
+    return
+  }
+  
+  // 一般パス（/, /purchase など）の場合
+  // メンテナンスモードがONの場合は /maintenance にリダイレクト（管理者含む）
+  if (siteSettings.value.maintenance_mode) {
     router.replace('/maintenance')
   }
 })
@@ -213,7 +230,12 @@ const handleLogout = async () => {
     await supabase.auth.signOut()
     isAdmin.value = false
     showLogoutMenu.value = false
-    await router.push('/')
+    // メンテナンスモード中の場合は /maintenance にリダイレクト
+    if (siteSettings.value?.maintenance_mode) {
+      await router.push('/maintenance')
+    } else {
+      await router.push('/')
+    }
   } catch (error) {
     console.error('ログアウト中にエラーが発生しました:', error)
   }
