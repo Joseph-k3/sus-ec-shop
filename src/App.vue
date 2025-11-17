@@ -14,8 +14,6 @@
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
         <main class="main-content">
-          <button v-if="!isAdmin && $route.name === 'home'" @click="showLogin = true" class="login-button">管理者ログイン</button>
-
           <router-view></router-view>
 
           <!-- ログインモーダル -->
@@ -28,14 +26,12 @@
       </div>
       
       <!-- 管理者用右端固定ボタン -->
-      <div v-if="isAdmin" class="admin-fixed-controls">
-        <router-link to="/admin" custom v-slot="{ navigate }" v-if="$route.name === 'home'">
-          <button @click="navigate" class="admin-link" title="管理画面">
-            <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V7.5C15 8.3 14.3 9 13.5 9S12 8.3 12 7.5V6L6 7V9C6 10.1 6.9 11 8 11V16.5C8 17.3 8.7 18 9.5 18S11 17.3 11 16.5V13H13V16.5C13 17.3 13.7 18 14.5 18S16 17.3 16 16.5V11C17.1 11 18 10.1 18 9H21Z"/>
-            </svg>
-          </button>
-        </router-link>
+      <div class="admin-fixed-controls">
+        <button @click="handleAdminButtonClick" class="admin-link" title="管理画面">
+          <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V7.5C15 8.3 14.3 9 13.5 9S12 8.3 12 7.5V6L6 7V9C6 10.1 6.9 11 8 11V16.5C8 17.3 8.7 18 9.5 18S11 17.3 11 16.5V13H13V16.5C13 17.3 13.7 18 14.5 18S16 17.3 16 16.5V11C17.1 11 18 10.1 18 9H21Z"/>
+          </svg>
+        </button>
         <router-link to="/" custom v-slot="{ navigate }" v-if="$route.name === 'admin'">
           <button @click="navigate" class="admin-link" title="商品一覧に戻る">
             <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -43,7 +39,7 @@
             </svg>
           </button>
         </router-link>
-        <button @click="showLogoutMenu = !showLogoutMenu" class="admin-link logout-toggle" title="ログアウト">
+        <button @click="showLogoutMenu = !showLogoutMenu" class="admin-link logout-toggle" title="ログアウト" v-if="isAdmin">
           <svg class="admin-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 0 1 2 2v2h-2V4H4v16h10v-2h2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10Z"/>
           </svg>
@@ -198,7 +194,14 @@ const handleLogout = async () => {
   showLogin.value = false
 }
 
-
+// 管理者用ボタン押下時の処理
+const handleAdminButtonClick = () => {
+  if (isAdmin.value) {
+    router.push('/admin')
+  } else {
+    showLogin.value = true
+  }
+}
 </script>
 
 <style>

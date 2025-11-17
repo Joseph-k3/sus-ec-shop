@@ -1,7 +1,7 @@
 <template>
   <!-- スプラッシュスクリーン - bodyに直接挿入 -->
   <Teleport to="body">
-    <div v-if="showSplash" class="splash-screen">
+    <div v-show="showSplash" class="splash-screen">
       <img src="/logo.jpg" alt="SUS Plants Logo" class="splash-logo" />
     </div>
   </Teleport>
