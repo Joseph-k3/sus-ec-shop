@@ -9,7 +9,8 @@
   <!-- メインコンテンツ -->
   <div v-if="!showSplash && showContent" class="coming-soon fade-in">
     <h1>Coming Soon...</h1>
-    <p class="message">下記リンクのInstagramアカウントから発信される販売開始告知までお待ちください🙇</p>
+    <p class="message" v-if="maintenanceMode">ただいまメンテナンス中です。再公開までしばらくお待ちください。</p>
+    <p class="message" v-else>下記リンクのInstagramアカウントから発信される販売開始告知までお待ちください🙇</p>
     <div class="period" v-if="siteSettings">
       <p>販売期間：</p>
       <p>未定</p>
@@ -53,14 +54,18 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginForm from './LoginForm.vue'
 
+const emit = defineEmits()
+
 const router = useRouter()
 
 const props = defineProps({
-  siteSettings: Object
+  siteSettings: Object,
+  maintenanceMode: Boolean
 })
 
 const showLogin = ref(false)
-const showSplash = ref(true)
+// showSplashの初期値をmaintenanceModeで分岐
+const showSplash = ref(!props.maintenanceMode)
 const showContent = ref(false)
 
 const formatDateTime = (dateStr) => {
@@ -75,6 +80,12 @@ const formatDateTime = (dateStr) => {
 }
 
 onMounted(() => {
+  // スプラッシュはメンテナンス時は表示しない
+  if (props.maintenanceMode) {
+    showSplash.value = false
+    showContent.value = true
+    return
+  }
   // スプラッシュ表示時の背景色を統一と#app要素を非表示
   document.body.style.backgroundColor = '#f5f5f5'
   const appElement = document.getElementById('app')
@@ -99,10 +110,9 @@ onMounted(() => {
 
 const handleLoginSuccess = () => {
   showLogin.value = false
-  // ログイン成功後にスプラッシュを表示するフラグを設定
   sessionStorage.setItem('show-splash-after-login', 'true')
-  // ホームページに遷移（管理者として）
-  router.push('/')
+  // 管理画面に遷移
+  router.push('/admin')
 }
 </script>
 

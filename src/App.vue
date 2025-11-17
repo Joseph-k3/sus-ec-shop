@@ -8,9 +8,14 @@
   </div>
   
   <div v-else>
-    <!-- 公開期間チェック -->
-    <!-- 本番運用時: 公開期間内であればComingSoon.vueは表示されず、ProductList.vueで直接スプラッシュ→商品一覧を表示 -->
-    <template v-if="isWithinPublishPeriod || isAdmin">
+    <!-- メンテナンス画面：/maintenanceパスの場合は常に表示 -->
+    <ComingSoon
+      v-if="route.path === '/maintenance'"
+      :siteSettings="siteSettings"
+      :maintenanceMode="siteSettings?.maintenance_mode"
+    />
+    <!-- 公開期間チェック：管理者の場合はメンテナンスモード関係なくアクセス可能 -->
+    <template v-else-if="(isWithinPublishPeriod && !siteSettings?.maintenance_mode) || isAdmin">
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
         <main class="main-content">
@@ -51,12 +56,11 @@
         </div>
       </div>
     </template>
-    <ComingSoon v-else :siteSettings="siteSettings" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, computed, watch, nextTick, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Header from './components/Header.vue'
 import ProductList from './components/ProductList.vue'
@@ -139,6 +143,18 @@ watch(showLogin, (newVal) => {
   }
 })
 
+// メンテナンスモードの監視
+watchEffect(() => {
+  // 管理者ログイン済み、または /maintenance パスなら何もしない
+  if (isAdmin.value || route.path === '/maintenance' || route.path.startsWith('/admin')) {
+    return
+  }
+  // メンテナンスモードかつ上記以外のパスなら /maintenance にリダイレクト
+  if (siteSettings.value?.maintenance_mode) {
+    router.replace('/maintenance')
+  }
+})
+
 onMounted(async () => {
   await checkAdmin()
   
@@ -157,12 +173,23 @@ onMounted(async () => {
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
-    
     if (error) throw error
     siteSettings.value = data
   } catch (error) {
     console.error('サイト設定の取得に失敗しました:', error)
   }
+  // maintenance_modeの変更を検知するため、5秒ごとに再取得
+  setInterval(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (!error && data) siteSettings.value = data
+    } catch (e) {}
+  }, 5000)
   
   loading.value = false
   

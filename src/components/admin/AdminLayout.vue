@@ -16,6 +16,13 @@
           <i class="fas fa-store"></i>
           ストアへ戻る
         </router-link>
+        <button 
+          class="nav-link maintenance-btn" 
+          :data-maintenance="maintenanceMode"
+          @click="toggleMaintenanceMode"
+        >
+          {{ maintenanceMode ? '公開再開' : '公開停止' }}
+        </button>
       </nav>
     </header>
 
@@ -26,9 +33,12 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '../../lib/supabase'
 
 const router = useRouter()
+const maintenanceMode = ref(false)
 
 // ナビゲーションのクリックハンドラ
 const handleNavClick = (event) => {
@@ -39,6 +49,55 @@ const handleNavClick = (event) => {
   if (to && to !== router.currentRoute.value.path) {
     event.preventDefault()
     router.push(to)
+  }
+}
+
+// コンポーネントマウント時にメンテナンスモードを取得
+onMounted(async () => {
+  // 最新のsite_settingsを取得
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('maintenance_mode')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+  if (!error && data) maintenanceMode.value = !!data.maintenance_mode
+})
+
+// メンテナンスモードのトグル
+const toggleMaintenanceMode = async () => {
+  const newMode = !maintenanceMode.value
+  const message = newMode 
+    ? 'サイトを公開停止にしますか？（全ユーザーにメンテナンス画面が表示されます）' 
+    : 'サイトを公開再開しますか？'
+  if (!confirm(message)) return
+  // 最新のsite_settingsレコードを取得
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('id')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+  if (error || !data) return alert('設定取得失敗')
+  // 更新（必ずidを指定して1件だけ更新）
+  const { data: updatedRows, error: updateError, status } = await supabase
+    .from('site_settings')
+    .update({ maintenance_mode: newMode })
+    .eq('id', data.id)
+    .select()
+  if (updateError) return alert('更新失敗: ' + updateError.message)
+  if (status === 200 && updatedRows && updatedRows.length > 0) {
+    maintenanceMode.value = !!updatedRows[0].maintenance_mode
+    // 成功メッセージ表示
+    if (maintenanceMode.value) {
+      alert('公開を停止しました')
+      // メンテナンスモードをONにした場合は /maintenance に遷移
+      router.push('/maintenance')
+    } else {
+      alert('公開を再開しました')
+    }
+  } else {
+    alert('更新が反映されませんでした: ' + JSON.stringify({ status, updatedRows }))
   }
 }
 </script>
@@ -137,6 +196,31 @@ const handleNavClick = (event) => {
   color: white;
   box-shadow: 0 2px 8px rgba(44, 95, 45, 0.4);
   font-weight: bold;
+}
+
+/* メンテナンスボタンのスタイル */
+.maintenance-btn {
+  background: #dc3545 !important; /* 赤（公開停止） */
+  border-color: #c82333 !important;
+  font-weight: 600;
+  color: white;
+}
+
+.maintenance-btn:hover {
+  background: #c82333 !important;
+  color: white;
+}
+
+/* メンテナンスモードON時（公開再開ボタン）は黄緑 */
+.maintenance-btn[data-maintenance="true"] {
+  background: #90EE90 !important; /* 黄緑（公開再開） */
+  border-color: #7BCF7B !important;
+  color: #2c3e50;
+}
+
+.maintenance-btn[data-maintenance="true"]:hover {
+  background: #7BCF7B !important;
+  color: white;
 }
 
 .admin-content {

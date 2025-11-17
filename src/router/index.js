@@ -9,6 +9,7 @@ import BankTransferForm from '../components/BankTransferForm.vue'
 import SquarePaymentForm from '../components/SquarePaymentForm.vue'
 import PaymentComplete from '../components/PaymentComplete.vue'
 import FAQ from '../components/FAQ.vue'
+import ComingSoon from '../components/ComingSoon.vue'
 
 import ShoppingCart from '../components/ShoppingCart.vue'
 import CartCheckout from '../components/CartCheckout.vue'
@@ -110,6 +111,16 @@ const routes = [
     name: 'faq',
     component: FAQ,
     beforeEnter: siteAuthGuard
+  },
+  {
+    path: '/maintenance',
+    name: 'maintenance',
+    component: ComingSoon,
+    props: route => ({
+      // siteSettingsやmaintenanceModeはApp.vue等でfetchして渡すのが理想だが、
+      // ここではprops:trueでクエリ等からも受け取れるようにしておく
+      ...route.params
+    })
   }
 ]
 
