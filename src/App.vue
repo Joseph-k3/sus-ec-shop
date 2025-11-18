@@ -8,14 +8,14 @@
   </div>
   
   <div v-else>
-    <!-- メンテナンス画面または公開期間外：/maintenanceパス、メンテナンスモードON、または公開期間外の場合はComingSoon表示 -->
+    <!-- メンテナンス画面または公開期間外：/maintenanceパス、メンテナンスモードON、または公開期間外の場合はComingSoon表示（管理者の場合は一般パスも表示可能） -->
     <ComingSoon
-      v-if="route.path === '/maintenance' || (siteSettings?.maintenance_mode && !route.path.startsWith('/admin')) || (!isWithinPublishPeriod && !route.path.startsWith('/admin'))"
+      v-if="route.path === '/maintenance' || (!isAdmin && ((siteSettings?.maintenance_mode && !route.path.startsWith('/admin')) || (!isWithinPublishPeriod && !route.path.startsWith('/admin'))))"
       :siteSettings="siteSettings"
       :maintenanceMode="siteSettings?.maintenance_mode || !isWithinPublishPeriod"
     />
-    <!-- 管理者が/admin配下にいる場合、または公開期間内かつメンテナンス中でない場合 -->
-    <template v-else-if="(route.path.startsWith('/admin') && isAdmin) || (isWithinPublishPeriod && !siteSettings?.maintenance_mode)">
+    <!-- 管理者が/admin配下にいる場合、管理者が一般パスにアクセスした場合、または公開期間内かつメンテナンス中でない場合 -->
+    <template v-else-if="(route.path.startsWith('/admin') && isAdmin) || isAdmin || (isWithinPublishPeriod && !siteSettings?.maintenance_mode)">
       <Header />
       <div class="app-content" :class="{ 'fade-in': showMainContent }">
         <main class="main-content">
@@ -155,6 +155,11 @@ watchEffect(() => {
     return
   }
   
+  // 管理者の場合は一般パスでもリダイレクトしない
+  if (isAdmin.value && route.path !== '/maintenance') {
+    return
+  }
+  
   // /maintenance パスの場合の処理
   if (route.path === '/maintenance') {
     // メンテナンスモードOFFかつ公開期間内の場合は / にリダイレクト
@@ -165,7 +170,7 @@ watchEffect(() => {
     return
   }
   
-  // 一般パス（/, /purchase など）の場合
+  // 一般パス（/, /purchase など）の場合（一般ユーザーのみ）
   // メンテナンスモードONまたは公開期間外の場合は /maintenance にリダイレクト
   if (siteSettings.value.maintenance_mode || !isWithinPublishPeriod.value) {
     router.replace('/maintenance')
