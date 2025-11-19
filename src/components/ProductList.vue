@@ -1597,7 +1597,7 @@ div[class~="admin-grid"] {
 
   .hero-text {
     padding-right: 0.5rem;
-    text-align: left;
+    text-align: center; /* スマホでは中央寄せ */
   }
 
   .hero-title {
@@ -1616,11 +1616,13 @@ div[class~="admin-grid"] {
 
   .hero-image {
     width: 100%;
+    height: 250px; /* 高さを固定してトリミング */
   }
 
   .banner-image {
-    min-height: 200px;
-    object-position: center 25%; /* スマホでは少し上寄りに */
+    min-height: 250px;
+    height: 100%;
+    object-position: center top; /* 上部を基準に表示 */
   }
 
   .controls-section {
@@ -1702,6 +1704,7 @@ div[class~="admin-grid"] {
 
   .hero-text {
     padding-right: 0.25rem;
+    text-align: center; /* 小画面でも中央寄せ */
   }
 
   .hero-title {
@@ -1714,9 +1717,14 @@ div[class~="admin-grid"] {
     line-height: 1.5;
   }
 
+  .hero-image {
+    height: 200px; /* 高さを固定してトリミング */
+  }
+
   .banner-image {
-    min-height: 150px;
-    object-position: center 20%; /* 小画面ではさらに上寄りに */
+    min-height: 200px;
+    height: 100%;
+    object-position: center top; /* 上部を基準に表示 */
   }
   
   .controls-section {
