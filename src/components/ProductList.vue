@@ -1577,39 +1577,38 @@ div[class~="admin-grid"] {
     max-width: 100%;
   }
 
-  /* モバイルでのヒーローセクション調整 */
+  /* モバイルでのヒーローセクション調整 - 横並び維持 */
   .hero-section {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .hero-content {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    padding: 2rem 1.5rem;
-    min-height: auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem 1rem;
+    min-height: 300px;
   }
 
   .hero-text {
-    padding-right: 0;
-    text-align: center;
+    padding-right: 0.5rem;
+    text-align: left;
   }
 
   .hero-title {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
   }
 
   .hero-description {
-    font-size: 0.95rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
   }
 
   .hero-image {
     width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
   }
 
   .banner-image {
-    min-height: 250px;
+    min-height: 200px;
   }
 
   .controls-section {
@@ -1677,27 +1676,34 @@ div[class~="admin-grid"] {
     padding-top: 130px !important; /* 小さなスマホでヘッダー分の余白を十分確保 */
   }
   
-  /* 小さな画面でのヒーローセクション調整 */
+  /* 小さな画面でのヒーローセクション調整 - 横並び維持 */
   .hero-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .hero-content {
-    padding: 1.5rem 1rem;
-    gap: 1.5rem;
+    grid-template-columns: 1fr 1fr;
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+    min-height: 250px;
+  }
+
+  .hero-text {
+    padding-right: 0.25rem;
   }
 
   .hero-title {
-    font-size: 2rem;
+    font-size: 1.4rem;
+    line-height: 1.1;
   }
 
   .hero-description {
-    font-size: 0.9rem;
-    line-height: 1.6;
+    font-size: 0.65rem;
+    line-height: 1.5;
   }
 
   .banner-image {
-    min-height: 200px;
+    min-height: 150px;
   }
   
   .controls-section {
