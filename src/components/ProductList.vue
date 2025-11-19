@@ -14,9 +14,9 @@
         <div class="hero-text">
           <h1 class="hero-title">What I like...</h1>
           <p class="hero-description">
-            自然が生み出す美しいフォルム。<br>
-            ひとつひとつ異なる表情を持つ多肉植物たち。<br>
-            あなたのお気に入りを見つけてください。
+            自然が生み出す<br class="br-mobile">美しいフォルム。<br>
+            ひとつひとつ異なる<br class="br-mobile">表情を持つ多肉植物たち。<br>
+            あなたのお気に入りを<br class="br-mobile">見つけてください。
           </p>
         </div>
         <div class="hero-image">
@@ -739,6 +739,11 @@ const closeVideoModal = () => {
   font-weight: 400;
 }
 
+/* デスクトップではスマホ用改行を非表示 */
+.br-mobile {
+  display: none;
+}
+
 .hero-image {
   width: 100%;
   height: 100%;
@@ -757,6 +762,7 @@ const closeVideoModal = () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 30%; /* 上部30%の位置を中心に表示（下の白い部分をカット） */
   display: block;
   min-height: 350px;
 }
@@ -1603,12 +1609,18 @@ div[class~="admin-grid"] {
     line-height: 1.6;
   }
 
+  /* スマホ用改行を表示 */
+  .br-mobile {
+    display: inline;
+  }
+
   .hero-image {
     width: 100%;
   }
 
   .banner-image {
     min-height: 200px;
+    object-position: center 25%; /* スマホでは少し上寄りに */
   }
 
   .controls-section {
@@ -1704,6 +1716,7 @@ div[class~="admin-grid"] {
 
   .banner-image {
     min-height: 150px;
+    object-position: center 20%; /* 小画面ではさらに上寄りに */
   }
   
   .controls-section {
