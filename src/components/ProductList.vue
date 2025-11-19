@@ -8,6 +8,23 @@
 
   <!-- メインコンテンツ -->
   <div v-show="!showSplash && showContent" class="product-list-container fade-in">   
+    <!-- メインバナーセクション -->
+    <div class="hero-section">
+      <div class="hero-content">
+        <div class="hero-text">
+          <h1 class="hero-title">What I like...</h1>
+          <p class="hero-description">
+            自然が生み出す美しいフォルム。<br>
+            ひとつひとつ異なる表情を持つ多肉植物たち。<br>
+            あなたのお気に入りを見つけてください。
+          </p>
+        </div>
+        <div class="hero-image">
+          <img src="/main.jpg" alt="SUS Plants メインバナー" class="banner-image" />
+        </div>
+      </div>
+    </div>
+    
     <div class="controls-section">
       <SortSelector v-model:sort="sortKey" />
       <div class="user-actions">
@@ -673,6 +690,75 @@ const closeVideoModal = () => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+}
+
+/* ヒーローセクション */
+.hero-section {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto 3rem auto;
+  padding: 0;
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  min-height: 400px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 245, 0.95) 100%);
+  border-radius: 16px;
+  padding: 3rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5rem;
+  padding-right: 2rem;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 300;
+  color: #2c5f2d;
+  margin: 0;
+  line-height: 1.2;
+  font-family: 'Arial Rounded MT Bold', 'Times New Roman', serif;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.hero-description {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #666;
+  margin: 0;
+  font-weight: 400;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-image:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  min-height: 350px;
 }
 
 /* 全画面固定背景 */
@@ -1491,6 +1577,41 @@ div[class~="admin-grid"] {
     max-width: 100%;
   }
 
+  /* モバイルでのヒーローセクション調整 */
+  .hero-section {
+    margin-bottom: 2rem;
+  }
+
+  .hero-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem 1.5rem;
+    min-height: auto;
+  }
+
+  .hero-text {
+    padding-right: 0;
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+  }
+
+  .hero-image {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .banner-image {
+    min-height: 250px;
+  }
+
   .controls-section {
     flex-direction: column;
     gap: 1rem;
@@ -1556,42 +1677,74 @@ div[class~="admin-grid"] {
     padding-top: 130px !important; /* 小さなスマホでヘッダー分の余白を十分確保 */
   }
   
+  /* 小さな画面でのヒーローセクション調整 */
+  .hero-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-content {
+    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-description {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .banner-image {
+    min-height: 200px;
+  }
+  
   .controls-section {
-    padding: 0.75rem;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    padding: 1rem;
+    margin: 0 auto;
     width: calc(100% - 0.5rem);
-    margin: 0 auto;
-  }
-  
-  .order-history-link .icon {
-    font-size: 1rem;
-  }
-  
-  .product-card {
-    margin: 0 auto;
-    width: 100%;
     max-width: 100%;
   }
   
-  .product-info {
-    padding: 1rem;
+  .controls-section > :first-child {
+    margin-left: 0;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cart-button,
+  .purchase-button {
+    width: 100%;
+    flex: none;
+    min-height: 48px;
+  }
+
+  .user-actions {
+    justify-content: center;
+    width: 100%;
+    gap: 0.75rem;
   }
   
-  /* スマホでは商品カードの矢印を非表示に（スワイプメイン） */
-  .product-swiper-next,
-  .product-swiper-prev {
-    display: none !important;
+  .cart-link,
+  .order-history-link {
+    flex: 1;
+    justify-content: center;
+    min-height: 48px;
   }
   
-  .image-container {
-    height: 200px;
+  .order-history-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
   }
   
-  .product-swiper-container,
-  .single-image-container {
-    height: 200px;
-  }
-  
-  /* 非常に小さな画面での売約済み表示調整 */
+  /* モバイルでの売約済み・取引中商品の調整 */
   .reserved-overlay,
   .sold-out-overlay {
     font-size: 0.9rem;
@@ -1840,23 +1993,6 @@ div[class~="admin-grid"] {
   .video-modal {
     padding: 0;
     background-color: #000;
-  }
-  
-  .video-content {
-    width: 100vw;
-    height: 100vh;
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-  
-  .video-content .modal-close {
-    top: max(env(safe-area-inset-top, 0.5rem), 0.5rem);
-    right: 0.5rem;
-    width: 48px;
-    height: 48px;
-    font-size: 32px;
-    background: rgba(0, 0, 0, 0.9);
   }
 }
 
