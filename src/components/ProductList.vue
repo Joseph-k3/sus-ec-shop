@@ -1029,9 +1029,11 @@ div[class~="admin-grid"] {
 }
 
 .purchase-button {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.5rem 1rem;
-  background-color: #4CAF50;
+  background-color:rgba(215, 64, 19, 0.93);
   color: white;
   text-decoration: none;
   border-radius: 4px;
@@ -1045,7 +1047,7 @@ div[class~="admin-grid"] {
 }
 
 .purchase-button:hover {
-  background-color: #388E3C;
+  background-color:rgb(169, 57, 29);
 }
 
 
