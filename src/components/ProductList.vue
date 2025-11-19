@@ -134,7 +134,7 @@
               :to="{ name: 'purchase', params: { id: product.id }}" 
               class="purchase-button"
             >
-              即購入
+              ✔️ 即購入
             </router-link>
           </div>
           <span v-else-if="product.is_reserved" class="status-text">取引中</span>
@@ -877,6 +877,7 @@ const closeVideoModal = () => {
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   background: #f8f9fa;
+  border: 2px solid #d3d3d3;
   border-radius: 8px;
   text-decoration: none;
   color: #495057;
