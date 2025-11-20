@@ -15,7 +15,7 @@
           <h1 class="hero-title">What I like...</h1>
           <p class="hero-description">
             自然が生み出す<br class="br-mobile">美しいフォルム。<br>
-            ひとつひとつ異なる<br class="br-mobile">表情を持つ多肉植物たち。<br>
+            ひとつひとつ異なる<br class="br-mobile">表情を持つTillandsiaたち。<br>
             あなたのお気に入りを<br class="br-mobile">見つけてください。
           </p>
         </div>

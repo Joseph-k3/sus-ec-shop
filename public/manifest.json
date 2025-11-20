@@ -1,7 +1,7 @@
 {
   "name": "SUS plants EC shop",
   "short_name": "SUS plants",
-  "description": "多肉植物通販サイト。希少品種を豊富に取り揃え、全国発送対応。",
+  "description": "Tillandsia通販サイト。希少品種を豊富に取り揃え、全国発送対応。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
